@@ -488,7 +488,7 @@ export async function generateRaporPDF(data: RaporPDFData): Promise<jsPDF> {
 		}
 	});
 
-	currentY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 4.2; // spacing
+	currentY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 2.8; // spacing
 
 	// Kokurikuler Section (if exists)
 	if (data.kokurikuler && data.kokurikuler.length > 0 && data.hasKokurikuler) {
@@ -695,56 +695,14 @@ export async function generateRaporPDF(data: RaporPDFData): Promise<jsPDF> {
 			}
 		});
 
-		currentY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 5.6; // spacing lebih besar
+		currentY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 2.8; // spacing
 	}
 
-	// Tanggapan Orang Tua Section
+	// Tanggapan Orang Tua + Keputusan (side by side untuk genap)
 	checkNewPage(50);
 
-	if (!data.catatanWali) {
-		currentY += 5.6; // spacing lebih besar jika tidak ada catatan wali
-	}
+	currentY += 2.8; // spacing konsisten
 
-	autoTable(doc, {
-		startY: currentY,
-		head: [
-			[
-				{
-					content: 'Tanggapan Orang Tua/Wali Murid',
-					colSpan: 1,
-					styles: { halign: 'center', fontStyle: 'bold', fontSize: 10 }
-				}
-			]
-		],
-		body: [[data.tanggapanOrangTua?.trim() || '']],
-		theme: 'grid',
-		styles: {
-			fontSize: 10,
-			cellPadding: { top: 2.8, right: 2.8, bottom: 2.8, left: 2.8 },
-			lineColor: [0, 0, 0],
-			lineWidth: 0.3,
-			textColor: [0, 0, 0],
-			valign: 'top'
-		},
-		bodyStyles: {
-			minCellHeight: 20 // tinggi body lebih besar dari header
-		},
-		headStyles: {
-			fillColor: [255, 255, 255],
-			textColor: [0, 0, 0],
-			fontStyle: 'bold',
-			halign: 'center',
-			valign: 'middle',
-			fontSize: 10,
-			cellPadding: { top: 2.8, right: 2.8, bottom: 2.8, left: 2.8 }
-		},
-		margin: { left: marginLeft, right: marginRight, top: marginTop, bottom: marginBottom },
-		didDrawPage: drawFooter
-	});
-
-	currentY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8.5; // jarak lebih besar dengan signature
-
-	// Keputusan Section (hanya untuk semester genap)
 	const semesterNormalized = data.periode.semester.toLowerCase().replace(/[^a-z0-9]/g, '');
 	const isGenap = semesterNormalized.includes('genap') || semesterNormalized === '2';
 
@@ -756,23 +714,47 @@ export async function generateRaporPDF(data: RaporPDFData): Promise<jsPDF> {
 		const positiveLabel = isKelasEnam ? 'Lulus' : 'Naik Kelas';
 		const negativeLabel = isKelasEnam ? 'Tidak Lulus' : 'Tidak Naik Kelas';
 
+		const gapWidth = 5.6;
+		const totalContentWidth = contentWidth - gapWidth;
+		const leftWidth = totalContentWidth * 0.6;
+		const rightWidth = totalContentWidth * 0.4;
+
 		autoTable(doc, {
 			startY: currentY,
 			head: [
 				[
 					{
+						content: 'Tanggapan Orang Tua/Wali Murid',
+						styles: { halign: 'center', fontStyle: 'bold', fontSize: 10 }
+					},
+					{
+						content: '',
+						styles: { halign: 'center', fontStyle: 'bold', fontSize: 10 }
+					},
+					{
 						content: 'KEPUTUSAN',
-						colSpan: 1,
-						styles: { halign: 'left', fontStyle: 'bold', fontSize: 10 }
+						styles: { halign: 'center', fontStyle: 'bold', fontSize: 10 }
 					}
 				]
 			],
 			body: [
 				[
 					{
+						content: data.tanggapanOrangTua?.trim() || '',
+						styles: {
+							valign: 'top',
+							cellPadding: { top: 2.8, right: 2.8, bottom: 2.8, left: 2.8 },
+							minCellHeight: 20
+						}
+					},
+					{
+						content: '',
+						styles: { cellPadding: 0 }
+					},
+					{
 						content: '',
 						styles: {
-							minCellHeight: 16.9, // 60px = ~16.9mm
+							minCellHeight: 16.9,
 							cellPadding: { top: 4.2, right: 4.2, bottom: 4.2, left: 4.2 }
 						}
 					}
@@ -785,29 +767,50 @@ export async function generateRaporPDF(data: RaporPDFData): Promise<jsPDF> {
 				lineWidth: 0.3,
 				textColor: [0, 0, 0]
 			},
+			columnStyles: {
+				0: { cellWidth: leftWidth },
+				1: { cellWidth: gapWidth, lineWidth: 0 },
+				2: { cellWidth: rightWidth }
+			},
 			headStyles: {
 				fillColor: [255, 255, 255],
 				textColor: [0, 0, 0],
 				fontStyle: 'bold',
-				halign: 'left',
+				halign: 'center',
 				valign: 'middle',
 				fontSize: 10,
-				cellPadding: { top: 4.2, right: 4.2, bottom: 4.2, left: 4.2 }
+				cellPadding: { top: 2.8, right: 2.8, bottom: 2.8, left: 2.8 }
 			},
 			margin: { left: marginLeft, right: marginRight, top: marginTop, bottom: marginBottom },
 			didDrawPage: drawFooter,
 			didDrawCell: (data) => {
-				if (data.section === 'body' && data.row.index === 0) {
+				if (data.column.index === 1) {
+					const cell = data.cell;
+					const x = cell.x;
+					const y = cell.y;
+					const width = cell.width;
+					const height = cell.height;
+
+					doc.setDrawColor(0, 0, 0);
+					doc.setLineWidth(0.3);
+					doc.line(x, y, x, y + height);
+					doc.line(x + width, y, x + width, y + height);
+
+					doc.setDrawColor(255, 255, 255);
+					doc.setLineWidth(0.35);
+					doc.line(x, y, x + width, y);
+					doc.line(x, y + height, x + width, y + height);
+				}
+
+				if (data.section === 'body' && data.row.index === 0 && data.column.index === 2) {
 					const cellX = data.cell.x;
 					const cellY = data.cell.y;
 					const cellWidth = data.cell.width;
 					const padding = 4.2;
 
-					// Draw decision items
 					doc.setFontSize(9);
 					doc.setFont('helvetica', 'normal');
 
-					// Positive decision
 					const y1 = cellY + padding + 4;
 					doc.text(positiveLabel, cellX + padding, y1);
 					const boxSize = 5;
@@ -815,8 +818,7 @@ export async function generateRaporPDF(data: RaporPDFData): Promise<jsPDF> {
 					const box1Y = y1 - 3.5;
 					doc.rect(box1X, box1Y, boxSize, boxSize);
 
-					// Negative decision
-					const y2 = y1 + 8.5; // gap-3 = 12px = ~4mm, tapi disesuaikan
+					const y2 = y1 + 8.5;
 					doc.text(negativeLabel, cellX + padding, y2);
 					const box2X = cellX + cellWidth - padding - boxSize;
 					const box2Y = y2 - 3.5;
@@ -825,9 +827,46 @@ export async function generateRaporPDF(data: RaporPDFData): Promise<jsPDF> {
 			}
 		});
 
-		currentY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 5.6; // spacing lebih besar
+		currentY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 12;
 	} else {
-		currentY += 5.6; // spacing before signature
+		autoTable(doc, {
+			startY: currentY,
+			head: [
+				[
+					{
+						content: 'Tanggapan Orang Tua/Wali Murid',
+						colSpan: 1,
+						styles: { halign: 'center', fontStyle: 'bold', fontSize: 10 }
+					}
+				]
+			],
+			body: [[data.tanggapanOrangTua?.trim() || '']],
+			theme: 'grid',
+			styles: {
+				fontSize: 10,
+				cellPadding: { top: 2.8, right: 2.8, bottom: 2.8, left: 2.8 },
+				lineColor: [0, 0, 0],
+				lineWidth: 0.3,
+				textColor: [0, 0, 0],
+				valign: 'top'
+			},
+			bodyStyles: {
+				minCellHeight: 20
+			},
+			headStyles: {
+				fillColor: [255, 255, 255],
+				textColor: [0, 0, 0],
+				fontStyle: 'bold',
+				halign: 'center',
+				valign: 'middle',
+				fontSize: 10,
+				cellPadding: { top: 2.8, right: 2.8, bottom: 2.8, left: 2.8 }
+			},
+			margin: { left: marginLeft, right: marginRight, top: marginTop, bottom: marginBottom },
+			didDrawPage: drawFooter
+		});
+
+		currentY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 12;
 	}
 
 	// Signatures Section
@@ -849,9 +888,8 @@ export async function generateRaporPDF(data: RaporPDFData): Promise<jsPDF> {
 	doc.setFontSize(10); // ukuran yang sama dengan identity
 	doc.setFont('helvetica', 'normal');
 
-	// Tempat, Tanggal (absolute di atas Wali Kelas)
-	// Pastikan tidak keluar dari bounds jika di halaman baru
-	const tanggalY = Math.max(sigStartY - 8.5, marginTop);
+	// Tempat, Tanggal
+	const tanggalY = Math.max(sigStartY - 6, marginTop);
 	if (data.ttd) {
 		doc.text(
 			`${data.ttd.tempat}, ${data.ttd.tanggal}`,
