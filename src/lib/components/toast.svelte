@@ -43,7 +43,7 @@
 
 	let interact = $state(false);
 
-	const autoCloseAfter = 5; // seconds
+	const autoCloseAfter = 2; // seconds
 	const typesMaps: Record<
 		NonNullable<Toast['type']>,
 		{
