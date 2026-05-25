@@ -248,6 +248,7 @@ thead { display: table-header-group; }
 	border-collapse: collapse;
 	width: 100%;
 	margin-top: 14pt;
+	page-break-inside: avoid;
 }
 
 .single-section-table .section-header {
