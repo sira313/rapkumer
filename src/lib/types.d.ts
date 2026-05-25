@@ -42,9 +42,10 @@ interface CoverPrintData {
 interface BiodataPrintData {
 	sekolah: {
 		nama: string;
-		logoUrl?: string | null;
+		bgLogoSrc?: string | null;
 		statusKepalaSekolah?: string | null;
 	};
+	showBgLogo?: boolean;
 	murid: {
 		id?: number;
 		foto?: string | null;

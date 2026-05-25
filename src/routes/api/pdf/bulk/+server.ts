@@ -21,6 +21,7 @@ type BulkRequest = {
 	template?: '1' | '2';
 	docLabel?: string;
 	kelasLabel?: string;
+	bgLogo?: boolean;
 };
 
 export const POST = (async ({ locals, request }) => {
@@ -43,6 +44,7 @@ export const POST = (async ({ locals, request }) => {
 				url.searchParams.set('krit_cukup', String(body.criteria.kritCukup));
 				url.searchParams.set('krit_baik', String(body.criteria.kritBaik));
 			}
+			if (body.bgLogo) url.searchParams.set('bg_logo', '1');
 
 			let data: Record<string, unknown>;
 			switch (body.docType) {

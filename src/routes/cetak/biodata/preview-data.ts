@@ -1,7 +1,9 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { error } from '@sveltejs/kit';
 import { and, eq } from 'drizzle-orm';
 import db from '$lib/server/db';
-import { tableMurid } from '$lib/server/db/schema';
+import { tableMurid, tableSekolah } from '$lib/server/db/schema';
 import { jenisKelamin } from '$lib/statics';
 
 type BiodataContext = {
@@ -113,11 +115,38 @@ function fallbackTempat(sekolah: NonNullable<App.Locals['sekolah']>): string {
 	return alamat.kabupaten || alamat.kecamatan || alamat.desa || '';
 }
 
-function buildLogoUrl(sekolah: NonNullable<App.Locals['sekolah']>): string | null {
-	if (!sekolah.id) return null;
-	const updatedAt = sekolah.updatedAt ? Date.parse(sekolah.updatedAt) : NaN;
-	const suffix = Number.isFinite(updatedAt) ? `?v=${updatedAt}` : '';
-	return `/sekolah/logo/${sekolah.id}${suffix}`;
+function uploadsDir(): string {
+	const envPhoto = process.env.photo || 'file:./data/uploads';
+	const raw = envPhoto.startsWith('file:') ? envPhoto.slice(5) : envPhoto;
+	return path.resolve(raw);
+}
+
+function readFotoDataUri(filename: string | null | undefined): string | null {
+	if (!filename) return null;
+	try {
+		const filePath = path.join(uploadsDir(), filename);
+		const buffer = fs.readFileSync(filePath);
+		const ext = path.extname(filename).toLowerCase();
+		const mime = ext === '.png' ? 'image/png' : 'image/jpeg';
+		return `data:${mime};base64,${buffer.toString('base64')}`;
+	} catch {
+		return null;
+	}
+}
+
+const bgLogoSrcCache = new Map<number, string | null>();
+
+async function getBgLogoSrc(sekolahId: number): Promise<string | null> {
+	if (bgLogoSrcCache.has(sekolahId)) return bgLogoSrcCache.get(sekolahId)!;
+	const row = await db.query.tableSekolah.findFirst({
+		columns: { logo: true, logoType: true },
+		where: eq(tableSekolah.id, sekolahId)
+	});
+	const result = row?.logo?.length
+		? `data:${row.logoType || 'image/png'};base64,${Buffer.from(row.logo).toString('base64')}`
+		: null;
+	bgLogoSrcCache.set(sekolahId, result);
+	return result;
 }
 
 export async function getBiodataPreviewPayload({ locals, url }: BiodataContext) {
@@ -160,15 +189,19 @@ export async function getBiodataPreviewPayload({ locals, url }: BiodataContext) 
 
 	const tanggalTtd = formatTanggal(murid.semester?.tanggalBagiRaport ?? murid.tanggalMasuk);
 
+	const showBgLogo = url.searchParams.get('bg_logo') === '1';
+	const bgLogoSrc = showBgLogo ? await getBgLogoSrc(sekolah.id) : null;
+
 	const biodataData: BiodataPrintData = {
 		sekolah: {
 			nama: sekolah.nama,
-			logoUrl: buildLogoUrl(sekolah),
+			bgLogoSrc,
 			statusKepalaSekolah: sekolah.statusKepalaSekolah ?? 'definitif'
 		},
+		showBgLogo,
 		murid: {
 			id: murid.id,
-			foto: murid.foto ?? null,
+			foto: readFotoDataUri(murid.foto),
 			nama: murid.nama,
 			nis: murid.nis,
 			nisn: murid.nisn,

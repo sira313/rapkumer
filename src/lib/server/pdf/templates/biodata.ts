@@ -1,7 +1,9 @@
-import { sharedStyles, formatValue, formatUpper, FALLBACK } from './shared';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { sharedStyles, formatValue, formatUpper } from './shared';
 
 interface BiodataPrintData {
-	sekolah: { nama: string; logoUrl?: string | null; statusKepalaSekolah?: string | null };
+	sekolah: { nama: string; bgLogoSrc?: string | null; statusKepalaSekolah?: string | null };
 	murid: {
 		id?: number;
 		foto?: string | null;
@@ -34,12 +36,22 @@ interface BiodataPrintData {
 	};
 	wali: { nama: string; pekerjaan: string; alamat: string };
 	ttd: { tempat: string; tanggal: string; kepalaSekolah: string; nip: string };
+	showBgLogo?: boolean;
 }
 
-function resolveURL(url: string | null | undefined): string | undefined {
-	if (!url) return undefined;
-	if (url.startsWith('http') || url.startsWith('data:') || url.startsWith('/')) return url;
-	return `http://localhost/${url}`;
+let tutwuriBwDataUri: string | null = null;
+let tutwuriBwChecked = false;
+
+function getTutwuriBwDataUri(): string {
+	if (tutwuriBwChecked) return tutwuriBwDataUri ?? '';
+	tutwuriBwChecked = true;
+	try {
+		const buf = readFileSync(resolve('static/tutwuri-bw.png'));
+		tutwuriBwDataUri = `data:image/png;base64,${buf.toString('base64')}`;
+	} catch {
+		tutwuriBwDataUri = '';
+	}
+	return tutwuriBwDataUri;
 }
 
 function colItem(no: string, label: string, value: string, uppercase = false): string {
@@ -72,10 +84,11 @@ function colEmpty(no: string, label: string): string {
 }
 
 export function renderBiodataHTML(data: BiodataPrintData): string {
-	const { sekolah, murid, orangTua, wali, ttd } = data;
+	const { sekolah, murid, orangTua, wali, ttd, showBgLogo } = data;
 
-	const logo = resolveURL(sekolah.logoUrl);
-	const foto = resolveURL(murid.foto);
+	const bgLogoSrc = showBgLogo ? sekolah.bgLogoSrc || getTutwuriBwDataUri() : null;
+
+	const foto = data.murid.foto ?? null;
 
 	const kepalaTitle =
 		sekolah.statusKepalaSekolah === 'plt' ? 'Plt. Kepala Sekolah' : 'Kepala Sekolah';
@@ -137,27 +150,22 @@ ${sharedStyles()}
 .footer {
 	display: flex;
 	justify-content: flex-end;
-	align-items: flex-end;
 	gap: 32px;
 	margin-top: 48px;
 }
 
 .ttd-section {
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
 	text-align: center;
 	font-size: 11pt;
-}
-
-.ttd-section .jabatan {
-	margin-top: 4px;
-}
-
-.ttd-section .nama {
-	margin-top: 28px;
 }
 
 .photo-box {
 	width: 30mm;
 	height: 40mm;
+	flex-shrink: 0;
 	border: 2px solid #000;
 	display: flex;
 	align-items: center;
@@ -176,7 +184,7 @@ ${sharedStyles()}
 </head>
 <body>
 
-${logo ? `<img class="watermark" src="${logo}" alt="logo" />` : ''}
+${bgLogoSrc ? `<img class="watermark" src="${bgLogoSrc}" alt="logo" />` : ''}
 
 <div class="header-title">IDENTITAS MURID</div>
 <div class="header-school">${formatValue(sekolah.nama)}</div>
@@ -217,10 +225,14 @@ ${logo ? `<img class="watermark" src="${logo}" alt="logo" />` : ''}
 
 <div class="footer">
 	<div class="ttd-section">
-		<p>${formatValue(ttd.tempat)}, ${formatValue(ttd.tanggal)}</p>
-		<p class="jabatan">${kepalaTitle}</p>
-		<p class="nama font-bold">${formatValue(ttd.kepalaSekolah)}</p>
-		<p>NIP. ${formatValue(ttd.nip)}</p>
+		<div class="ttd-top">
+			<p>${formatValue(ttd.tempat)}, ${formatValue(ttd.tanggal)}</p>
+			<p>${kepalaTitle}</p>
+		</div>
+		<div class="ttd-bottom">
+			<p class="font-bold">${formatValue(ttd.kepalaSekolah)}</p>
+			<p>${formatValue(ttd.nip)}</p>
+		</div>
 	</div>
 	<div class="photo-box">
 		${foto ? `<img src="${foto}" alt="foto" />` : 'PAS FOTO 3x4'}

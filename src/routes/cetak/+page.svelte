@@ -232,6 +232,9 @@
 		if (docType === 'piagam' && selectedTemplate) {
 			params.set('template', selectedTemplate);
 		}
+		if (showBgLogo) {
+			params.set('bg_logo', '1');
+		}
 		return `/cetak/${docType}.pdf?${params.toString()}`;
 	}
 
@@ -330,7 +333,8 @@
 					criteria: { kritCukup, kritBaik },
 					template: documentType === 'piagam' ? selectedTemplate : undefined,
 					docLabel: selectedDocumentEntry?.label ?? documentType,
-					kelasLabel: kelasAktifLabel ? kelasAktifLabel.replace(/\s+/g, '') : 'Semua-Kelas'
+					kelasLabel: kelasAktifLabel ? kelasAktifLabel.replace(/\s+/g, '') : 'Semua-Kelas',
+					bgLogo: showBgLogo
 				})
 			});
 
