@@ -1,6 +1,4 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { sharedStyles, formatValue, formatUpper } from './shared';
+import { sharedStyles, formatValue, formatUpper, getTutwuriBwDataUri } from './shared';
 
 interface BiodataPrintData {
 	sekolah: { nama: string; bgLogoSrc?: string | null; statusKepalaSekolah?: string | null };
@@ -37,21 +35,6 @@ interface BiodataPrintData {
 	wali: { nama: string; pekerjaan: string; alamat: string };
 	ttd: { tempat: string; tanggal: string; kepalaSekolah: string; nip: string };
 	showBgLogo?: boolean;
-}
-
-let tutwuriBwDataUri: string | null = null;
-let tutwuriBwChecked = false;
-
-function getTutwuriBwDataUri(): string {
-	if (tutwuriBwChecked) return tutwuriBwDataUri ?? '';
-	tutwuriBwChecked = true;
-	try {
-		const buf = readFileSync(resolve('static/tutwuri-bw.png'));
-		tutwuriBwDataUri = `data:image/png;base64,${buf.toString('base64')}`;
-	} catch {
-		tutwuriBwDataUri = '';
-	}
-	return tutwuriBwDataUri;
 }
 
 function colItem(no: string, label: string, value: string, uppercase = false): string {

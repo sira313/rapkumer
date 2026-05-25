@@ -37,7 +37,7 @@
 	let previewPrintable = $state<HTMLDivElement | null>(null);
 	let previewLoading = $state(false);
 	let previewError = $state<string | null>(null);
-	let showBgLogo = $state(false);
+	let showBgLogo = $state(true);
 
 	// bulk print state
 	let isBulkMode = $state(false);

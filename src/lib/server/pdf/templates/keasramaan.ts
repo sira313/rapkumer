@@ -1,4 +1,4 @@
-import { sharedStyles, formatValue, formatUpper, FALLBACK } from './shared';
+import { sharedStyles, formatValue, formatUpper, FALLBACK, getTutwuriBwDataUri } from './shared';
 
 interface KeasramaanPrintData {
 	sekolah: {
@@ -255,11 +255,7 @@ body {
 }
 
 export function renderKeasramaanHTML(data: KeasramaanPrintData): string {
-	const logoUrl = data.sekolah.logoUrl
-		? data.sekolah.logoUrl.startsWith('http')
-			? data.sekolah.logoUrl
-			: `http://localhost${data.sekolah.logoUrl}`
-		: null;
+	const logoUrl = data.sekolah.logoUrl || getTutwuriBwDataUri() || null;
 
 	const semesterLabel = data.periode.semester.replace(/^Semester\s+/i, '');
 	const faseLabel = data.rombel.fase ? formatValue(data.rombel.fase).toUpperCase() : FALLBACK;

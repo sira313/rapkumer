@@ -99,7 +99,7 @@ interface RaporPrintData {
 	sekolah: {
 		nama: string;
 		alamat: string;
-		logoUrl?: string | null;
+		bgLogoSrc?: string | null;
 		jenjangVariant?: string | null;
 	};
 	murid: {
@@ -151,6 +151,7 @@ interface RaporPrintData {
 
 	// Mode for tujuan pembelajaran display: compact | full-desc
 	tpMode?: 'compact' | 'full-desc';
+	showBgLogo?: boolean;
 }
 
 interface PiagamPrintData {

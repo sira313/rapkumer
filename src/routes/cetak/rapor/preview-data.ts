@@ -8,7 +8,8 @@ import {
 	tableAsesmenSumatifTujuan,
 	tableEkstrakurikuler,
 	tableMurid,
-	tableMuridEkstrakurikuler
+	tableMuridEkstrakurikuler,
+	tableSekolah
 } from '$lib/server/db/schema';
 import {
 	jenisMapel,
@@ -172,6 +173,16 @@ function buildLogoUrl(sekolah: NonNullable<App.Locals['sekolah']>): string | nul
 	const updatedAt = sekolah.updatedAt ? Date.parse(sekolah.updatedAt) : NaN;
 	const suffix = Number.isFinite(updatedAt) ? `?v=${updatedAt}` : '';
 	return `/sekolah/logo/${sekolah.id}${suffix}`;
+}
+
+async function getBgLogoSrc(sekolahId: number): Promise<string | null> {
+	const row = await db.query.tableSekolah.findFirst({
+		columns: { logo: true, logoType: true },
+		where: eq(tableSekolah.id, sekolahId)
+	});
+	return row?.logo?.length
+		? `data:${row.logoType || 'image/png'};base64,${Buffer.from(row.logo).toString('base64')}`
+		: null;
 }
 
 export async function getRaporPreviewPayload({ locals, url }: RaporContext) {
@@ -572,13 +583,17 @@ export async function getRaporPreviewPayload({ locals, url }: RaporContext) {
 
 	const ttdTanggal = formatTanggal(murid.semester?.tanggalBagiRaport);
 
+	const showBgLogo = url.searchParams.get('bg_logo') === '1';
+	const bgLogoSrc = showBgLogo ? await getBgLogoSrc(sekolah.id) : null;
+
 	const raporData: RaporPrintData = {
 		sekolah: {
 			nama: sekolah.nama,
 			alamat: composeAlamat(sekolah),
-			logoUrl: buildLogoUrl(sekolah),
+			bgLogoSrc,
 			jenjangVariant: sekolah.jenjangVariant ?? null
 		},
+		showBgLogo,
 		murid: {
 			nama: murid.nama,
 			nis: murid.nis,

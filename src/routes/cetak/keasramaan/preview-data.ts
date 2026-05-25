@@ -6,7 +6,8 @@ import {
 	tableKeasramaan,
 	tableKeasramaanIndikator,
 	tableKeasramaanTujuan,
-	tableMurid
+	tableMurid,
+	tableSekolah
 } from '$lib/server/db/schema';
 import {
 	kategoriToRubrikValue,
@@ -146,11 +147,15 @@ function buildIndicatorDeskripsi(
 	if (notAchievedParagraph) return notAchievedParagraph;
 	return '';
 }
-function buildLogoUrl(sekolah: NonNullable<App.Locals['sekolah']>): string | null {
-	if (!sekolah.id) return null;
-	const updatedAt = sekolah.updatedAt ? Date.parse(sekolah.updatedAt) : NaN;
-	const suffix = Number.isFinite(updatedAt) ? `?v=${updatedAt}` : '';
-	return `/sekolah/logo/${sekolah.id}${suffix}`;
+async function getLogoSrc(sekolahId: number): Promise<string | null> {
+	const row = await db.query.tableSekolah.findFirst({
+		columns: { logo: true, logoType: true },
+		where: eq(tableSekolah.id, sekolahId)
+	});
+	if (row?.logo?.length) {
+		return `data:${row.logoType || 'image/png'};base64,${Buffer.from(row.logo).toString('base64')}`;
+	}
+	return null;
 }
 
 export type KeasramaanRow = {
@@ -407,11 +412,13 @@ export async function getKeasramaanPreviewPayload({ locals, url }: KeasramaanCon
 	const ttdTanggal = formatTanggal(kelasData.semester?.tanggalBagiRaport);
 	const ttdTempat = fallbackTempat(sekolah);
 
+	const logoSrc = await getLogoSrc(sekolah.id);
+
 	const keasramaanData: KeasramaanPrintData = {
 		sekolah: {
 			nama: sekolah.nama,
 			alamat: composeAlamat(sekolah),
-			logoUrl: buildLogoUrl(sekolah),
+			logoUrl: logoSrc,
 			jenjangVariant: sekolah.jenjangVariant ?? null
 		},
 		murid: {

@@ -1,10 +1,10 @@
-import { sharedStyles, formatValue, formatUpper } from './shared';
+import { sharedStyles, formatValue, formatUpper, getTutwuriBwDataUri } from './shared';
 
 export interface RaporPrintData {
 	sekolah: {
 		nama: string;
 		alamat: string;
-		logoUrl?: string | null;
+		bgLogoSrc?: string | null;
 		jenjangVariant?: string | null;
 	};
 	murid: {
@@ -53,15 +53,13 @@ export interface RaporPrintData {
 		tempat: string;
 		tanggal: string;
 	};
+
 	tpMode?: 'compact' | 'full-desc';
+	showBgLogo?: boolean;
 }
 
 export function renderRaporHTML(data: RaporPrintData): string {
-	const logoUrl = data.sekolah.logoUrl
-		? data.sekolah.logoUrl.startsWith('http')
-			? data.sekolah.logoUrl
-			: `http://localhost${data.sekolah.logoUrl}`
-		: null;
+	const bgLogoSrc = data.showBgLogo ? data.sekolah.bgLogoSrc || getTutwuriBwDataUri() : null;
 
 	const isGenap = data.periode.semester.includes('genap') || data.periode.semester.includes('2');
 	const isKelas6 = data.rombel.nama.includes('6');
@@ -390,7 +388,7 @@ thead { display: table-header-group; }
 </head>
 <body>
 
-${logoUrl ? `<img src="${logoUrl}" alt="" class="watermark">` : ''}
+${bgLogoSrc ? `<img src="${bgLogoSrc}" alt="" class="watermark">` : ''}
 
 <div class="header-title">LAPORAN HASIL BELAJAR</div>
 <div class="header-subtitle">(RAPOR)</div>

@@ -134,19 +134,14 @@ function readFotoDataUri(filename: string | null | undefined): string | null {
 	}
 }
 
-const bgLogoSrcCache = new Map<number, string | null>();
-
 async function getBgLogoSrc(sekolahId: number): Promise<string | null> {
-	if (bgLogoSrcCache.has(sekolahId)) return bgLogoSrcCache.get(sekolahId)!;
 	const row = await db.query.tableSekolah.findFirst({
 		columns: { logo: true, logoType: true },
 		where: eq(tableSekolah.id, sekolahId)
 	});
-	const result = row?.logo?.length
+	return row?.logo?.length
 		? `data:${row.logoType || 'image/png'};base64,${Buffer.from(row.logo).toString('base64')}`
 		: null;
-	bgLogoSrcCache.set(sekolahId, result);
-	return result;
 }
 
 export async function getBiodataPreviewPayload({ locals, url }: BiodataContext) {

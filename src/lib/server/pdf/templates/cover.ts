@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { sharedStyles, formatValue, formatUpper, FALLBACK } from './shared';
+import { sharedStyles, formatValue, formatUpper, FALLBACK, getTutwuriBwDataUri } from './shared';
 import { jenjangPendidikanSederajat, nauganHeaderByKey, type NauganKey } from '$lib/statics';
 
 export interface CoverPrintData {
@@ -190,11 +190,7 @@ function coverStyles(): string {
 }
 
 export function renderCoverHTML(data: CoverPrintData): string {
-	const logoDinasUrl = data.sekolah.logoDinasUrl
-		? data.sekolah.logoDinasUrl.startsWith('http')
-			? data.sekolah.logoDinasUrl
-			: `http://localhost${data.sekolah.logoDinasUrl}`
-		: null;
+	const bgLogoSrc = data.sekolah.logoSrc || getTutwuriBwDataUri();
 
 	const naunganKey: NauganKey = data.sekolah.naungan ?? 'kemendikbud';
 	const [header1, header2] = nauganHeaderByKey[naunganKey];
@@ -244,7 +240,7 @@ ${coverStyles()}
 	</div>
 </div>
 
-${logoDinasUrl ? `<img src="${logoDinasUrl}" alt="Watermark" class="watermark">` : ''}
+${bgLogoSrc ? `<img src="${bgLogoSrc}" alt="Watermark" class="watermark">` : ''}
 
 <div class="page-break"></div>
 

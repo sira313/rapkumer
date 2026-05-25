@@ -1,3 +1,21 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+let tutwuriBwDataUri: string | null = null;
+let tutwuriBwChecked = false;
+
+export function getTutwuriBwDataUri(): string {
+	if (tutwuriBwChecked) return tutwuriBwDataUri ?? '';
+	tutwuriBwChecked = true;
+	try {
+		const buf = readFileSync(resolve('static/tutwuri-bw.png'));
+		tutwuriBwDataUri = `data:image/png;base64,${buf.toString('base64')}`;
+	} catch {
+		tutwuriBwDataUri = '';
+	}
+	return tutwuriBwDataUri;
+}
+
 export function sharedStyles(): string {
 	return `
 * {

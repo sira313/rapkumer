@@ -1,6 +1,8 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { sharedStyles, formatValue, formatUpper, FALLBACK } from './shared';
 
-interface PiagamPrintData {
+export interface PiagamPrintData {
 	sekolah: {
 		nama: string;
 		jenjang: 'sd' | 'smp' | 'sma' | 'slb' | 'pkbm' | 'srt';
@@ -37,6 +39,19 @@ interface PiagamPrintData {
 	};
 }
 
+let kumerLogoDataUri: string | null = null;
+
+function getKumerLogoDataUri(): string | null {
+	if (kumerLogoDataUri) return kumerLogoDataUri;
+	try {
+		const buf = readFileSync(resolve('static/logo-kumer.png'));
+		kumerLogoDataUri = `data:image/png;base64,${buf.toString('base64')}`;
+	} catch {
+		kumerLogoDataUri = null;
+	}
+	return kumerLogoDataUri;
+}
+
 function getJenjangLabel(jenjang: string | null): string {
 	switch (jenjang) {
 		case 'sd':
@@ -48,11 +63,6 @@ function getJenjangLabel(jenjang: string | null): string {
 		default:
 			return 'SEKOLAH';
 	}
-}
-
-function resolveUrl(url: string | null | undefined): string | null {
-	if (!url) return null;
-	return url.startsWith('http') ? url : `http://localhost${url}`;
 }
 
 function piagamStyles(): string {
@@ -242,9 +252,9 @@ function piagamStyles(): string {
 }
 
 export function renderPiagamHTML(data: PiagamPrintData, template: '1' | '2'): string {
-	const logoUrl = resolveUrl(data.sekolah.logoUrl);
-	const logoDinasUrl = resolveUrl(data.sekolah.logoDinasUrl);
-	const kumerLogo = resolveUrl('/logo-kumer.png');
+	const logoUrl = data.sekolah.logoUrl || null;
+	const logoDinasUrl = data.sekolah.logoDinasUrl || null;
+	const kumerLogo = getKumerLogoDataUri();
 
 	const alamatParts = [
 		data.sekolah.alamat.jalan,

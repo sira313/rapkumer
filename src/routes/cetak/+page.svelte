@@ -37,7 +37,7 @@
 	let previewPrintable = $state<HTMLDivElement | null>(null);
 	let previewLoading = $state(false);
 	let previewError = $state<string | null>(null);
-	let showBgLogo = $state(false);
+	let showBgLogo = $state(true);
 	let downloadLoading = $state(false);
 
 	// show TP listing: 'compact' | 'full-desc'
@@ -264,7 +264,8 @@
 					tpMode: fullTP,
 					kriteria: { kritCukup, kritBaik },
 					template: documentType === 'piagam' ? selectedTemplate : undefined,
-					docLabel
+					docLabel,
+					bgLogo: showBgLogo
 				})
 			});
 			if (!res.ok) throw new Error('Gagal mendapatkan token');

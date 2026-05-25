@@ -1,8 +1,9 @@
 import { error } from '@sveltejs/kit';
 import { and, eq } from 'drizzle-orm';
 import db from '$lib/server/db';
-import { tableMurid } from '$lib/server/db/schema';
+import { tableMurid, tableSekolah } from '$lib/server/db/schema';
 import { computeNilaiAkhirRekap } from '$lib/server/nilai-akhir';
+import type { PiagamPrintData } from '$lib/server/pdf/templates/piagam';
 
 const ORDINAL_WORDS: Record<number, string> = {
 	1: 'Pertama',
@@ -37,15 +38,26 @@ function optionalInteger(paramName: string, value: string | null): number | null
 	return parsed;
 }
 
-function buildLogoUrl(
-	sekolah: NonNullable<App.Locals['sekolah']>,
-	variant: 'sekolah' | 'dinas' = 'sekolah'
-): string | null {
-	if (!sekolah.id) return null;
-	const updatedAt = sekolah.updatedAt ? Date.parse(sekolah.updatedAt) : NaN;
-	const suffix = Number.isFinite(updatedAt) ? `?v=${updatedAt}` : '';
-	const basePath = variant === 'dinas' ? '/sekolah/logo-dinas' : '/sekolah/logo';
-	return `${basePath}${suffix}`;
+async function getLogoSrc(sekolahId: number): Promise<string | null> {
+	const row = await db.query.tableSekolah.findFirst({
+		columns: { logo: true, logoType: true },
+		where: eq(tableSekolah.id, sekolahId)
+	});
+	if (row?.logo?.length) {
+		return `data:${row.logoType || 'image/png'};base64,${Buffer.from(row.logo).toString('base64')}`;
+	}
+	return null;
+}
+
+async function getLogoDinasSrc(sekolahId: number): Promise<string | null> {
+	const row = await db.query.tableSekolah.findFirst({
+		columns: { logoDinas: true, logoDinasType: true },
+		where: eq(tableSekolah.id, sekolahId)
+	});
+	if (row?.logoDinas?.length) {
+		return `data:${row.logoDinasType || 'image/png'};base64,${Buffer.from(row.logoDinas).toString('base64')}`;
+	}
+	return null;
 }
 
 function formatTanggal(value: string | Date | null | undefined): string {
@@ -166,6 +178,11 @@ export async function getPiagamPreviewPayload({ locals, url }: { locals: App.Loc
 	const muridRanking =
 		muridRekap && muridRekap.jumlahMapelDinilai > 0 ? muridRekap.peringkat : null;
 
+	const [logoSrc, logoDinasSrc] = await Promise.all([
+		getLogoSrc(sekolah.id),
+		getLogoDinasSrc(sekolah.id)
+	]);
+
 	const piagamData: PiagamPrintData = {
 		sekolah: {
 			nama: sekolah.nama,
@@ -181,8 +198,8 @@ export async function getPiagamPreviewPayload({ locals, url }: { locals: App.Loc
 			},
 			website: sekolah.website ?? null,
 			email: sekolah.email ?? null,
-			logoUrl: buildLogoUrl(sekolah),
-			logoDinasUrl: buildLogoUrl(sekolah, 'dinas')
+			logoUrl: logoSrc,
+			logoDinasUrl: logoDinasSrc
 		},
 		murid: {
 			nama: murid.nama
