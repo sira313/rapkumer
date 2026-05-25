@@ -59,8 +59,8 @@
 
 <div class="not-prose flex flex-col gap-4">
 	<p class="text-base-content/70 text-sm">
-		Terapkan catatan yang sama untuk {targetCount} murid pada halaman ini. Tindakan ini akan menimpa
-		catatan sebelumnya.
+		Terapkan catatan yang sama untuk {targetCount} murid pada halaman ini. Tindakan ini akan menimpa catatan
+		sebelumnya.
 	</p>
 
 	<FormEnhance action="?/fillAll" id={formId} onsuccess={handleSuccess}>

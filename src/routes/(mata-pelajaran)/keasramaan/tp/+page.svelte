@@ -172,8 +172,8 @@
 		<div class="alert border-error/60 bg-error/10 text-error-content mb-4 border border-dashed">
 			<Icon name="warning" />
 			<span>
-				Database tujuan pembelajaran keasramaan belum siap. Jalankan <code>pnpm db:push</code> untuk
-				menerapkan migrasi terbaru.
+				Database tujuan pembelajaran keasramaan belum siap. Jalankan <code>pnpm db:push</code> untuk menerapkan
+				migrasi terbaru.
 			</span>
 		</div>
 	{/if}

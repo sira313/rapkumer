@@ -76,8 +76,7 @@
 {:else if tableReady}
 	<div class="border-base-300 bg-base-200 mt-6 rounded-lg border border-dashed p-4 text-center">
 		<p class="text-base-content/60 text-sm">
-			Belum ada mata evaluasi keasramaan. Gunakan tombol <strong>Kelola Mata Evaluasi</strong> untuk
-			menambahkan.
+			Belum ada mata evaluasi keasramaan. Gunakan tombol <strong>Kelola Mata Evaluasi</strong> untuk menambahkan.
 		</p>
 	</div>
 {/if}

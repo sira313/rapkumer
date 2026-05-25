@@ -6,6 +6,7 @@
 	// deletion handled elsewhere; removed unused modal/toast imports
 	let { data } = $props();
 	let activeTab = $state(0);
+	const totalTabs = 5;
 
 	// openDeleteModal removed — deletion moved to dedicated route/modal
 </script>
@@ -22,9 +23,13 @@
 			const foto = res?.foto ?? null;
 			const id = res?.id ?? data.murid?.id;
 			const t = Date.now();
+			const waliAsuhNama = res?.waliAsuhNama ?? null;
+			const waliAsuhNip = res?.waliAsuhNip ?? null;
 			// delay dispatch slightly so the detail modal can mount its listener
 			setTimeout(() => {
-				window.dispatchEvent(new CustomEvent('murid:updated', { detail: { id, foto, t } }));
+				window.dispatchEvent(
+					new CustomEvent('murid:updated', { detail: { id, foto, t, waliAsuhNama, waliAsuhNip } })
+				);
 			}, 120);
 		} catch {
 			void 0;
@@ -369,6 +374,39 @@
 						</fieldset>
 					</div>
 				</div>
+
+				<!-- data Wali Asuh -->
+				<input
+					type="radio"
+					bind:group={activeTab}
+					value={4}
+					class="tab"
+					aria-label="Wali Asuh (Opsional)"
+				/>
+				<div class="tab-content bg-base-100 p-4">
+					<div class="flex flex-col gap-2 sm:flex-row">
+						<fieldset class="fieldset flex-1">
+							<legend class="fieldset-legend">Nama Wali Asuh</legend>
+							<input
+								type="text"
+								class="input validator bg-base-200 dark:bg-base-300 w-full dark:border-none"
+								placeholder="Contoh: Budi Santoso"
+								name="waliAsuhNama"
+							/>
+						</fieldset>
+						<fieldset class="fieldset flex-1">
+							<legend class="fieldset-legend"
+								>NIP Wali Asuh <span class="text-xs text-gray-500">(Opsional)</span></legend
+							>
+							<input
+								type="text"
+								class="input bg-base-200 dark:bg-base-300 w-full dark:border-none"
+								placeholder="Contoh: NIP 19940505 201803 1 008"
+								name="waliAsuhNip"
+							/>
+						</fieldset>
+					</div>
+				</div>
 			</div>
 		</div>
 		<div class="border-base-200 mt-4 flex flex-col gap-2 sm:flex-row">
@@ -381,7 +419,7 @@
 				<button
 					class="btn btn-primary shadow-none"
 					type="button"
-					onclick={() => (activeTab = (activeTab + 1) % 4)}
+					onclick={() => (activeTab = (activeTab + 1) % totalTabs)}
 				>
 					<Icon name="double-arrow" class="h-4 w-4" />
 					Selanjutnya

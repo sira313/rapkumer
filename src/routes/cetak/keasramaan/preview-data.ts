@@ -222,7 +222,6 @@ export async function getKeasramaanPreviewPayload({ locals, url }: KeasramaanCon
 				with: {
 					waliKelas: true,
 					waliAsrama: true,
-					waliAsuh: true,
 					tahunAjaran: true,
 					semester: true
 				}
@@ -434,8 +433,8 @@ export async function getKeasramaanPreviewPayload({ locals, url }: KeasramaanCon
 		waliKelas: kelasData.waliKelas
 			? { nama: kelasData.waliKelas.nama, nip: kelasData.waliKelas.nip ?? '' }
 			: null,
-		waliAsuh: kelasData.waliAsuh
-			? { nama: kelasData.waliAsuh.nama, nip: kelasData.waliAsuh.nip ?? '' }
+		waliAsuh: murid.waliAsuhNama
+			? { nama: murid.waliAsuhNama, nip: murid.waliAsuhNip ?? '' }
 			: null,
 		kepalaSekolah: sekolah.kepalaSekolah
 			? ({
