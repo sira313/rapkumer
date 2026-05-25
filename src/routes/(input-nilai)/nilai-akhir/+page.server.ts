@@ -358,9 +358,8 @@ export const load: PageServerLoad = async ({ parent, locals, url, depends }) => 
 				// try to ensure schema exists (older installs may not have the table)
 				try {
 					// dynamic import of ensure function to avoid hard dependency when table missing
-					const { ensureAsesmenKokurikulerSchema } = await import(
-						'$lib/server/db/ensure-asesmen-kokurikuler'
-					);
+					const { ensureAsesmenKokurikulerSchema } =
+						await import('$lib/server/db/ensure-asesmen-kokurikuler');
 					await ensureAsesmenKokurikulerSchema();
 				} catch {
 					// ignore if ensure not available
@@ -463,9 +462,8 @@ export const load: PageServerLoad = async ({ parent, locals, url, depends }) => 
 			const ekstrIds = ekstrakRows.map((e) => e.id);
 			if (ekstrIds.length > 0 && muridIds.length > 0) {
 				try {
-					const { ensureAsesmenEkstrakurikulerSchema } = await import(
-						'$lib/server/db/ensure-asesmen-ekstrakurikuler'
-					);
+					const { ensureAsesmenEkstrakurikulerSchema } =
+						await import('$lib/server/db/ensure-asesmen-ekstrakurikuler');
 					await ensureAsesmenEkstrakurikulerSchema();
 				} catch {
 					// ignore

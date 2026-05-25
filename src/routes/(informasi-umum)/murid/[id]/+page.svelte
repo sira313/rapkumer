@@ -53,7 +53,21 @@
 					// include timestamp in foto field to bust cache when filename unchanged
 					const newFoto = detail?.foto ? `${detail.foto}${detail.t ? `?t=${detail.t}` : ''}` : null;
 					// reassign `data` so runes reactivity picks up change
-					data = { ...data, murid: { ...(data.murid ?? {}), foto: newFoto } };
+					const waliAsuhNama =
+						typeof detail.waliAsuhNama === 'string'
+							? detail.waliAsuhNama
+							: data.murid?.waliAsuhNama;
+					const waliAsuhNip =
+						typeof detail.waliAsuhNip === 'string' ? detail.waliAsuhNip : data.murid?.waliAsuhNip;
+					data = {
+						...data,
+						murid: {
+							...(data.murid ?? {}),
+							foto: newFoto,
+							waliAsuhNama,
+							waliAsuhNip
+						}
+					};
 					// Mark that data was updated, will force refresh on next modal open
 					dataWasUpdated = true;
 				}
@@ -227,6 +241,14 @@
 					{@render field('Pekerjaan Wali', data.murid.wali?.pekerjaan)}
 					{@render field('Alamat Wali', data.murid.wali?.alamat)}
 					{@render field('Kontak', data.murid.wali?.kontak)}
+				</div>
+			</div>
+			<!-- data Wali Asuh -->
+			<input type="radio" name="tab-detil-murid" class="tab" aria-label="Wali Asuh" />
+			<div class="tab-content bg-base-100 p-4">
+				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+					{@render field('Nama Wali Asuh', data.murid.waliAsuhNama)}
+					{@render field('NIP Wali Asuh', data.murid.waliAsuhNip)}
 				</div>
 			</div>
 		</div>

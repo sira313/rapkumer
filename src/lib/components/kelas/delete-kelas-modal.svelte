@@ -67,8 +67,8 @@
 								<div class="flex flex-col gap-1">
 									<h3 class="text-xl font-bold">Hapus kelas?</h3>
 									<p class="text-base-content/70 text-sm">
-										Yakin ingin menghapus kelas <span class="font-semibold">{kelas.nama}</span> dari
-										daftar rombel?
+										Yakin ingin menghapus kelas <span class="font-semibold">{kelas.nama}</span> dari daftar
+										rombel?
 									</p>
 								</div>
 							</div>

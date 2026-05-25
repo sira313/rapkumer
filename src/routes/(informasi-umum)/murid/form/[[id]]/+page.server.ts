@@ -217,7 +217,9 @@ export const actions = {
 		return {
 			message: `Data murid berhasil disimpan`,
 			id: formMurid.id,
-			foto: formMurid.foto ?? null
+			foto: formMurid.foto ?? null,
+			waliAsuhNama: formMurid.waliAsuhNama ?? null,
+			waliAsuhNip: formMurid.waliAsuhNip ?? null
 		};
 	}
 };

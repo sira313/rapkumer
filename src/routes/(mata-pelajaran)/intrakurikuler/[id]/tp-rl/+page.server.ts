@@ -279,12 +279,12 @@ export async function load({ depends, params, parent }) {
 				// For multi-mapel users, client-side logic handles locking based on parent page check
 				agamaSelectDisabled: Boolean(
 					user?.type === 'user' &&
-						user?.mataPelajaranId && // Only if user has legacy single mataPelajaranId
-						assignedGlobalId &&
-						((): boolean => {
-							const name = assignedGlobalName as (typeof agamaMapelNames)[number] | undefined;
-							return Boolean(name && agamaMapelNames.includes(name));
-						})()
+					user?.mataPelajaranId && // Only if user has legacy single mataPelajaranId
+					assignedGlobalId &&
+					((): boolean => {
+						const name = assignedGlobalName as (typeof agamaMapelNames)[number] | undefined;
+						return Boolean(name && agamaMapelNames.includes(name));
+					})()
 				),
 				lockedAgamaSelectionId: assignedLocalMapelId ?? assignedGlobalId,
 				meta: { title: `Tujuan Pembelajaran - ${assignedLocal.name}` }
@@ -300,12 +300,12 @@ export async function load({ depends, params, parent }) {
 
 	const agamaSelectDisabledValue = Boolean(
 		user?.type === 'user' &&
-			user?.mataPelajaranId && // Only if user has legacy single mataPelajaranId
-			assignedGlobalId &&
-			((): boolean => {
-				const name = assignedGlobalName as (typeof agamaMapelNames)[number] | undefined;
-				return Boolean(name && agamaMapelNames.includes(name));
-			})()
+		user?.mataPelajaranId && // Only if user has legacy single mataPelajaranId
+		assignedGlobalId &&
+		((): boolean => {
+			const name = assignedGlobalName as (typeof agamaMapelNames)[number] | undefined;
+			return Boolean(name && agamaMapelNames.includes(name));
+		})()
 	);
 
 	return {

@@ -262,8 +262,7 @@
 		<div class="alert border-error/60 bg-error/10 text-error-content mt-4 border border-dashed">
 			<Icon name="warning" />
 			<span>
-				Database kokurikuler belum siap. Jalankan <code>pnpm db:push</code> untuk menerapkan migrasi
-				terbaru.
+				Database kokurikuler belum siap. Jalankan <code>pnpm db:push</code> untuk menerapkan migrasi terbaru.
 			</span>
 		</div>
 	{/if}

@@ -454,7 +454,10 @@ async function main() {
 			{ table: 'sekolah', column: 'kepala_sekolah_id', type: 'INTEGER' },
 			{ table: 'kelas', column: 'wali_kelas_id', type: 'INTEGER' },
 			{ table: 'murid', column: 'kelas_id', type: 'INTEGER' }, // Kolom foto untuk murid (path/filename foto murid)
-			{ table: 'murid', column: 'foto', type: 'TEXT' }, // Columns for mata_pelajaran relations used by asesmen/tujuan tables
+			{ table: 'murid', column: 'foto', type: 'TEXT' },
+			// wali asuh per murid (moved from kelas level)
+			{ table: 'murid', column: 'wali_asuh_nama', type: 'TEXT' },
+			{ table: 'murid', column: 'wali_asuh_nip', type: 'TEXT' }, // Columns for mata_pelajaran relations used by asesmen/tujuan tables
 			{ table: 'tujuan_pembelajaran', column: 'mata_pelajaran_id', type: 'INTEGER' },
 			{ table: 'asesmen_sumatif', column: 'mata_pelajaran_id', type: 'INTEGER' },
 			{ table: 'asesmen_sumatif_tujuan', column: 'mata_pelajaran_id', type: 'INTEGER' },
