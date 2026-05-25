@@ -1,8 +1,9 @@
 import { getCoverPreviewPayload } from '../cover/preview-data';
 import { generatePDF } from '$lib/server/pdf/generate';
+import { buildUrl } from '$lib/server/pdf/request-params';
 import type { RequestHandler } from './$types';
 
-export const GET = (async ({ locals, url }) => {
+async function handle({ locals, url }: { locals: App.Locals; url: URL }) {
 	const payload = await getCoverPreviewPayload({ locals, url });
 	const pdfBuffer = await generatePDF(
 		'cover',
@@ -14,4 +15,10 @@ export const GET = (async ({ locals, url }) => {
 			'Content-Disposition': `inline; filename="Cover_Rapor_${payload.coverData?.murid?.nama?.replace(/\s+/g, '_') || 'dokumen'}.pdf"`
 		}
 	});
+}
+
+export const GET = (async (event) => handle(event)) satisfies RequestHandler;
+export const POST = (async (event) => {
+	const url = await buildUrl(event.request, event.url);
+	return handle({ locals: event.locals, url });
 }) satisfies RequestHandler;

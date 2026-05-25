@@ -1,9 +1,10 @@
 import { error } from '@sveltejs/kit';
 import { getKeasramaanPreviewPayload } from '../keasramaan/preview-data';
 import { generatePDF } from '$lib/server/pdf/generate';
+import { buildUrl } from '$lib/server/pdf/request-params';
 import type { RequestHandler } from './$types';
 
-export const GET = (async ({ locals, url }) => {
+async function handle({ locals, url }: { locals: App.Locals; url: URL }) {
 	const payload = await getKeasramaanPreviewPayload({ locals, url });
 	if (!payload) {
 		throw error(400, 'Data rapor keasramaan tidak ditemukan.');
@@ -20,4 +21,10 @@ export const GET = (async ({ locals, url }) => {
 			'Content-Disposition': `inline; filename="${filename}"`
 		}
 	});
+}
+
+export const GET = (async (event) => handle(event)) satisfies RequestHandler;
+export const POST = (async (event) => {
+	const url = await buildUrl(event.request, event.url);
+	return handle({ locals: event.locals, url });
 }) satisfies RequestHandler;

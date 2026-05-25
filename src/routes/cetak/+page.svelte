@@ -17,8 +17,6 @@
 	} from '$lib/single-preview-logic';
 	import { loadBulkPreviews_robust, buildBulkErrorMessage } from '$lib/bulk-preview-logic';
 	import { DEFAULT_RAPOR_CRITERIA } from '$lib/rapor-params';
-	import { createPreviewURLSearchParams } from '$lib/rapor-params';
-
 	let { data } = $props();
 
 	const documentOptions: Array<{ value: DocumentType; label: string }> = [
@@ -222,20 +220,33 @@
 		waitingForPrintable = false;
 	}
 
-	function pdfEndpointUrl(docType: DocumentType, muridId: number): string {
-		const params = createPreviewURLSearchParams({
-			muridId,
-			kelasId: data.kelasId ? Number(data.kelasId) : undefined,
-			tpMode: fullTP,
-			criteria: { kritCukup, kritBaik }
-		});
-		if (docType === 'piagam' && selectedTemplate) {
-			params.set('template', selectedTemplate);
+	function postPdfForm(docType: DocumentType, muridId: number) {
+		const form = document.createElement('form');
+		form.method = 'POST';
+		form.action = `/cetak/${docType}.pdf`;
+		form.target = '_blank';
+		form.style.display = 'none';
+
+		function add(key: string, value: string | number | undefined | null) {
+			if (value == null) return;
+			const input = document.createElement('input');
+			input.type = 'hidden';
+			input.name = key;
+			input.value = String(value);
+			form.appendChild(input);
 		}
-		if (showBgLogo) {
-			params.set('bg_logo', '1');
-		}
-		return `/cetak/${docType}.pdf?${params.toString()}`;
+
+		add('murid_id', muridId);
+		add('kelas_id', data.kelasId ? Number(data.kelasId) : undefined);
+		if (fullTP === 'full-desc') add('full_tp', 'desc');
+		add('krit_cukup', kritCukup);
+		add('krit_baik', kritBaik);
+		if (docType === 'piagam' && selectedTemplate) add('template', selectedTemplate);
+		if (showBgLogo) add('bg_logo', '1');
+
+		document.body.appendChild(form);
+		form.submit();
+		document.body.removeChild(form);
 	}
 
 	async function handleDownloadSingle() {
@@ -268,8 +279,7 @@
 		downloadLoading = true;
 
 		try {
-			const url = pdfEndpointUrl(documentType, murid.id);
-			window.open(url, '_blank');
+			postPdfForm(documentType, murid.id);
 			toast('PDF sedang diproses server...', 'info');
 		} catch (err) {
 			console.error('Download error:', err);
