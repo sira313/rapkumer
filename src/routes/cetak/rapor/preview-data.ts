@@ -590,7 +590,9 @@ export async function getRaporPreviewPayload({ locals, url }: RaporContext) {
 		},
 		periode: {
 			tahunPelajaran: murid.kelas?.tahunAjaran?.nama ?? murid.semester?.nama ?? '',
-			semester: murid.semester?.nama ?? murid.semester?.tipe ?? ''
+			semester: murid.semester?.tipe
+				? murid.semester.tipe.charAt(0).toUpperCase() + murid.semester.tipe.slice(1)
+				: (murid.semester?.nama ?? '')
 		},
 		waliKelas: {
 			nama: murid.kelas?.waliKelas?.nama ?? '',

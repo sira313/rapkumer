@@ -185,10 +185,17 @@ body {
 	font-weight: bold;
 	white-space: nowrap;
 	width: 1%;
+	vertical-align: top;
+}
+
+.identity-table .colon {
+	width: 8pt;
+	vertical-align: top;
 }
 
 .identity-table .value {
-	width: 34%;
+	width: calc(34% - 8pt);
+	vertical-align: top;
 }
 
 .identity-table .sep {
@@ -226,6 +233,28 @@ thead { display: table-header-group; }
 .narrative-text {
 	text-align: justify;
 	margin-top: 4pt;
+	line-height: 1.5;
+}
+
+.single-section-table {
+	border-collapse: collapse;
+	width: 100%;
+	margin-top: 14pt;
+}
+
+.single-section-table .section-header {
+	border: 1px solid #000;
+	font-weight: bold;
+	font-size: 12pt;
+	text-align: center;
+	padding: 6pt;
+	background: #f0f0f0;
+}
+
+.single-section-table .section-body {
+	border: 1px solid #000;
+	padding: 8pt;
+	text-align: justify;
 	line-height: 1.5;
 }
 
@@ -362,10 +391,12 @@ ${identityRows
 	.map(
 		(r) => `<tr>
 		<td class="label">${r[0]}</td>
-		<td class="value">: ${r[1]}</td>
+		<td class="colon">:</td>
+		<td class="value">${r[1]}</td>
 		<td class="sep"></td>
 		<td class="label">${r[2]}</td>
-		<td class="value">: ${r[3]}</td>
+		<td class="colon">:</td>
+		<td class="value">${r[3]}</td>
 	</tr>`
 	)
 	.join('\n')}
@@ -406,8 +437,10 @@ ${jenisOrder
 ${
 	data.hasKokurikuler && data.kokurikuler
 		? `
-<div class="section-title">Kokurikuler</div>
-<div class="narrative-text">${data.kokurikuler}</div>
+<table class="single-section-table">
+	<tr><th class="section-header">Kokurikuler</th></tr>
+	<tr><td class="section-body">${data.kokurikuler}</td></tr>
+</table>
 `
 		: ''
 }
