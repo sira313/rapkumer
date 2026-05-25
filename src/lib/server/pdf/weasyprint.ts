@@ -1,6 +1,15 @@
 import { spawn } from 'node:child_process';
+import { join } from 'node:path';
 
-const WEASYPRINT_BIN = '/tmp/weasyprint-venv/bin/weasyprint';
+function resolveWeasyPrintBin(): string {
+	if (process.env.WEASYPRINT_BIN) return process.env.WEASYPRINT_BIN;
+	const venvDir = join('node_modules', '.weasyprint-venv');
+	return process.platform === 'win32'
+		? join(venvDir, 'Scripts', 'weasyprint.exe')
+		: join(venvDir, 'bin', 'weasyprint');
+}
+
+const WEASYPRINT_BIN = resolveWeasyPrintBin();
 
 export async function renderPDF(html: string): Promise<Uint8Array> {
 	return new Promise((resolve, reject) => {

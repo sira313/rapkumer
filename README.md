@@ -34,6 +34,7 @@ Persyaratan:
 
 - Node.js 20 LTS (direkomendasikan)
 - pnpm
+- Python 3 (untuk rendering PDF via WeasyPrint — otomatis diatur oleh `pnpm dev`)
 
 Langkah singkat:
 
