@@ -203,7 +203,7 @@ body {
 .grid-table {
 	border-collapse: collapse;
 	width: 100%;
-	margin-top: 6pt;
+	margin-top: 12pt;
 }
 
 .grid-table th,
@@ -232,7 +232,7 @@ thead { display: table-header-group; }
 .section-title {
 	font-weight: bold;
 	font-size: 12pt;
-	margin-top: 14pt;
+	margin-top: 12pt;
 	margin-bottom: 2pt;
 }
 
@@ -245,7 +245,7 @@ thead { display: table-header-group; }
 .single-section-table {
 	border-collapse: collapse;
 	width: 100%;
-	margin-top: 14pt;
+	margin-top: 12pt;
 	page-break-inside: avoid;
 }
 
@@ -265,43 +265,38 @@ thead { display: table-header-group; }
 	line-height: 1.5;
 }
 
-.kehadiran-catatan {
+.combined-table {
+	border-collapse: collapse;
 	width: 100%;
 	margin-top: 12pt;
 }
 
-.kehadiran-catatan table.layout-table {
-	width: 100%;
-	border-collapse: collapse;
+.combined-table th {
+	border: 1px solid #000;
+	padding: 3pt 6pt;
+	font-weight: bold;
+	background: #f0f0f0;
+	text-align: center;
 }
 
-.kehadiran-catatan td.left-col {
-	width: 58%;
-	vertical-align: top;
-	padding-right: 8pt;
-}
-
-.kehadiran-catatan td.right-col {
-	width: 42%;
-	vertical-align: top;
-}
-
-.kehadiran-table {
-	border-collapse: collapse;
-	width: 100%;
-}
-
-.kehadiran-table th,
-.kehadiran-table td {
+.combined-table td {
 	border: 1px solid #000;
 	padding: 3pt 6pt;
 	text-align: center;
 }
 
-.kehadiran-table th {
-	font-weight: bold;
-	background: #f0f0f0;
+.combined-table .left-cell {
+	text-align: left;
 }
+
+.combined-table .sep-col {
+	border-top: none;
+	border-bottom: none;
+	width: 12pt;
+	padding: 0;
+}
+
+
 
 .catatan-box {
 	border: 1px solid #000;
@@ -481,31 +476,31 @@ ${
 		: ''
 }
 
-<table class="kehadiran-catatan">
+<table class="combined-table">
+	<col style="width:auto;">
+	<col style="width:auto;">
+	<col style="width:12pt;">
+	<col style="width:auto;">
 	<tr>
-		<td class="left-col">
-			<div class="section-title">Ketidakhadiran</div>
-			<table class="kehadiran-table">
-				<thead>
-					<tr>
-						<th>Sakit</th>
-						<th>Izin</th>
-						<th>Tanpa Keterangan</th>
-					</tr>
-				</thead>
-				<tbody>
-					<tr>
-						<td>${sakit} hari</td>
-						<td>${izin} hari</td>
-						<td>${tanpaKeterangan} hari</td>
-					</tr>
-				</tbody>
-			</table>
-		</td>
-		<td class="right-col">
-			<div class="section-title">Catatan Wali Kelas</div>
-			<div class="catatan-box">${formatValue(data.catatanWali)}</div>
-		</td>
+		<th colspan="2" style="width:38%;">Ketidakhadiran</th>
+		<th class="sep-col">&nbsp;</th>
+		<th style="width:62%;">Catatan Wali Kelas</th>
+	</tr>
+	<tr>
+		<td class="left-cell">Sakit</td>
+		<td>${sakit} Hari</td>
+		<td class="sep-col">&nbsp;</td>
+		<td rowspan="3" style="text-align:left;vertical-align:top;">${formatValue(data.catatanWali)}</td>
+	</tr>
+	<tr>
+		<td class="left-cell">Izin</td>
+		<td>${izin} Hari</td>
+		<td class="sep-col">&nbsp;</td>
+	</tr>
+	<tr>
+		<td class="left-cell">Tanpa Keterangan</td>
+		<td>${tanpaKeterangan} Hari</td>
+		<td class="sep-col">&nbsp;</td>
 	</tr>
 </table>
 
