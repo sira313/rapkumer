@@ -754,7 +754,7 @@ export async function generateRaporPDF(data: RaporPDFData): Promise<jsPDF> {
 					{
 						content: '',
 						styles: {
-							minCellHeight: 16.9,
+							minCellHeight: 22,
 							cellPadding: { top: 4.2, right: 4.2, bottom: 4.2, left: 4.2 }
 						}
 					}
