@@ -1,7 +1,8 @@
 import { error } from '@sveltejs/kit';
 import { and, eq } from 'drizzle-orm';
 import db from '$lib/server/db';
-import { tableMurid } from '$lib/server/db/schema';
+import { tableMurid, tableSekolah } from '$lib/server/db/schema';
+import type { CoverPrintData } from '$lib/server/pdf/templates/cover';
 
 type CoverContext = {
 	locals: App.Locals;
@@ -28,11 +29,16 @@ function optionalInteger(paramName: string, value: string | null): number | null
 	return parsed;
 }
 
-function buildLogoUrl(sekolah: NonNullable<App.Locals['sekolah']>): string | null {
-	if (!sekolah.id) return null;
-	const updatedAt = sekolah.updatedAt ? Date.parse(sekolah.updatedAt) : NaN;
-	const suffix = Number.isFinite(updatedAt) ? `?v=${updatedAt}` : '';
-	return `/sekolah/logo${suffix}`;
+async function getLogoSrc(sekolahId: number): Promise<string | null> {
+	const row = await db.query.tableSekolah.findFirst({
+		columns: { logo: true, logoType: true },
+		where: eq(tableSekolah.id, sekolahId)
+	});
+	if (row?.logo?.length) {
+		const b64 = Buffer.from(row.logo).toString('base64');
+		return `data:${row.logoType || 'image/png'};base64,${b64}`;
+	}
+	return null;
 }
 
 export async function getCoverPreviewPayload({ locals, url }: CoverContext) {
@@ -67,6 +73,8 @@ export async function getCoverPreviewPayload({ locals, url }: CoverContext) {
 		throw error(400, 'Murid tidak terdaftar pada kelas yang diminta.');
 	}
 
+	const logoSrc = await getLogoSrc(sekolah.id);
+
 	const coverData: CoverPrintData = {
 		sekolah: {
 			nama: sekolah.nama,
@@ -84,7 +92,7 @@ export async function getCoverPreviewPayload({ locals, url }: CoverContext) {
 			},
 			website: sekolah.website ?? null,
 			email: sekolah.email ?? null,
-			logoUrl: buildLogoUrl(sekolah)
+			logoSrc
 		},
 		murid: {
 			nama: murid.nama,

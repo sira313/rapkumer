@@ -69,8 +69,6 @@
 		"@libsql/client": "^0.15.15",
 		"drizzle-orm": "^0.44.7",
 		"exceljs": "^4.4.0",
-		"jspdf": "^3.0.4",
-		"jspdf-autotable": "^5.0.8",
 		"unzipper": "^0.12.3"
 	}
 }
