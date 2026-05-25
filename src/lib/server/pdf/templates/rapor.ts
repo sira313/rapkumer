@@ -221,6 +221,14 @@ body {
 	text-align: center;
 }
 
+.grid-table tr.group-header td {
+	border: 1px solid #000;
+	font-weight: bold;
+	font-size: 11pt;
+	text-align: left;
+	padding: 5pt 6pt;
+}
+
 thead { display: table-header-group; }
 
 .section-title {
@@ -402,37 +410,38 @@ ${identityRows
 	.join('\n')}
 </table>
 
-${jenisOrder
-	.filter((j) => kelompokMap[j]?.items.length)
-	.map((jenis) => {
-		const group = kelompokMap[jenis];
-		return `
-<div class="section-title">${jenisLabels[jenis]}</div>
 <table class="grid-table">
 	<thead>
 		<tr>
 			<th style="width:6%;">No.</th>
-			<th style="width:28%;">Muatan Pelajaran</th>
+			<th style="width:28%;">Mata Pelajaran</th>
 			<th style="width:12%;">Nilai Akhir</th>
 			<th style="width:54%;">Capaian Kompetensi</th>
 		</tr>
 	</thead>
 	<tbody>
-		${group.items
-			.map(
-				(item, i) => `
-		<tr style="page-break-inside:avoid;">
+${jenisOrder
+	.filter((j) => kelompokMap[j]?.items.length)
+	.map((jenis) => {
+		const group = kelompokMap[jenis];
+		return `
+		<tr class="group-header">
+			<td colspan="4">${jenisLabels[jenis]}</td>
+		</tr>
+${group.items
+	.map(
+		(item, i) => `		<tr style="page-break-inside:avoid;">
 			<td style="text-align:center;">${i + 1}</td>
 			<td>${item.mataPelajaran}</td>
 			<td style="text-align:center;">${formatValue(item.nilaiAkhir)}</td>
 			<td>${formatValue(item.deskripsi)}</td>
 		</tr>`
-			)
-			.join('\n')}
-	</tbody>
-</table>`;
+	)
+	.join('\n')}`;
 	})
 	.join('\n')}
+	</tbody>
+</table>
 
 ${
 	data.hasKokurikuler && data.kokurikuler
