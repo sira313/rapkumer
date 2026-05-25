@@ -220,34 +220,9 @@
 		waitingForPrintable = false;
 	}
 
-	function postPdfForm(docType: DocumentType, muridId: number) {
-		const form = document.createElement('form');
-		form.method = 'POST';
-		form.action = `/cetak/${docType}.pdf`;
-		form.target = '_blank';
-		form.style.display = 'none';
-
-		function add(key: string, value: string | number | undefined | null) {
-			if (value == null) return;
-			const input = document.createElement('input');
-			input.type = 'hidden';
-			input.name = key;
-			input.value = String(value);
-			form.appendChild(input);
-		}
-
-		add('murid_id', muridId);
-		add('kelas_id', data.kelasId ? Number(data.kelasId) : undefined);
-		if (fullTP === 'full-desc') add('full_tp', 'desc');
-		add('krit_cukup', kritCukup);
-		add('krit_baik', kritBaik);
-		if (docType === 'piagam' && selectedTemplate) add('template', selectedTemplate);
-		if (showBgLogo) add('bg_logo', '1');
-
-		document.body.appendChild(form);
-		form.submit();
-		document.body.removeChild(form);
-	}
+	const docLabel = $derived(
+		selectedDocumentEntry?.label?.replace(/\s+/g, '-')?.toLowerCase() ?? selectedDocument
+	);
 
 	async function handleDownloadSingle() {
 		const documentType = selectedDocument;
@@ -279,7 +254,22 @@
 		downloadLoading = true;
 
 		try {
-			postPdfForm(documentType, murid.id);
+			const res = await fetch('/api/pdf/token', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					docType: documentType,
+					muridId: murid.id,
+					kelasId: data.kelasId ? Number(data.kelasId) : undefined,
+					tpMode: fullTP,
+					kriteria: { kritCukup, kritBaik },
+					template: documentType === 'piagam' ? selectedTemplate : undefined,
+					docLabel
+				})
+			});
+			if (!res.ok) throw new Error('Gagal mendapatkan token');
+			const { token, slug } = await res.json();
+			window.open(`/cetak/pdf/${slug}/${token}`, '_blank');
 			toast('PDF sedang diproses server...', 'info');
 		} catch (err) {
 			console.error('Download error:', err);

@@ -458,7 +458,6 @@ ${
 ${
 	data.ekstrakurikuler?.length
 		? `
-<div class="section-title">Ekstrakurikuler</div>
 <table class="grid-table">
 	<thead>
 		<tr>
