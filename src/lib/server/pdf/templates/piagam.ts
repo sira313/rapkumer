@@ -111,7 +111,23 @@ function getJenjangLabel(jenjang: string | null): string {
 }
 
 function piagamStyles(margin16mm = true): string {
-	return `
+	let fontCss = '';
+	for (const [name, file, style, weight] of [
+		['EB Garamond', 'EBGaramond.woff2', 'normal', '400 700'],
+		['EB Garamond', 'EBGaramond-Italic.woff2', 'italic', '400 700'],
+		['Playfair Display', 'PlayfairDisplay.woff2', 'normal', '400 700'],
+		['Playfair Display', 'PlayfairDisplay-Italic.woff2', 'italic', '400 700']
+	] as const) {
+		try {
+			const buf = readFileSync(resolve('static/fonts', file));
+			const dataUri = `data:font/woff2;base64,${buf.toString('base64')}`;
+			fontCss += `@font-face{font-family:'${name}';src:url('${dataUri}') format('woff2');font-weight:${weight};font-style:${style}}\n`;
+		} catch {
+			// font not available, fallback to system
+		}
+	}
+
+	return `${fontCss}
 @page {
 	size: A4 landscape;
 	margin: ${margin16mm ? '16mm' : '0'};
@@ -134,6 +150,14 @@ function piagamStyles(margin16mm = true): string {
 	background-size: cover;
 	background-position: center;
 	background-repeat: no-repeat;
+}
+
+.font-palatino {
+	font-family: 'Playfair Display', 'Palatino Linotype', 'Book Antiqua', Palatino, 'Liberation Serif', serif;
+}
+
+.font-garamond {
+	font-family: 'EB Garamond', 'Garamond', 'Liberation Serif', serif;
 }
 
 .header {
@@ -251,7 +275,7 @@ function piagamStyles(margin16mm = true): string {
 }
 
 .footer-label {
-	font-size: 11pt;
+	font-size: 12pt;
 	margin-bottom: 18mm;
 }
 
@@ -260,7 +284,7 @@ function piagamStyles(margin16mm = true): string {
 }
 
 .kepala-status {
-	font-size: 11pt;
+	font-size: 12pt;
 	margin-bottom: 16mm;
 }
 
@@ -272,7 +296,7 @@ function piagamStyles(margin16mm = true): string {
 }
 
 .ttd-nip {
-	font-size: 10pt;
+	font-size: 12pt;
 }
 
 .t2-header-row {
@@ -280,7 +304,14 @@ function piagamStyles(margin16mm = true): string {
 	align-items: center;
 	justify-content: center;
 	gap: 8mm;
-	margin-bottom: 4mm;
+	margin-bottom: 8mm;
+}
+
+.t2-school-name {
+	font-size: 22pt;
+	font-weight: bold;
+	text-align: center;
+	margin-bottom: 2mm;
 }
 
 .t2-header-logo {
@@ -293,13 +324,12 @@ function piagamStyles(margin16mm = true): string {
 	font-size: 22pt;
 	font-weight: bold;
 	text-align: center;
-	margin-bottom: 6mm;
+	margin-bottom: 1mm;
 }
 
 .t2-title {
-	font-size: 28pt;
+	font-size: 34pt;
 	font-weight: bold;
-	font-family: 'Times New Roman', Times, serif;
 	text-align: center;
 }
 
@@ -307,7 +337,6 @@ function piagamStyles(margin16mm = true): string {
 	font-size: 24pt;
 	font-weight: bold;
 	font-style: italic;
-	font-family: 'Times New Roman', Times, serif;
 	text-align: center;
 	text-transform: capitalize;
 }
@@ -379,7 +408,7 @@ ${sharedStyles()}
 ${piagamStyles(!bgCert)}
 </style>
 </head>
-<body>
+<body class="font-palatino">
 ${bgCert ? `<div class="piagam-bg" style="background-image: url('${bgCert}')"></div>` : ''}
 <div class="piagam-page">
 	<div class="header">
@@ -424,7 +453,7 @@ ${sharedStyles()}
 ${piagamStyles(!bgCert2)}
 </style>
 </head>
-<body>
+<body class="font-garamond">
 ${bgCert2 ? `<div class="piagam-bg" style="background-image: url('${bgCert2}')"></div>` : ''}
 <div class="piagam-page">
 	<div class="t2-header-row">
