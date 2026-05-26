@@ -185,6 +185,7 @@ export async function getPiagamPreviewPayload({ locals, url }: { locals: App.Loc
 
 	const piagamData: PiagamPrintData = {
 		sekolah: {
+			id: sekolah.id,
 			nama: sekolah.nama,
 			jenjang: sekolah.jenjangPendidikan,
 			npsn: sekolah.npsn,

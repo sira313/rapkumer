@@ -4,6 +4,7 @@ import { sharedStyles, formatValue, formatUpper, FALLBACK } from './shared';
 
 export interface PiagamPrintData {
 	sekolah: {
+		id?: number;
 		nama: string;
 		jenjang: 'sd' | 'smp' | 'sma' | 'slb' | 'pkbm' | 'srt';
 		npsn: string;
@@ -40,6 +41,8 @@ export interface PiagamPrintData {
 }
 
 let kumerLogoDataUri: string | null = null;
+let bgCertificateDataUri: string | null = null;
+let bgCertificate2DataUri: string | null = null;
 
 function getKumerLogoDataUri(): string | null {
 	if (kumerLogoDataUri) return kumerLogoDataUri;
@@ -50,6 +53,48 @@ function getKumerLogoDataUri(): string | null {
 		kumerLogoDataUri = null;
 	}
 	return kumerLogoDataUri;
+}
+
+function getCustomBgPath(sekolahId: number, template: '1' | '2'): string {
+	return resolve('data', 'uploads', `sekolah-${sekolahId}-piagam-bg-${template}.png`);
+}
+
+function getBgCertificateDataUri(sekolahId?: number): string | null {
+	if (sekolahId) {
+		try {
+			const buf = readFileSync(getCustomBgPath(sekolahId, '1'));
+			return `data:image/png;base64,${buf.toString('base64')}`;
+		} catch {
+			// fall through
+		}
+	}
+	if (bgCertificateDataUri) return bgCertificateDataUri;
+	try {
+		const buf = readFileSync(resolve('static/bg-certificate.png'));
+		bgCertificateDataUri = `data:image/png;base64,${buf.toString('base64')}`;
+	} catch {
+		bgCertificateDataUri = null;
+	}
+	return bgCertificateDataUri;
+}
+
+function getBgCertificate2DataUri(sekolahId?: number): string | null {
+	if (sekolahId) {
+		try {
+			const buf = readFileSync(getCustomBgPath(sekolahId, '2'));
+			return `data:image/png;base64,${buf.toString('base64')}`;
+		} catch {
+			// fall through
+		}
+	}
+	if (bgCertificate2DataUri) return bgCertificate2DataUri;
+	try {
+		const buf = readFileSync(resolve('static/bg-certificate2.png'));
+		bgCertificate2DataUri = `data:image/png;base64,${buf.toString('base64')}`;
+	} catch {
+		bgCertificate2DataUri = null;
+	}
+	return bgCertificate2DataUri;
 }
 
 function getJenjangLabel(jenjang: string | null): string {
@@ -65,24 +110,37 @@ function getJenjangLabel(jenjang: string | null): string {
 	}
 }
 
-function piagamStyles(): string {
+function piagamStyles(margin16mm = true): string {
 	return `
 @page {
 	size: A4 landscape;
-	margin: 16mm;
+	margin: ${margin16mm ? '16mm' : '0'};
 }
 
 .piagam-page {
 	display: flex;
 	flex-direction: column;
 	min-height: 100vh;
+	${margin16mm ? '' : 'padding: 16mm;'}
+}
+
+.piagam-bg {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	z-index: -1;
+	background-size: cover;
+	background-position: center;
+	background-repeat: no-repeat;
 }
 
 .header {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	margin-bottom: 4mm;
+	margin-bottom: 2mm;
 }
 
 .header-logo {
@@ -120,7 +178,7 @@ function piagamStyles(): string {
 	border-top: 2px solid #000;
 	border-bottom: 1px solid #000;
 	height: 0;
-	margin: 4mm 0;
+	margin: 1mm 0 2mm;
 }
 
 .main-content {
@@ -181,6 +239,7 @@ function piagamStyles(): string {
 	justify-content: space-between;
 	align-items: flex-end;
 	margin-top: 8mm;
+	padding: 0 20mm;
 }
 
 .footer-left {
@@ -193,7 +252,16 @@ function piagamStyles(): string {
 
 .footer-label {
 	font-size: 11pt;
-	margin-bottom: 4mm;
+	margin-bottom: 18mm;
+}
+
+.footer-right .footer-label:first-child {
+	margin-bottom: 2mm;
+}
+
+.kepala-status {
+	font-size: 11pt;
+	margin-bottom: 16mm;
 }
 
 .ttd-name {
@@ -278,6 +346,7 @@ export function renderPiagamHTML(data: PiagamPrintData, template: '1' | '2'): st
 	const penghargaan = data.penghargaan;
 	const periode = data.periode;
 	const ttd = data.ttd;
+	const sekolahId = data.sekolah.id;
 
 	const achievementText = `Dengan total nilai rata-rata ${penghargaan.rataRataFormatted} pada ${periode.semester} tahun ajaran ${periode.tahunAjaran}.`;
 
@@ -285,30 +354,33 @@ export function renderPiagamHTML(data: PiagamPrintData, template: '1' | '2'): st
 		return `
 	<div class="footer">
 		<div class="footer-left">
-			<div class="footer-label">Mengetahui</div>
+			<div class="kepala-status">${ttd.kepalaSekolah.statusKepalaSekolah === 'plt' ? 'Plt. Kepala Sekolah' : 'Kepala Sekolah'}</div>
 			<div class="ttd-name">${formatUpper(ttd.kepalaSekolah.nama)}</div>
-			<div class="ttd-nip">${ttd.kepalaSekolah.nip ? `NIP. ${ttd.kepalaSekolah.nip}` : ''}</div>
+			<div class="ttd-nip">${ttd.kepalaSekolah.nip ? `${ttd.kepalaSekolah.nip}` : ''}</div>
 		</div>
 		<div class="footer-right">
 			<div class="footer-label">${ttd.tempat}, ${ttd.tanggal}</div>
 			<div class="footer-label">Wali Kelas</div>
 			<div class="ttd-name">${formatUpper(ttd.waliKelas.nama)}</div>
-			<div class="ttd-nip">${ttd.waliKelas.nip ? `NIP. ${ttd.waliKelas.nip}` : ''}</div>
+			<div class="ttd-nip">${ttd.waliKelas.nip ? `${ttd.waliKelas.nip}` : ''}</div>
 		</div>
 	</div>`;
 	}
 
 	if (template === '1') {
+		const bgCert = getBgCertificateDataUri(sekolahId);
+
 		return `<!DOCTYPE html>
 <html lang="id">
 <head>
 <meta charset="UTF-8">
 <style>
 ${sharedStyles()}
-${piagamStyles()}
+${piagamStyles(!bgCert)}
 </style>
 </head>
 <body>
+${bgCert ? `<div class="piagam-bg" style="background-image: url('${bgCert}')"></div>` : ''}
 <div class="piagam-page">
 	<div class="header">
 		${logoDinasUrl ? `<img src="${logoDinasUrl}" alt="" class="header-logo">` : '<div class="header-logo"></div>'}
@@ -341,16 +413,19 @@ ${piagamStyles()}
 </html>`;
 	}
 
+	const bgCert2 = getBgCertificate2DataUri(sekolahId);
+
 	return `<!DOCTYPE html>
 <html lang="id">
 <head>
 <meta charset="UTF-8">
 <style>
 ${sharedStyles()}
-${piagamStyles()}
+${piagamStyles(!bgCert2)}
 </style>
 </head>
 <body>
+${bgCert2 ? `<div class="piagam-bg" style="background-image: url('${bgCert2}')"></div>` : ''}
 <div class="piagam-page">
 	<div class="t2-header-row">
 		${logoDinasUrl ? `<img src="${logoDinasUrl}" alt="" class="t2-header-logo">` : ''}
