@@ -40,6 +40,9 @@
 	let showBgLogo = $state(true);
 	let downloadLoading = $state(false);
 
+	let pdfViewerUrl = $state('');
+	let pdfViewerTitle = $state('');
+
 	// show TP listing: 'compact' | 'full-desc'
 	let fullTP = $state<'compact' | 'full-desc'>('compact');
 
@@ -270,8 +273,18 @@
 			});
 			if (!res.ok) throw new Error('Gagal mendapatkan token');
 			const { token, slug } = await res.json();
-			window.open(`/cetak/pdf/${slug}/${token}`, '_blank');
-			toast('PDF sedang diproses server...', 'info');
+
+			const pdfRes = await fetch(`/cetak/pdf/${slug}/${token}`);
+			if (!pdfRes.ok) throw new Error('Gagal memuat PDF');
+			const blob = await pdfRes.blob();
+
+			pdfViewerUrl = URL.createObjectURL(blob);
+			pdfViewerTitle = slug
+				.split('-')
+				.map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
+				.join(' ');
+
+			toast('PDF berhasil dimuat', 'success');
 		} catch (err) {
 			console.error('Download error:', err);
 			toast('Gagal membuka PDF', 'error');
@@ -519,6 +532,17 @@
 		onBgRefresh={handleBgRefresh}
 	/>
 </div>
+
+{#if pdfViewerUrl}
+	<object
+		data={pdfViewerUrl}
+		type="application/pdf"
+		class="w-full h-[80vh] rounded-box mt-6"
+		title={pdfViewerTitle}
+	>
+		<embed src={pdfViewerUrl} type="application/pdf" class="w-full h-full" />
+	</object>
+{/if}
 
 <PreviewContent
 	{previewDocument}
