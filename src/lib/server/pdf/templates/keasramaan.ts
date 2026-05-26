@@ -37,27 +37,8 @@ function predikatToHuruf(predikat: string): string {
 
 function keasramaanStyles(): string {
 	return `
-@page {
-	margin: 15mm 15mm 20mm 20mm;
-}
-
 body {
 	padding: 0;
-}
-
-.footer {
-	position: fixed;
-	bottom: 0;
-	left: 20mm;
-	right: 15mm;
-	font-size: 9pt;
-	display: flex;
-	justify-content: space-between;
-	padding-bottom: 5mm;
-}
-
-.footer .page-num::after {
-	content: "Halaman: " counter(page);
 }
 
 .header-title {
@@ -115,23 +96,47 @@ body {
 
 .main-table {
 	width: 100%;
-	border-collapse: collapse;
+	border-collapse: separate;
+	border-spacing: 0;
 	font-size: 10pt;
 	margin-bottom: 4.2mm;
 }
 
 .main-table th {
-	border: 0.3mm solid #000;
+	border: 0.15mm solid #000;
 	padding: 2.8mm 4.2mm;
 	font-weight: bold;
 	text-align: center;
 	background: #fff;
+	box-decoration-break: clone;
 }
 
 .main-table td {
-	border: 0.3mm solid #000;
+	border: 0.15mm solid #000;
 	padding: 1.4mm 2.8mm;
 	vertical-align: top;
+	page-break-inside: auto;
+	orphans: 1;
+	widows: 1;
+	box-decoration-break: clone;
+}
+
+.main-table th:first-child,
+.main-table td:first-child {
+	border-left-width: 0.3mm;
+}
+
+.main-table th:last-child,
+.main-table td:last-child {
+	border-right-width: 0.3mm;
+}
+
+.main-table thead tr:first-child th {
+	border-top-width: 0.3mm;
+}
+
+.main-table tbody:last-child tr:last-child td {
+	border-bottom-width: 0.3mm;
 }
 
 .main-table .col-no {
@@ -152,17 +157,23 @@ body {
 	text-align: left;
 }
 
+thead { display: table-header-group; }
+
+
 .main-table tr.category-header td {
 	font-weight: bold;
 	padding: 2.8mm 4.2mm;
 	text-align: left;
 }
 
+.main-table tr.first-data-row {
+	page-break-before: avoid;
+}
+
 .kehadiran-table {
 	width: 100%;
 	border-collapse: collapse;
 	font-size: 10pt;
-	margin-bottom: 16.9mm;
 }
 
 .kehadiran-table th {
@@ -193,12 +204,13 @@ body {
 	text-align: center;
 }
 
-.ttd-place {
-	font-size: 10pt;
-	text-align: center;
-	margin-bottom: 8.5mm;
-	margin-left: auto;
-	width: 50%;
+.signature-section {
+	margin-top: 12pt;
+	width: 100%;
+}
+
+.signature-section tr {
+	page-break-inside: avoid;
 }
 
 .signature-table {
@@ -208,10 +220,15 @@ body {
 }
 
 .signature-table td {
-	padding: 2mm 0;
+	padding: 0 4pt;
 	vertical-align: top;
 	text-align: center;
 	width: 50%;
+}
+
+.signature-date {
+	text-align: center;
+	padding-bottom: 6pt;
 }
 
 .signature-table .sig-title {
@@ -227,14 +244,14 @@ body {
 
 .signature-table .sig-nip {
 	font-size: 10pt;
-	padding-top: 3mm;
+	padding-top: 1pt;
 }
 
 .signature-table .dashed-line {
 	border-bottom: 0.15mm dashed #000;
 	display: block;
-	width: 70%;
-	margin: 22.6mm auto 3mm;
+	width: 52%;
+	margin: 28mm auto 3mm;
 }
 
 .watermark {
@@ -264,13 +281,15 @@ export function renderKeasramaanHTML(data: KeasramaanPrintData): string {
 		data.kepalaSekolah?.statusKepalaSekolah === 'plt' ? 'Plt. Kepala Sekolah' : 'Kepala Sekolah';
 
 	const tableBody = data.keasramaanRows
-		.map((row) => {
+		.map((row, i, arr) => {
 			if (row.kategoriHeader) {
 				return `<tr class="category-header">
 				<td colspan="4">${row.kategoriHeader}</td>
 			</tr>`;
 			}
-			return `<tr>
+			const prev = arr[i - 1];
+			const cls = prev?.kategoriHeader ? 'first-data-row' : '';
+			return `<tr${cls ? ` class="${cls}"` : ''}>
 			<td class="col-no">${row.no}</td>
 			<td class="col-indikator">${formatValue(row.indikator)}</td>
 			<td class="col-predikat">${predikatToHuruf(row.predikat)}</td>
@@ -312,13 +331,13 @@ export function renderKeasramaanHTML(data: KeasramaanPrintData): string {
 </table>`
 		: '';
 
-	const ttdSection = data.ttd
-		? `<div class="ttd-place">${formatValue(data.ttd.tempat)}, ${formatValue(data.ttd.tanggal)}</div>`
+	const ttdText = data.ttd
+		? `${formatValue(data.ttd.tempat)}, ${formatValue(data.ttd.tanggal)}`
 		: '';
 
 	const waliAsramaSection = data.waliAsrama
 		? `
-			<td>
+			<td style="padding-bottom:12pt;">
 				<div class="sig-title">Wali Asrama</div>
 				<div class="sig-name">${formatValue(data.waliAsrama.nama)}</div>
 				<div class="sig-nip">${formatValue(data.waliAsrama.nip)}</div>
@@ -327,7 +346,7 @@ export function renderKeasramaanHTML(data: KeasramaanPrintData): string {
 
 	const waliAsuhSection = data.waliAsuh
 		? `
-			<td>
+			<td style="padding-bottom:12pt;">
 				<div class="sig-title">Wali Asuh</div>
 				<div class="sig-name">${formatValue(data.waliAsuh.nama)}</div>
 				<div class="sig-nip">${formatValue(data.waliAsuh.nip)}</div>
@@ -349,17 +368,33 @@ export function renderKeasramaanHTML(data: KeasramaanPrintData): string {
 <meta charset="UTF-8">
 <style>
 ${sharedStyles()}
+
+@page {
+	size: A4 portrait;
+	margin-left: 20mm;
+	margin-right: 15mm;
+	margin-top: 15mm;
+	margin-bottom: 20mm;
+	@bottom-left {
+		content: "${data.rombel.nama} | ${data.murid.nama} | ${data.murid.nis}";
+		font-size: 9pt;
+		font-family: Helvetica, Arial, sans-serif;
+		color: #555;
+	}
+	@bottom-right {
+		content: "Halaman: " counter(page);
+		font-size: 9pt;
+		font-family: Helvetica, Arial, sans-serif;
+		color: #555;
+	}
+}
+
 ${keasramaanStyles()}
 </style>
 </head>
 <body>
 
 ${logoUrl ? `<img src="${logoUrl}" alt="Watermark" class="watermark">` : ''}
-
-<div class="footer">
-	<span>${formatValue(data.rombel.nama)} | ${formatValue(data.murid.nama)} | ${formatValue(data.murid.nis)}</span>
-	<span class="page-num"></span>
-</div>
 
 <div class="header-title">LAPORAN KEGIATAN KEASRAMAAN</div>
 <div class="header-subtitle">(RAPOR)</div>
@@ -415,9 +450,12 @@ ${tableBody}
 
 ${kehadiranSection}
 
-${ttdSection}
-
+<div class="signature-section">
 <table class="signature-table">
+	<tr>
+		<td></td>
+		<td class="signature-date">${ttdText}</td>
+	</tr>
 	<tr>
 		${waliAsramaSection}
 		${waliAsuhSection}
@@ -430,6 +468,7 @@ ${ttdSection}
 		${kepalaSekolahSection}
 	</tr>
 </table>
+</div>
 
 </body>
 </html>`;
