@@ -16,6 +16,7 @@
 		canNavigateMurid = false,
 		hasPrevMurid = false,
 		hasNextMurid = false,
+		loading = false,
 		onNavigatePrev,
 		onNavigateNext
 	}: {
@@ -25,6 +26,7 @@
 		canNavigateMurid: boolean;
 		hasPrevMurid: boolean;
 		hasNextMurid: boolean;
+		loading?: boolean;
 		onNavigatePrev: () => void;
 		onNavigateNext: () => void;
 	} = $props();
@@ -70,7 +72,7 @@
 			onclick={onNavigatePrev}
 			title="Murid sebelumnya"
 			aria-label="Murid sebelumnya"
-			disabled={!canNavigateMurid || !hasPrevMurid}
+			disabled={loading || !canNavigateMurid || !hasPrevMurid}
 		>
 			<Icon name="left" />
 		</button>
@@ -80,7 +82,7 @@
 			onclick={onNavigateNext}
 			title="Murid berikutnya"
 			aria-label="Murid berikutnya"
-			disabled={!canNavigateMurid || !hasNextMurid}
+			disabled={loading || !canNavigateMurid || !hasNextMurid}
 		>
 			<Icon name="right" />
 		</button>

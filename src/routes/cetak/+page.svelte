@@ -254,8 +254,13 @@
 			return;
 		}
 
-		downloadLoading = true;
+		await loadPdf(murid);
+	}
 
+	async function loadPdf(murid: MuridData) {
+		const documentType = selectedDocument;
+		if (!documentType) return;
+		downloadLoading = true;
 		try {
 			const res = await fetch('/api/pdf/token', {
 				method: 'POST',
@@ -278,6 +283,7 @@
 			if (!pdfRes.ok) throw new Error('Gagal memuat PDF');
 			const blob = await pdfRes.blob();
 
+			if (pdfViewerUrl) URL.revokeObjectURL(pdfViewerUrl);
 			pdfViewerUrl = URL.createObjectURL(blob);
 			pdfViewerTitle = slug
 				.split('-')
@@ -302,8 +308,13 @@
 		const targetIndex = currentIndex + offset;
 		if (targetIndex < 0 || targetIndex >= list.length) return;
 		const targetId = list[targetIndex];
+		const wasViewerOpen = !!pdfViewerUrl;
 		selectedMuridId = targetId;
 		await tick();
+		if (wasViewerOpen) {
+			const murid = selectedMurid;
+			if (murid) loadPdf(murid);
+		}
 	}
 
 	async function handleDownloadBulk() {
@@ -469,6 +480,7 @@
 		{canNavigateMurid}
 		{hasPrevMurid}
 		{hasNextMurid}
+		loading={downloadLoading}
 		onNavigatePrev={() => navigateMurid('prev')}
 		onNavigateNext={() => navigateMurid('next')}
 	/>
