@@ -95,27 +95,27 @@ export function renderRaporHTML(data: RaporPrintData): string {
 		['Alamat', data.sekolah.alamat, 'Tahun Pelajaran', data.periode.tahunPelajaran]
 	];
 
-	const ortuCol = `<td style="width:50%;vertical-align:top;">
+	const ortuCol = `<td style="width:50%;text-align:center;vertical-align:top;padding-bottom:12pt;">
 		<p class="signature-label">Orang Tua/Wali Murid</p>
 		<div class="signature-space"></div>
+		<div class="signature-line"></div>
 	</td>`;
 
-	const waliCol = `<td style="width:50%;vertical-align:top;">
+	const waliCol = `<td style="width:50%;text-align:center;vertical-align:top;padding-bottom:12pt;">
 		<p class="signature-label">Wali Kelas</p>
 		<div class="signature-space"></div>
 		<p class="name-underline">${data.waliKelas.nama}</p>
-		${data.waliKelas.nip ? `<p class="nip-text">NIP. ${data.waliKelas.nip}</p>` : ''}
+		${data.waliKelas.nip ? `<p class="nip-text">${data.waliKelas.nip}</p>` : ''}
 	</td>`;
 
-	const kepalaStatus = data.kepalaSekolah.statusKepalaSekolah
-		? data.kepalaSekolah.statusKepalaSekolah
-		: 'Kepala Sekolah';
+	const kepalaStatus =
+		data.kepalaSekolah.statusKepalaSekolah === 'plt' ? 'Plt. Kepala Sekolah' : 'Kepala Sekolah';
 
 	const kepalaCol = `<td colspan="2" style="text-align:center;vertical-align:top;">
 		<p class="signature-label">${kepalaStatus}</p>
 		<div class="signature-space"></div>
 		<p class="name-underline">${data.kepalaSekolah.nama}</p>
-		${data.kepalaSekolah.nip ? `<p class="nip-text">NIP. ${data.kepalaSekolah.nip}</p>` : ''}
+		${data.kepalaSekolah.nip ? `<p class="nip-text">${data.kepalaSekolah.nip}</p>` : ''}
 	</td>`;
 
 	return `<!DOCTYPE html>
@@ -212,6 +212,9 @@ body {
 .grid-table td {
 	border: 1px solid #000;
 	padding: 4pt 6pt;
+}
+
+.grid-table td {
 	vertical-align: top;
 }
 
@@ -219,6 +222,7 @@ body {
 	background: #f0f0f0;
 	font-weight: bold;
 	text-align: center;
+	vertical-align: middle;
 }
 
 .grid-table tr.group-header td {
@@ -325,13 +329,14 @@ thead { display: table-header-group; }
 }
 
 .signature-section {
-	margin-top: 24pt;
+	margin-top: 12pt;
+	page-break-inside: avoid;
 	width: 100%;
 }
 
 .signature-date {
-	text-align: right;
-	margin-bottom: 18pt;
+	text-align: center;
+	padding-bottom: 6pt;
 }
 
 .signature-table {
@@ -351,7 +356,6 @@ thead { display: table-header-group; }
 
 .signature-space {
 	height: 55pt;
-	border-bottom: 1px dashed #999;
 	margin-bottom: 6pt;
 }
 
@@ -364,6 +368,13 @@ thead { display: table-header-group; }
 .nip-text {
 	font-size: 11pt;
 	margin-top: 1pt;
+}
+
+.signature-line {
+	border-top: 1px solid #000;
+	height: 0;
+	margin: 16pt auto 0;
+	width: 66%;
 }
 
 </style>
@@ -530,10 +541,11 @@ ${
 }
 
 <div class="signature-section">
-	<div class="signature-date">
-		${data.ttd.tempat}, ${data.ttd.tanggal}
-	</div>
 	<table class="signature-table">
+		<tr>
+			<td></td>
+			<td class="signature-date">${data.ttd.tempat}, ${data.ttd.tanggal}</td>
+		</tr>
 		<tr>
 			${ortuCol}
 			${waliCol}

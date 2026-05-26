@@ -9,6 +9,7 @@ import {
 	tableEkstrakurikuler,
 	tableMurid,
 	tableMuridEkstrakurikuler,
+	tablePegawai,
 	tableSekolah
 } from '$lib/server/db/schema';
 import {
@@ -203,7 +204,12 @@ export async function getRaporPreviewPayload({ locals, url }: RaporContext) {
 		with: {
 			kelas: {
 				with: {
-					waliKelas: true,
+					waliKelas: {
+						columns: {
+							nama: true,
+							nip: true
+						}
+					},
 					tahunAjaran: true,
 					semester: true
 				}
@@ -586,6 +592,14 @@ export async function getRaporPreviewPayload({ locals, url }: RaporContext) {
 	const showBgLogo = url.searchParams.get('bg_logo') === '1';
 	const bgLogoSrc = showBgLogo ? await getBgLogoSrc(sekolah.id) : null;
 
+	const waliKelasPegawai =
+		murid.kelas?.waliKelas ??
+		(murid.kelas?.waliKelasId
+			? await db.query.tablePegawai.findFirst({
+					where: eq(tablePegawai.id, murid.kelas.waliKelasId)
+				})
+			: null);
+
 	const raporData: RaporPrintData = {
 		sekolah: {
 			nama: sekolah.nama,
@@ -610,8 +624,8 @@ export async function getRaporPreviewPayload({ locals, url }: RaporContext) {
 				: (murid.semester?.nama ?? '')
 		},
 		waliKelas: {
-			nama: murid.kelas?.waliKelas?.nama ?? '',
-			nip: murid.kelas?.waliKelas?.nip ?? null
+			nama: waliKelasPegawai?.nama ?? '',
+			nip: waliKelasPegawai?.nip ?? null
 		},
 		kepalaSekolah: {
 			nama: sekolah.kepalaSekolah?.nama ?? '',
