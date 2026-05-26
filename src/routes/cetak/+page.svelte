@@ -537,7 +537,7 @@
 	<object
 		data={pdfViewerUrl}
 		type="application/pdf"
-		class="w-full h-[80vh] rounded-box mt-6"
+		class="w-full h-[85vh] rounded-box mt-4"
 		title={pdfViewerTitle}
 	>
 		<embed src={pdfViewerUrl} type="application/pdf" class="w-full h-full" />

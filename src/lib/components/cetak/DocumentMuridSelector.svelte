@@ -141,9 +141,9 @@
 			{#if downloadLoading}
 				<span class="loading loading-spinner loading-sm"></span>
 			{:else}
-				<Icon name="download" />
+				<Icon name="eye" />
 			{/if}
-			Download
+			Preview
 		</button>
 		<div class="dropdown dropdown-end">
 			<div
