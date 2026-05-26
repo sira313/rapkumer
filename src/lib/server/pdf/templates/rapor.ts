@@ -61,8 +61,10 @@ export interface RaporPrintData {
 export function renderRaporHTML(data: RaporPrintData): string {
 	const bgLogoSrc = data.showBgLogo ? data.sekolah.bgLogoSrc || getTutwuriBwDataUri() : null;
 
-	const isGenap = data.periode.semester.includes('genap') || data.periode.semester.includes('2');
-	const isKelas6 = data.rombel.nama.includes('6');
+	const isGenap =
+		data.periode.semester.toLowerCase().includes('genap') || data.periode.semester.includes('2');
+	const isGraduating =
+		data.rombel.fase === 'Fase C' || data.rombel.fase === 'Fase D' || data.rombel.fase === 'Fase F';
 	const { sakit, izin, tanpaKeterangan } = data.ketidakhadiran;
 
 	const kelompokMap: Record<string, { items: typeof data.nilaiIntrakurikuler }> = {};
@@ -229,13 +231,6 @@ body {
 
 thead { display: table-header-group; }
 
-.section-title {
-	font-weight: bold;
-	font-size: 12pt;
-	margin-top: 12pt;
-	margin-bottom: 2pt;
-}
-
 .narrative-text {
 	text-align: justify;
 	margin-top: 4pt;
@@ -269,6 +264,7 @@ thead { display: table-header-group; }
 	border-collapse: collapse;
 	width: 100%;
 	margin-top: 12pt;
+	page-break-inside: avoid;
 }
 
 .combined-table th {
@@ -294,6 +290,7 @@ thead { display: table-header-group; }
 	border-bottom: none;
 	width: 12pt;
 	padding: 0;
+	background: none;
 }
 
 
@@ -305,36 +302,26 @@ thead { display: table-header-group; }
 	font-size: 11pt;
 }
 
-.tanggapan-section {
-	margin-top: 12pt;
-	width: 100%;
-}
-
-.tanggapan-section table {
-	width: 100%;
+.tanggapan-table {
 	border-collapse: collapse;
+	width: 100%;
+	page-break-inside: avoid;
 }
 
-.tanggapan-section td.left-col {
-	width: 58%;
-	vertical-align: top;
-	padding-right: 8pt;
-}
-
-.tanggapan-section td.right-col {
-	width: 42%;
-	vertical-align: top;
-}
-
-.keputusan-box {
+.tanggapan-table th {
 	border: 1px solid #000;
-	padding: 10pt;
-	min-height: 70pt;
+	padding: 3pt 6pt;
+	font-weight: bold;
+	background: #f0f0f0;
+	text-align: center;
 }
 
-.checkbox-line {
-	margin: 6pt 0;
-	font-size: 12pt;
+.tanggapan-table td {
+	border: 1px solid #000;
+	padding: 3pt 6pt;
+	text-align: left;
+	vertical-align: top;
+	height: 54pt;
 }
 
 .signature-section {
@@ -507,27 +494,38 @@ ${
 ${
 	isGenap
 		? `
-<table class="tanggapan-section">
+<table class="combined-table">
+	<col style="width:70%;">
+	<col style="width:12pt;">
+	<col style="width:calc(30% - 12pt);">
 	<tr>
-		<td class="left-col">
-			<div class="section-title">Tanggapan Orang Tua</div>
-			<div class="catatan-box">${formatValue(data.tanggapanOrangTua)}</div>
-		</td>
-		<td class="right-col">
-			<div class="section-title">KEPUTUSAN</div>
-			<div class="keputusan-box">
-				<div class="checkbox-line">☐ ${isKelas6 ? 'Lulus' : 'Naik Kelas'}</div>
-				<div class="checkbox-line">☐ ${isKelas6 ? 'Tidak Lulus' : 'Tidak Naik Kelas'}</div>
-			</div>
+		<th>Tanggapan Orang Tua</th>
+		<th class="sep-col">&nbsp;</th>
+		<th>Keputusan</th>
+	</tr>
+	<tr>
+		<td style="text-align:left;vertical-align:top;height:54pt;">${data.tanggapanOrangTua || ''}</td>
+		<td class="sep-col">&nbsp;</td>
+		<td style="text-align:left;vertical-align:top;padding:6pt;">
+			<table style="width:100%;">
+				<tr>
+					<td style="text-align:left;border:none;padding:2pt 0;">${isGraduating ? 'Lulus' : 'Naik Kelas'}</td>
+					<td style="text-align:right;border:none;padding:2pt 0;width:20pt;">☐</td>
+				</tr>
+				<tr>
+					<td style="text-align:left;border:none;padding:2pt 0;">${isGraduating ? 'Tidak Lulus' : 'Tidak Naik Kelas'}</td>
+					<td style="text-align:right;border:none;padding:2pt 0;width:20pt;">☐</td>
+				</tr>
+			</table>
 		</td>
 	</tr>
 </table>
 `
 		: `
-<div class="tanggapan-section">
-	<div class="section-title">Tanggapan Orang Tua</div>
-	<div class="catatan-box">${formatValue(data.tanggapanOrangTua)}</div>
-</div>
+<table class="tanggapan-table" style="margin-top:12pt;">
+	<tr><th>Tanggapan Orang Tua</th></tr>
+	<tr><td>${data.tanggapanOrangTua || ''}</td></tr>
+</table>
 `
 }
 

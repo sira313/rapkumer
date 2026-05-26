@@ -7,9 +7,10 @@ const args = process.argv.slice(2);
 const vite_args = ['dev', ...args];
 
 const venvDir = join('node_modules', '.weasyprint-venv');
-const weasyBin = process.platform === 'win32'
-	? join(venvDir, 'Scripts', 'weasyprint.exe')
-	: join(venvDir, 'bin', 'weasyprint');
+const weasyBin =
+	process.platform === 'win32'
+		? join(venvDir, 'Scripts', 'weasyprint.exe')
+		: join(venvDir, 'bin', 'weasyprint');
 
 if (!existsSync(weasyBin)) {
 	console.log('🔄 Creating WeasyPrint virtual environment...');
