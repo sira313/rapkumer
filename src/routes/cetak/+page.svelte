@@ -42,6 +42,7 @@
 
 	let pdfViewerUrl = $state('');
 	let pdfViewerTitle = $state('');
+	let pdfViewerEl = $state<HTMLElement | null>(null);
 
 	// show TP listing: 'compact' | 'full-desc'
 	let fullTP = $state<'compact' | 'full-desc'>('compact');
@@ -257,6 +258,11 @@
 		await loadPdf(murid);
 	}
 
+	async function scrollToViewer() {
+		await tick();
+		pdfViewerEl?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+	}
+
 	async function loadPdf(murid: MuridData) {
 		const documentType = selectedDocument;
 		if (!documentType) return;
@@ -289,6 +295,8 @@
 				.split('-')
 				.map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
 				.join(' ');
+
+			scrollToViewer();
 
 			toast('PDF berhasil dimuat', 'success');
 		} catch (err) {
@@ -547,12 +555,13 @@
 
 {#if pdfViewerUrl}
 	<object
+		bind:this={pdfViewerEl}
 		data={pdfViewerUrl}
 		type="application/pdf"
-		class="w-full h-[85vh] rounded-box mt-4"
+		class="rounded-box mt-4 h-[85vh] w-full"
 		title={pdfViewerTitle}
 	>
-		<embed src={pdfViewerUrl} type="application/pdf" class="w-full h-full" />
+		<embed src={pdfViewerUrl} type="application/pdf" class="h-full w-full" />
 	</object>
 {/if}
 
