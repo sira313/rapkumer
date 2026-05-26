@@ -452,6 +452,7 @@ ${kehadiranSection}
 
 <div class="signature-section">
 <table class="signature-table">
+	<tbody style="page-break-inside: avoid;">
 	<tr>
 		<td></td>
 		<td class="signature-date">${ttdText}</td>
@@ -460,6 +461,7 @@ ${kehadiranSection}
 		${waliAsramaSection}
 		${waliAsuhSection}
 	</tr>
+	</tbody>
 	<tr>
 		<td>
 			<div class="sig-title">Orang Tua/Wali Murid</div>
