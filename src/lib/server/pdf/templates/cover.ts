@@ -60,10 +60,22 @@ function getSchoolJenjang(data: CoverPrintData): string | null {
 function coverStyles(): string {
 	return `
 .cover-page {
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	height: 100%;
 	padding: 5mm 10mm;
+}
+
+.watermark-cover {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	opacity: 0.12;
+	width: 45%;
+	pointer-events: none;
+	z-index: -1;
 }
 
 .cover-section {
@@ -134,6 +146,7 @@ function coverStyles(): string {
 }
 
 .biodata-page {
+	position: relative;
 	min-height: 100vh;
 	padding-top: 10mm;
 }
@@ -240,11 +253,10 @@ ${coverStyles()}
 	</div>
 </div>
 
-${bgLogoSrc ? `<img src="${bgLogoSrc}" alt="Watermark" class="watermark">` : ''}
-
 <div class="page-break"></div>
 
 <div class="biodata-page">
+	${bgLogoSrc ? `<img src="${bgLogoSrc}" alt="Watermark" class="watermark-cover">` : ''}
 	<div class="biodata-title">LAPORAN</div>
 	<div class="biodata-subtitle">HASIL BELAJAR MURID</div>
 	${jenjang ? `<div class="biodata-jenjang">${jenjang}</div>` : ''}
