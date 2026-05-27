@@ -6,16 +6,20 @@ import {
 	tableKeasramaan,
 	tableKeasramaanIndikator,
 	tableKeasramaanTujuan,
-	tableMurid,
-	tableSekolah
+	tableMurid
 } from '$lib/server/db/schema';
 import {
 	kategoriToRubrikValue,
 	hitungNilaiIndikator,
 	nilaiAngkaToHuruf
 } from '$lib/components/asesmen-keasramaan/utils';
-
-const LOCALE_ID = 'id-ID';
+import {
+	optionalInteger,
+	composeAlamat,
+	formatTanggal,
+	fallbackTempat,
+	getLogoSrc
+} from '$lib/server/pdf/preview-utils';
 
 export type KeasramaanContext = {
 	locals: App.Locals;
@@ -35,43 +39,6 @@ const PREDIKAT_MAP: PredikatMap = {
 	'perlu-bimbingan': { label: 'Perlu Bimbingan', order: 0 }
 };
 
-function optionalInteger(paramName: string, value: string | null): number | null {
-	if (!value) return null;
-	const parsed = Number(value);
-	if (!Number.isInteger(parsed)) {
-		throw error(400, `Parameter ${paramName} tidak valid.`);
-	}
-	return parsed;
-}
-
-function composeAlamat(sekolah: NonNullable<App.Locals['sekolah']>): string {
-	const alamat = sekolah.alamat;
-	if (!alamat) return '';
-	const parts = [alamat.jalan, alamat.desa, alamat.kecamatan, alamat.kabupaten, alamat.provinsi]
-		.map((part) => (part ?? '').trim())
-		.filter(Boolean);
-	return parts.join(', ');
-}
-
-function formatTanggal(value: string | null | undefined): string {
-	if (!value) return '';
-	const parsed = new Date(value);
-	if (Number.isNaN(parsed.getTime())) return '';
-	return new Intl.DateTimeFormat(LOCALE_ID, {
-		day: 'numeric',
-		month: 'long',
-		year: 'numeric'
-	}).format(parsed);
-}
-
-function fallbackTempat(sekolah: NonNullable<App.Locals['sekolah']>): string {
-	const explicit = sekolah.lokasiTandaTangan?.trim();
-	if (explicit) return explicit;
-	const alamat = sekolah.alamat;
-	if (!alamat) return '';
-	return alamat.kabupaten || alamat.kecamatan || alamat.desa || '';
-}
-
 function joinList(items: string[]): string {
 	if (!items.length) return '';
 	if (items.length === 1) return items[0];
@@ -79,16 +46,6 @@ function joinList(items: string[]): string {
 	return items.slice(0, -1).join(', ') + ', dan ' + items.at(-1);
 }
 
-/**
- * Build descriptive text for an indicator based on all its TP (tujuan pembelajaran)
- * Separates "tercapai" (sangat-baik, baik, cukup) into one paragraph
- * and "belum tercapai" (perlu-bimbingan) into a separate line
- *
- * Example output:
- * Ananda Arkle Yoel menunjukkan penguasaan yang sangat baik dalam mengembangkan sikap inklusif dan terbuka dalam berinteraksi dengan sesama penghuni asrama, menunjukkan penguasaan yang baik dalam menerapkan komunikasi yang efektif, santun, dan suportif dengan anggota kelompok atau teman se-asrama.
- *
- * Masih perlu bimbingan dalam hal lain.
- */
 function lowercaseFirstChar(text: string): string {
 	if (!text) return text;
 	return text.charAt(0).toLowerCase() + text.slice(1);
@@ -147,17 +104,6 @@ function buildIndicatorDeskripsi(
 	if (notAchievedParagraph) return notAchievedParagraph;
 	return '';
 }
-async function getLogoSrc(sekolahId: number): Promise<string | null> {
-	const row = await db.query.tableSekolah.findFirst({
-		columns: { logo: true, logoType: true },
-		where: eq(tableSekolah.id, sekolahId)
-	});
-	if (row?.logo?.length) {
-		return `data:${row.logoType || 'image/png'};base64,${Buffer.from(row.logo).toString('base64')}`;
-	}
-	return null;
-}
-
 export type KeasramaanRow = {
 	no: number;
 	indikator: string;

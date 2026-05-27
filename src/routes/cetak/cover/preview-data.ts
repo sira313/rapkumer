@@ -1,45 +1,14 @@
 import { error } from '@sveltejs/kit';
 import { and, eq } from 'drizzle-orm';
 import db from '$lib/server/db';
-import { tableMurid, tableSekolah } from '$lib/server/db/schema';
+import { tableMurid } from '$lib/server/db/schema';
 import type { CoverPrintData } from '$lib/server/pdf/templates/cover';
+import { requireInteger, optionalInteger, getLogoSrc } from '$lib/server/pdf/preview-utils';
 
 type CoverContext = {
 	locals: App.Locals;
 	url: URL;
 };
-
-function requireInteger(paramName: string, value: string | null): number {
-	if (!value) {
-		throw error(400, `Parameter ${paramName} wajib diisi.`);
-	}
-	const parsed = Number(value);
-	if (!Number.isInteger(parsed)) {
-		throw error(400, `Parameter ${paramName} tidak valid.`);
-	}
-	return parsed;
-}
-
-function optionalInteger(paramName: string, value: string | null): number | null {
-	if (!value) return null;
-	const parsed = Number(value);
-	if (!Number.isInteger(parsed)) {
-		throw error(400, `Parameter ${paramName} tidak valid.`);
-	}
-	return parsed;
-}
-
-async function getLogoSrc(sekolahId: number): Promise<string | null> {
-	const row = await db.query.tableSekolah.findFirst({
-		columns: { logo: true, logoType: true },
-		where: eq(tableSekolah.id, sekolahId)
-	});
-	if (row?.logo?.length) {
-		const b64 = Buffer.from(row.logo).toString('base64');
-		return `data:${row.logoType || 'image/png'};base64,${b64}`;
-	}
-	return null;
-}
 
 export async function getCoverPreviewPayload({ locals, url }: CoverContext) {
 	const sekolah = locals.sekolah;

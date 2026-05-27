@@ -25,13 +25,13 @@ const REQUIRED_PACKAGES = [
 	'mingw-w64-x86_64-zlib',
 	'mingw-w64-x86_64-bzip2',
 	'mingw-w64-x86_64-graphite2',
-	'mingw-w64-x86_64-gcc-libs',     // libgcc_s_seh-1.dll, libstdc++-6.dll
-	'mingw-w64-x86_64-libthai',      // libthai-0.dll
-	'mingw-w64-x86_64-brotli',       // libbrotlidec.dll
-	'mingw-w64-x86_64-cairo',        // libcairo-2.dll
-	'mingw-w64-x86_64-libwinpthread',  // libwinpthread-1.dll
-	'mingw-w64-x86_64-libdatrie',    // libdatrie-1.dll
-	'mingw-w64-x86_64-pixman'        // libpixman-1-0.dll
+	'mingw-w64-x86_64-gcc-libs', // libgcc_s_seh-1.dll, libstdc++-6.dll
+	'mingw-w64-x86_64-libthai', // libthai-0.dll
+	'mingw-w64-x86_64-brotli', // libbrotlidec.dll
+	'mingw-w64-x86_64-cairo', // libcairo-2.dll
+	'mingw-w64-x86_64-libwinpthread', // libwinpthread-1.dll
+	'mingw-w64-x86_64-libdatrie', // libdatrie-1.dll
+	'mingw-w64-x86_64-pixman' // libpixman-1-0.dll
 ];
 
 function run(cmd, args = [], opts = {}) {
@@ -67,11 +67,7 @@ async function main() {
 	const indexCache = path.join(cacheDir, 'mingw64-index.html');
 	if (!existsSync(indexCache)) {
 		console.info('[bundle-gtk-dlls] Downloading MSYS2 package index (6.9 MiB)...');
-		run('curl', [
-			'-sL', '--max-time', '60',
-			'-o', indexCache,
-			MSYS2_REPO + '/'
-		]);
+		run('curl', ['-sL', '--max-time', '60', '-o', indexCache, MSYS2_REPO + '/']);
 	} else {
 		console.info('[bundle-gtk-dlls] Using cached package index');
 	}
@@ -82,8 +78,8 @@ async function main() {
 	const downloaded = [];
 	for (const pkg of REQUIRED_PACKAGES) {
 		// Match only the main package (not -docs, -devel, -tools subpackages).
-	// Main packages have a version starting with a digit right after the name.
-	const pattern = new RegExp(`href="(${pkg}-\\d[^"]*\\.pkg\\.tar\\.zst)"`, 'g');
+		// Main packages have a version starting with a digit right after the name.
+		const pattern = new RegExp(`href="(${pkg}-\\d[^"]*\\.pkg\\.tar\\.zst)"`, 'g');
 		let match;
 		let latest = '';
 		while ((match = pattern.exec(indexHtml)) !== null) {
@@ -112,9 +108,12 @@ async function main() {
 	for (const pkgPath of downloaded) {
 		try {
 			run('bsdtar', [
-				'-xf', pkgPath,
-				'--strip-components', '2',
-				'-C', absTarget,
+				'-xf',
+				pkgPath,
+				'--strip-components',
+				'2',
+				'-C',
+				absTarget,
 				'--include=*/bin/*.dll'
 			]);
 			extractedCount++;
@@ -127,23 +126,29 @@ async function main() {
 
 	// Extract fontconfig config files (mingw-w64-x86_64-fontconfig package)
 	{
-		const fontconfigPkg = downloaded.find(p =>
+		const fontconfigPkg = downloaded.find((p) =>
 			path.basename(p).startsWith('mingw-w64-x86_64-fontconfig-')
 		);
 		if (fontconfigPkg) {
 			console.info('[bundle-gtk-dlls] Extracting fontconfig config files...');
 			try {
 				run('bsdtar', [
-					'-xf', fontconfigPkg,
-					'--strip-components', '3',
-					'-C', absTarget,
+					'-xf',
+					fontconfigPkg,
+					'--strip-components',
+					'3',
+					'-C',
+					absTarget,
 					'--include=*/etc/fonts/*'
 				]);
 				// fonts.dtd is at share/xml/fontconfig/fonts.dtd (4 components)
 				run('bsdtar', [
-					'-xf', fontconfigPkg,
-					'--strip-components', '4',
-					'-C', absTarget,
+					'-xf',
+					fontconfigPkg,
+					'--strip-components',
+					'4',
+					'-C',
+					absTarget,
 					'--include=*/share/xml/fontconfig/fonts.dtd'
 				]);
 				console.info('[bundle-gtk-dlls] Fontconfig config files extracted.');
@@ -155,7 +160,9 @@ async function main() {
 		}
 	}
 
-	const files = readdirSync(absTarget).filter(f => f.endsWith('.dll')).sort();
+	const files = readdirSync(absTarget)
+		.filter((f) => f.endsWith('.dll'))
+		.sort();
 	console.info(`[bundle-gtk-dlls] Total DLLs: ${files.length}`);
 	for (const f of files) {
 		console.info(`  ${f}`);

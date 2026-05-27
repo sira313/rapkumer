@@ -1,10 +1,17 @@
+import { error } from '@sveltejs/kit';
 import fs from 'node:fs';
 import path from 'node:path';
-import { error } from '@sveltejs/kit';
 import { and, eq } from 'drizzle-orm';
 import db from '$lib/server/db';
-import { tableMurid, tableSekolah } from '$lib/server/db/schema';
+import { tableMurid } from '$lib/server/db/schema';
 import { jenisKelamin } from '$lib/statics';
+import {
+	requireInteger,
+	optionalInteger,
+	formatTanggal,
+	fallbackTempat,
+	getLogoSrc
+} from '$lib/server/pdf/preview-utils';
 
 type BiodataContext = {
 	locals: App.Locals;
@@ -16,39 +23,6 @@ type AlamatPayload = BiodataPrintData['murid']['alamat'];
 type OrangTuaAlamatPayload = BiodataPrintData['orangTua']['alamat'];
 
 type MuridJenisKelamin = keyof typeof jenisKelamin;
-
-const LOCALE_ID = 'id-ID';
-
-function requireInteger(paramName: string, value: string | null): number {
-	if (!value) {
-		throw error(400, `Parameter ${paramName} wajib diisi.`);
-	}
-	const parsed = Number(value);
-	if (!Number.isInteger(parsed)) {
-		throw error(400, `Parameter ${paramName} tidak valid.`);
-	}
-	return parsed;
-}
-
-function optionalInteger(paramName: string, value: string | null): number | null {
-	if (!value) return null;
-	const parsed = Number(value);
-	if (!Number.isInteger(parsed)) {
-		throw error(400, `Parameter ${paramName} tidak valid.`);
-	}
-	return parsed;
-}
-
-function formatTanggal(value: string | null | undefined): string {
-	if (!value) return '';
-	const parsed = new Date(value);
-	if (Number.isNaN(parsed.getTime())) return '';
-	return new Intl.DateTimeFormat(LOCALE_ID, {
-		day: 'numeric',
-		month: 'long',
-		year: 'numeric'
-	}).format(parsed);
-}
 
 function mapJenisKelamin(value: string | null | undefined): string {
 	if (!value) return '';
@@ -107,14 +81,6 @@ function composeOrangTuaAlamat(
 	};
 }
 
-function fallbackTempat(sekolah: NonNullable<App.Locals['sekolah']>): string {
-	const explicit = sekolah.lokasiTandaTangan?.trim();
-	if (explicit) return explicit;
-	const alamat = sekolah.alamat;
-	if (!alamat) return '';
-	return alamat.kabupaten || alamat.kecamatan || alamat.desa || '';
-}
-
 function uploadsDir(): string {
 	const envPhoto = process.env.photo || 'file:./data/uploads';
 	const raw = envPhoto.startsWith('file:') ? envPhoto.slice(5) : envPhoto;
@@ -132,16 +98,6 @@ function readFotoDataUri(filename: string | null | undefined): string | null {
 	} catch {
 		return null;
 	}
-}
-
-async function getBgLogoSrc(sekolahId: number): Promise<string | null> {
-	const row = await db.query.tableSekolah.findFirst({
-		columns: { logo: true, logoType: true },
-		where: eq(tableSekolah.id, sekolahId)
-	});
-	return row?.logo?.length
-		? `data:${row.logoType || 'image/png'};base64,${Buffer.from(row.logo).toString('base64')}`
-		: null;
 }
 
 export async function getBiodataPreviewPayload({ locals, url }: BiodataContext) {
@@ -185,7 +141,7 @@ export async function getBiodataPreviewPayload({ locals, url }: BiodataContext) 
 	const tanggalTtd = formatTanggal(murid.semester?.tanggalBagiRaport ?? murid.tanggalMasuk);
 
 	const showBgLogo = url.searchParams.get('bg_logo') === '1';
-	const bgLogoSrc = showBgLogo ? await getBgLogoSrc(sekolah.id) : null;
+	const bgLogoSrc = showBgLogo ? await getLogoSrc(sekolah.id) : null;
 
 	const biodataData: BiodataPrintData = {
 		sekolah: {

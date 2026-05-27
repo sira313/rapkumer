@@ -1,9 +1,9 @@
 import db from '$lib/server/db';
 import { ensureCatatanWaliSchema } from '$lib/server/db/ensure-catatan-wali';
-import { resolveSekolahAcademicContext } from '$lib/server/db/academic';
 import { tableCatatanWaliKelas, tableMurid } from '$lib/server/db/schema';
 import { fail, redirect } from '@sveltejs/kit';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { buildKelasContext } from '$lib/server/route-utils';
 
 const PER_PAGE = 20;
 
@@ -12,17 +12,11 @@ export async function load({ locals, url, depends, parent }) {
 	await ensureCatatanWaliSchema();
 
 	const parentData = await parent();
-	const daftarKelas = (parentData.daftarKelas ?? []) as Array<{ id: number }>;
-	const kelasAktif = (parentData.kelasAktif ?? null) as { id: number } | null;
-	const sekolahId = locals.sekolah?.id ?? null;
-	const academicContext = sekolahId ? await resolveSekolahAcademicContext(sekolahId) : null;
-	const kelasParam =
-		url.searchParams.get('kelas_id') ?? (kelasAktif ? String(kelasAktif.id) : null);
-	const kelasId =
-		kelasParam && daftarKelas.some((kelas) => kelas.id === Number(kelasParam))
-			? String(kelasParam)
-			: null;
-	const kelasIds = daftarKelas.map((kelas) => kelas.id);
+	const { sekolahId, kelasId, kelasIds, academicContext } = await buildKelasContext(
+		locals,
+		parentData,
+		url
+	);
 	const searchRaw = url.searchParams.get('q')?.trim() ?? '';
 	const search = searchRaw || null;
 	const requestedPage = Number(url.searchParams.get('page')) || 1;

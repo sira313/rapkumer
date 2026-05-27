@@ -9,8 +9,7 @@ import {
 	tableEkstrakurikuler,
 	tableMurid,
 	tableMuridEkstrakurikuler,
-	tablePegawai,
-	tableSekolah
+	tablePegawai
 } from '$lib/server/db/schema';
 import {
 	jenisMapel,
@@ -31,6 +30,14 @@ import {
 	type EkstrakurikulerNilaiKategori
 } from '$lib/ekstrakurikuler';
 import { buildCapaianKompetensi, type TujuanScoreEntry } from '$lib/rapor-modes';
+import {
+	requireInteger,
+	optionalInteger,
+	composeAlamat,
+	formatTanggal,
+	fallbackTempat,
+	getLogoSrc as getBgLogoSrc
+} from '$lib/server/pdf/preview-utils';
 
 const LOCALE_ID = 'id-ID';
 
@@ -111,35 +118,6 @@ export type RaporContext = {
 	url: URL;
 };
 
-function requireInteger(paramName: string, value: string | null): number {
-	if (!value) {
-		throw error(400, `Parameter ${paramName} wajib diisi.`);
-	}
-	const parsed = Number(value);
-	if (!Number.isInteger(parsed)) {
-		throw error(400, `Parameter ${paramName} tidak valid.`);
-	}
-	return parsed;
-}
-
-function optionalInteger(paramName: string, value: string | null): number | null {
-	if (!value) return null;
-	const parsed = Number(value);
-	if (!Number.isInteger(parsed)) {
-		throw error(400, `Parameter ${paramName} tidak valid.`);
-	}
-	return parsed;
-}
-
-function composeAlamat(sekolah: NonNullable<App.Locals['sekolah']>): string {
-	const alamat = sekolah.alamat;
-	if (!alamat) return '';
-	const parts = [alamat.jalan, alamat.desa, alamat.kecamatan, alamat.kabupaten, alamat.provinsi]
-		.map((part) => (part ?? '').trim())
-		.filter(Boolean);
-	return parts.join(', ');
-}
-
 function formatNilai(value: number | null | undefined): string {
 	if (value === null || value === undefined) return '—';
 	if (Number.isNaN(value)) return '—';
@@ -148,42 +126,6 @@ function formatNilai(value: number | null | undefined): string {
 		maximumFractionDigits: 0,
 		minimumFractionDigits: 0
 	}).format(rounded);
-}
-
-function formatTanggal(value: string | null | undefined): string {
-	if (!value) return '';
-	const parsed = new Date(value);
-	if (Number.isNaN(parsed.getTime())) return '';
-	return new Intl.DateTimeFormat(LOCALE_ID, {
-		day: 'numeric',
-		month: 'long',
-		year: 'numeric'
-	}).format(parsed);
-}
-
-function fallbackTempat(sekolah: NonNullable<App.Locals['sekolah']>): string {
-	const explicit = sekolah.lokasiTandaTangan?.trim();
-	if (explicit) return explicit;
-	const alamat = sekolah.alamat;
-	if (!alamat) return '';
-	return alamat.kabupaten || alamat.kecamatan || alamat.desa || '';
-}
-
-function buildLogoUrl(sekolah: NonNullable<App.Locals['sekolah']>): string | null {
-	if (!sekolah.id) return null;
-	const updatedAt = sekolah.updatedAt ? Date.parse(sekolah.updatedAt) : NaN;
-	const suffix = Number.isFinite(updatedAt) ? `?v=${updatedAt}` : '';
-	return `/sekolah/logo/${sekolah.id}${suffix}`;
-}
-
-async function getBgLogoSrc(sekolahId: number): Promise<string | null> {
-	const row = await db.query.tableSekolah.findFirst({
-		columns: { logo: true, logoType: true },
-		where: eq(tableSekolah.id, sekolahId)
-	});
-	return row?.logo?.length
-		? `data:${row.logoType || 'image/png'};base64,${Buffer.from(row.logo).toString('base64')}`
-		: null;
 }
 
 export async function getRaporPreviewPayload({ locals, url }: RaporContext) {

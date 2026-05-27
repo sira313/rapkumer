@@ -1,11 +1,7 @@
-import db from '$lib/server/db';
-
-let ensured = false;
+import { ensureSchema } from './ensure-helper';
 
 export async function ensureCatatanWaliSchema() {
-	if (ensured) return;
-
-	const statements = [
+	await ensureSchema('catatan_wali_kelas', [
 		`CREATE TABLE IF NOT EXISTS "catatan_wali_kelas" (
 			"id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 			"murid_id" integer NOT NULL,
@@ -16,11 +12,5 @@ export async function ensureCatatanWaliSchema() {
 		)`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS "catatan_wali_kelas_murid_unique" ON "catatan_wali_kelas" ("murid_id")`,
 		`CREATE INDEX IF NOT EXISTS "catatan_wali_kelas_murid_idx" ON "catatan_wali_kelas" ("murid_id")`
-	];
-
-	for (const statement of statements) {
-		await db.$client.execute(statement);
-	}
-
-	ensured = true;
+	]);
 }

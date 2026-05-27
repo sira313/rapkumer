@@ -1,9 +1,17 @@
 import { error } from '@sveltejs/kit';
 import { and, eq } from 'drizzle-orm';
 import db from '$lib/server/db';
-import { tableMurid, tableSekolah } from '$lib/server/db/schema';
+import { tableMurid } from '$lib/server/db/schema';
 import { computeNilaiAkhirRekap } from '$lib/server/nilai-akhir';
 import type { PiagamPrintData } from '$lib/server/pdf/templates/piagam';
+import {
+	requireInteger,
+	optionalInteger,
+	getLogoSrc,
+	getLogoDinasSrc,
+	formatTanggal,
+	fallbackTempat
+} from '$lib/server/pdf/preview-utils';
 
 const ORDINAL_WORDS: Record<number, string> = {
 	1: 'Pertama',
@@ -17,67 +25,6 @@ const ORDINAL_WORDS: Record<number, string> = {
 	9: 'Kesembilan',
 	10: 'Kesepuluh'
 };
-
-function requireInteger(paramName: string, value: string | null): number {
-	if (!value) {
-		throw error(400, `Parameter ${paramName} wajib diisi.`);
-	}
-	const parsed = Number(value);
-	if (!Number.isInteger(parsed)) {
-		throw error(400, `Parameter ${paramName} tidak valid.`);
-	}
-	return parsed;
-}
-
-function optionalInteger(paramName: string, value: string | null): number | null {
-	if (!value) return null;
-	const parsed = Number(value);
-	if (!Number.isInteger(parsed)) {
-		throw error(400, `Parameter ${paramName} tidak valid.`);
-	}
-	return parsed;
-}
-
-async function getLogoSrc(sekolahId: number): Promise<string | null> {
-	const row = await db.query.tableSekolah.findFirst({
-		columns: { logo: true, logoType: true },
-		where: eq(tableSekolah.id, sekolahId)
-	});
-	if (row?.logo?.length) {
-		return `data:${row.logoType || 'image/png'};base64,${Buffer.from(row.logo).toString('base64')}`;
-	}
-	return null;
-}
-
-async function getLogoDinasSrc(sekolahId: number): Promise<string | null> {
-	const row = await db.query.tableSekolah.findFirst({
-		columns: { logoDinas: true, logoDinasType: true },
-		where: eq(tableSekolah.id, sekolahId)
-	});
-	if (row?.logoDinas?.length) {
-		return `data:${row.logoDinasType || 'image/png'};base64,${Buffer.from(row.logoDinas).toString('base64')}`;
-	}
-	return null;
-}
-
-function formatTanggal(value: string | Date | null | undefined): string {
-	if (!value) return '';
-	const date = value instanceof Date ? value : new Date(value);
-	if (Number.isNaN(date.getTime())) return '';
-	return new Intl.DateTimeFormat('id-ID', {
-		day: 'numeric',
-		month: 'long',
-		year: 'numeric'
-	}).format(date);
-}
-
-function fallbackTempat(sekolah: NonNullable<App.Locals['sekolah']>): string {
-	const explicit = sekolah.lokasiTandaTangan?.trim();
-	if (explicit) return explicit;
-	const alamat = sekolah.alamat;
-	if (!alamat) return '';
-	return alamat.kecamatan || alamat.kabupaten || alamat.desa || '';
-}
 
 function formatSemesterLabel(
 	semester:

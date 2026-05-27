@@ -226,11 +226,9 @@ function main() {
 	// npm think the package is "up to date" when it really isn't. We use --force to
 	// bypass the OS check instead.
 	try {
-		run(
-			'npm',
-			['install', '--no-save', '--no-package-lock', '--force', '@libsql/win32-x64-msvc'],
-			{ cwd: appStage }
-		);
+		run('npm', ['install', '--no-save', '--no-package-lock', '--force', '@libsql/win32-x64-msvc'], {
+			cwd: appStage
+		});
 	} catch {
 		console.warn('Failed to install @libsql/win32-x64-msvc; server may fail on Windows.');
 	}
@@ -250,23 +248,24 @@ function main() {
 		const weasyDir = path.join(appStage, 'gtk-runtime');
 		fs.mkdirSync(weasyDir, { recursive: true });
 
-		const zipUrl = 'https://github.com/Kozea/WeasyPrint/releases/download/v68.1/weasyprint-windows.zip';
+		const zipUrl =
+			'https://github.com/Kozea/WeasyPrint/releases/download/v68.1/weasyprint-windows.zip';
 		const zipPath = path.join(appStage, 'weasyprint-windows.zip');
 		try {
 			run('curl', ['-sL', '--max-time', '120', '-o', zipPath, zipUrl]);
 			run('bsdtar', [
-				'-xf', zipPath,
-				'--strip-components', '1',
-				'-C', weasyDir,
+				'-xf',
+				zipPath,
+				'--strip-components',
+				'1',
+				'-C',
+				weasyDir,
 				'--include=dist/weasyprint.exe'
 			]);
 			fs.rmSync(zipPath, { force: true });
 			console.info('Standalone weasyprint.exe bundled successfully.');
 		} catch (err) {
-			console.warn(
-				'Failed to download standalone WeasyPrint:',
-				err && (err.message || err)
-			);
+			console.warn('Failed to download standalone WeasyPrint:', err && (err.message || err));
 			console.warn(
 				'WeasyPrint will need to be installed on the target machine (venv auto-creation requires Python 3).'
 			);
