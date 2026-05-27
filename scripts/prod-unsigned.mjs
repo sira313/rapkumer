@@ -94,68 +94,72 @@ async function main() {
 			cwd: projectRoot
 		});
 
-		// 3) Windows packaging steps require PowerShell. Prefer pwsh then powershell.
-		function findPowerShell() {
+		// 3) Stage Windows app (Node.js port of the original PowerShell script)
+		run(process.execPath, [path.join(projectRoot, 'scripts', 'prepare-windows.mjs')], {
+			cwd: projectRoot
+		});
+
+		// 4) Find Inno Setup compiler and package installer
+		function findISCC() {
+			// Cross-platform: try wine first (Linux/macOS)
 			try {
-				const r = spawnSync('pwsh', ['-NoProfile', '-Command', 'exit 0'], {
-					stdio: 'ignore',
-					shell: false
-				});
-				if (!r.error && r.status === 0) return 'pwsh';
+				const r = spawnSync('wine', ['--version'], { stdio: 'ignore', shell: false });
+				if (!r.error && r.status === 0) {
+					const wineIscc = spawnSync('wine', ['iscc.exe', '--version'], {
+						stdio: 'ignore',
+						shell: false
+					});
+					if (!wineIscc.error && wineIscc.status === 0) return { cmd: 'wine', args: ['iscc.exe'] };
+				}
 			} catch {
 				// ignore
 			}
+
+			// Check if iscc is on PATH (Windows with Inno Setup in PATH)
 			try {
-				const r2 = spawnSync('powershell', ['-NoProfile', '-Command', 'exit 0'], {
-					stdio: 'ignore',
-					shell: false
-				});
-				if (!r2.error && r2.status === 0) return 'powershell';
+				const r = spawnSync('iscc', ['/?'], { stdio: 'ignore', shell: false });
+				if (!r.error && r.status === 0) return { cmd: 'iscc', args: [] };
 			} catch {
 				// ignore
 			}
+
+			// Common Windows install paths
 			const candidates = [];
-			if (process.env.ProgramFiles)
-				candidates.push(path.join(process.env.ProgramFiles, 'PowerShell', '7', 'pwsh.exe'));
-			if (process.env.SystemRoot)
-				candidates.push(
-					path.join(
-						process.env.SystemRoot,
-						'System32',
-						'WindowsPowerShell',
-						'v1.0',
-						'powershell.exe'
-					)
-				);
-			for (const c of candidates) {
-				if (c && fs.existsSync(c)) return c;
+			const pf = process.env['ProgramFiles(x86)'] || process.env.ProgramFiles;
+			if (pf) {
+				candidates.push(path.join(pf, 'Inno Setup 6', 'ISCC.exe'));
+				candidates.push(path.join(pf, 'Inno Setup 5', 'ISCC.exe'));
 			}
+			if (process.env.SystemRoot)
+				candidates.push(path.join(process.env.SystemRoot, 'System32', 'iscc.exe'));
+			for (const c of candidates) {
+				if (fs.existsSync(c)) return { cmd: c, args: [] };
+			}
+
+			// Wine with explicit path to iscc.exe in standard Wine prefix
+			if (process.env.HOME) {
+				const wineIscc = path.join(
+					process.env.HOME,
+					'.wine',
+					'drive_c',
+					'Program Files (x86)',
+					'Inno Setup 6',
+					'ISCC.exe'
+				);
+				if (fs.existsSync(wineIscc)) return { cmd: 'wine', args: [wineIscc] };
+			}
+
 			return null;
 		}
 
-		const powershell = findPowerShell();
-		if (!powershell) {
+		const iscc = findISCC();
+		if (!iscc) {
 			throw new Error(
-				'PowerShell not found on PATH. Windows packaging steps require PowerShell. Run this script from PowerShell or install PowerShell and ensure it is on PATH.'
+				'Inno Setup compiler (ISCC.exe) not found. Install Inno Setup 6 on Windows, or on Linux/macOS install Wine + Inno Setup 6 via wine.'
 			);
 		}
 
-		// prepare-windows.ps1
-		run(
-			powershell,
-			[
-				'-NoProfile',
-				'-ExecutionPolicy',
-				'Bypass',
-				'-File',
-				path.join('installer', 'prepare-windows.ps1')
-			],
-			{ cwd: projectRoot }
-		);
-
-		// package installer (Inno Setup) via PowerShell -Command may be required to invoke ISCC path
-		const innoCmd = `& 'C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe' 'installer\\raporkumer.iss'`;
-		run(powershell, ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', innoCmd], {
+		run(iscc.cmd, [...iscc.args, path.join('installer', 'raporkumer.iss')], {
 			cwd: projectRoot
 		});
 
