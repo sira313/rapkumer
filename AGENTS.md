@@ -58,6 +58,13 @@ DB_URL=file:./data/database.sqlite3  # default, overridable via .env
 - Many-to-many: `tableAuthUserMataPelajaran`, `tableAuthUserKelas`.
 - User types: `admin`, `wali_kelas`, `wali_asuh`, `user` (guru mapel).
 
+## Windows installer
+
+- The InnoSetup installer bundles and auto-installs the **Microsoft Visual C++ Redistributable 2015-2022 (x64)** as a prerequisite for the `@libsql/win32-x64-msvc` native addon.
+- `scripts/prepare-windows.mjs` downloads `vc_redist.x64.exe` from Microsoft's CDN (via `aka.ms` link) and places it at `dist/windows/vc_redist.x64.exe`.
+- The ISS `[Code]` section checks the registry (`HKLM\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\X64\Version`) and runs the redist installer with `ShellExec('runas', ...)` only if not already installed (shows UAC prompt).
+- **Building on Linux via Wine**: Install InnoSetup 7+ with `wine innosetup-*.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR="C:\Inno Setup 7"`. Then compile: `wine "$HOME/.wine/drive_c/Program Files (x86)/Inno Setup 7/ISCC.exe" installer/raporkumer.iss`. Run `pnpm run build` first to generate the SvelteKit build output before compiling the installer.
+
 ## Quality
 
 - Run `pnpm lint` then `pnpm check` before committing.

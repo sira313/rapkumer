@@ -199,7 +199,13 @@ function main() {
 	if (fs.existsSync(nodeModules)) fs.rmSync(nodeModules, { recursive: true, force: true });
 	const pkgLock = path.join(appStage, 'package-lock.json');
 	if (fs.existsSync(pkgLock)) fs.unlinkSync(pkgLock);
-	const winEnv = { ...process.env, npm_config_platform: 'win32', npm_config_arch: 'x64' };
+	const winEnv = {
+		...process.env,
+		npm_config_platform: 'win32',
+		npm_config_arch: 'x64',
+		PUPPETEER_SKIP_DOWNLOAD: 'true',
+		PUPPETEER_SKIP_BROWSER_DOWNLOAD: 'true'
+	};
 	run('npm', ['install', '--omit=dev', '--no-package-lock'], {
 		cwd: appStage,
 		env: winEnv
@@ -240,6 +246,32 @@ function main() {
 			fs.rmSync(p, { recursive: true, force: true });
 			console.info('Removed', p);
 		}
+	}
+
+	// 15) Download VC++ 2015-2022 Redistributable (x64) for InnoSetup to bundle
+	//     This is required by @libsql/win32-x64-msvc native addon on Windows.
+	console.info('Downloading VC++ 2015-2022 Redistributable (x64)...');
+	const redistDest = path.resolve(projectRoot, 'dist', 'windows', 'vc_redist.x64.exe');
+	if (fs.existsSync(redistDest)) {
+		console.info('VC++ redistributable already exists at', redistDest);
+	} else {
+		const redistUrl = 'https://aka.ms/vs/17/release/vc_redist.x64.exe';
+		if (hasCommand('curl')) {
+			run('curl', ['-#Lo', redistDest, redistUrl]);
+		} else if (hasCommand('wget')) {
+			run('wget', ['-O', redistDest, redistUrl]);
+		} else {
+			console.error(
+				'Neither curl nor wget is available; cannot download VC++ redistributable.\n' +
+					'Download manually from ' +
+					redistUrl +
+					' to ' +
+					redistDest
+			);
+			throw new Error('Missing curl/wget for VC++ redist download');
+		}
+		const stat = fs.statSync(redistDest);
+		console.info('Downloaded VC++ redistributable:', (stat.size / 1024 / 1024).toFixed(1), 'MB');
 	}
 
 	console.info('\nStaging complete. Contents available at', appStage);

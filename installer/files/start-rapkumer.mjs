@@ -193,5 +193,25 @@ main().catch(async (err) => {
 		void 0;
 	}
 	console.error(err);
+
+	// Detect @libsql native addon failure
+	const msg = (err && (err.message || String(err))) || '';
+	if (
+		msg.includes('@libsql') &&
+		(msg.includes('index.node') || msg.includes('ERR_DLOPEN_FAILED'))
+	) {
+		console.error('');
+		console.error('=====================================================================');
+		console.error('KESALAHAN: Native addon @libsql/win32-x64-msvc gagal dimuat.');
+		console.error('');
+		console.error('Kemungkinan penyebab: Microsoft Visual C++ Redistributable');
+		console.error('2015-2022 (x64) belum terinstall di komputer ini.');
+		console.error('');
+		console.error('Solusi: Jalankan ulang installer Rapkumer, atau unduh dan');
+		console.error('install langsung dari Microsoft:');
+		console.error('  https://aka.ms/vs/17/release/vc_redist.x64.exe');
+		console.error('=====================================================================');
+	}
+
 	process.exit(1);
 });
