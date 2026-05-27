@@ -58,11 +58,17 @@ export const GET = (async ({ locals, params }) => {
 			throw error(400, `Unknown document type: ${docType}`);
 	}
 
-	const pdfBuffer = await generatePDF(
-		docType,
-		data as unknown as Record<string, unknown>,
-		stored.template
-	);
+	let pdfBuffer;
+	try {
+		pdfBuffer = await generatePDF(
+			docType,
+			data as unknown as Record<string, unknown>,
+			stored.template
+		);
+	} catch (e) {
+		console.error('PDF generation failed:', e);
+		throw error(500, 'Gagal menghasilkan PDF: ' + (e instanceof Error ? e.message : String(e)));
+	}
 
 	return new Response(new Blob([pdfBuffer as unknown as BlobPart], { type: 'application/pdf' }), {
 		headers: {

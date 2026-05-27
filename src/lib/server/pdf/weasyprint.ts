@@ -3,10 +3,9 @@ import { join } from 'node:path';
 
 function resolveWeasyPrintBin(): string {
 	if (process.env.WEASYPRINT_BIN) return process.env.WEASYPRINT_BIN;
+	if (process.platform === 'win32') return join('gtk-runtime', 'weasyprint.exe');
 	const venvDir = join('node_modules', '.weasyprint-venv');
-	return process.platform === 'win32'
-		? join(venvDir, 'Scripts', 'weasyprint.exe')
-		: join(venvDir, 'bin', 'weasyprint');
+	return join(venvDir, 'bin', 'weasyprint');
 }
 
 const WEASYPRINT_BIN = resolveWeasyPrintBin();
@@ -14,7 +13,8 @@ const WEASYPRINT_BIN = resolveWeasyPrintBin();
 export async function renderPDF(html: string): Promise<Uint8Array> {
 	return new Promise((resolve, reject) => {
 		const proc = spawn(WEASYPRINT_BIN, ['-', '-'], {
-			stdio: ['pipe', 'pipe', 'pipe']
+			stdio: ['pipe', 'pipe', 'pipe'],
+			windowsHide: true
 		});
 
 		const chunks: Buffer[] = [];

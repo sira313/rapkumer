@@ -32,6 +32,7 @@ SetupIconFile={#StagePath}\rapkumer.ico
 
 [Files]
 Source:"{#StagePath}\\*"; DestDir:"{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source:"{#StagePath}\\gtk-runtime\\weasyprint.exe"; DestDir:"{app}\\gtk-runtime"; Flags: ignoreversion
 Source:"files\\start-rapkumer.mjs"; DestDir:"{app}"; Flags: ignoreversion
 
 [Run]

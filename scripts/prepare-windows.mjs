@@ -244,70 +244,32 @@ function main() {
 		}
 	}
 
-	// 15) Bundle WeasyPrint virtual environment
-	console.info('Creating WeasyPrint virtual environment...');
+	// 15) Bundle standalone WeasyPrint executable for Windows
+	console.info('Downloading standalone WeasyPrint for Windows...');
 	{
-		const venvDir = path.join(appStage, 'node_modules', '.weasyprint-venv');
-		if (!fs.existsSync(venvDir)) {
-			let pythonCmd = null;
+		const weasyDir = path.join(appStage, 'gtk-runtime');
+		fs.mkdirSync(weasyDir, { recursive: true });
 
-			// On Windows: try python / python3 / py
-			if (process.platform === 'win32') {
-				for (const cmd of ['python', 'python3', 'py']) {
-					try {
-						const r = spawnSync(cmd, ['--version'], { stdio: 'ignore' });
-						if (!r.error && r.status === 0) {
-							pythonCmd = cmd;
-							break;
-						}
-					} catch {
-						/* skip */
-					}
-				}
-			} else {
-				// On Linux/macOS targeting Windows: try wine python first for a
-				// Windows-compatible venv, then fall back to native python3/python
-				for (const candidate of [['wine', 'python'], ['python3'], ['python']]) {
-					try {
-						const r = spawnSync(candidate[0], [...candidate.slice(1), '--version'], {
-							stdio: 'ignore'
-						});
-						if (!r.error && r.status === 0) {
-							pythonCmd = candidate.join(' ');
-							break;
-						}
-					} catch {
-						/* skip */
-					}
-				}
-			}
-
-			if (pythonCmd) {
-				try {
-					const [cmd, ...args] = pythonCmd.split(' ');
-					run(cmd, [...args, '-m', 'venv', venvDir], { cwd: appStage });
-
-					const pipDir = path.join(
-						venvDir,
-						process.platform === 'win32' || pythonCmd.includes('wine') ? 'Scripts' : 'bin'
-					);
-					const pipCmd = path.join(pipDir, 'pip');
-					run(pipCmd, ['install', 'weasyprint'], { cwd: appStage });
-
-					console.info('WeasyPrint venv bundled successfully at', venvDir);
-				} catch (err) {
-					console.warn('Failed to create/bundle WeasyPrint venv:', err && (err.message || err));
-					console.warn(
-						'WeasyPrint venv will be auto-created on first app run (requires Python 3 on target).'
-					);
-				}
-			} else {
-				console.warn(
-					'Python 3 not found on build machine. WeasyPrint venv will be auto-created on first app run (requires Python 3 on target).'
-				);
-			}
-		} else {
-			console.info('WeasyPrint venv already exists; skipping creation.');
+		const zipUrl = 'https://github.com/Kozea/WeasyPrint/releases/download/v68.1/weasyprint-windows.zip';
+		const zipPath = path.join(appStage, 'weasyprint-windows.zip');
+		try {
+			run('curl', ['-sL', '--max-time', '120', '-o', zipPath, zipUrl]);
+			run('bsdtar', [
+				'-xf', zipPath,
+				'--strip-components', '1',
+				'-C', weasyDir,
+				'--include=dist/weasyprint.exe'
+			]);
+			fs.rmSync(zipPath, { force: true });
+			console.info('Standalone weasyprint.exe bundled successfully.');
+		} catch (err) {
+			console.warn(
+				'Failed to download standalone WeasyPrint:',
+				err && (err.message || err)
+			);
+			console.warn(
+				'WeasyPrint will need to be installed on the target machine (venv auto-creation requires Python 3).'
+			);
 		}
 	}
 

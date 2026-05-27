@@ -56,6 +56,12 @@ async function waitForPort(port, attempts = 10, delayMs = 1000) {
 }
 
 async function ensureWeasyPrintVenv(appHome, logFile) {
+	const standaloneExe = path.join(appHome, 'gtk-runtime', 'weasyprint.exe');
+	if (fs.existsSync(standaloneExe)) {
+		await appendLog(logFile, 'WeasyPrint standalone executable found, skipping venv creation.');
+		return;
+	}
+
 	const venvDir = path.join(appHome, 'node_modules', '.weasyprint-venv');
 	const weasyBin =
 		process.platform === 'win32'

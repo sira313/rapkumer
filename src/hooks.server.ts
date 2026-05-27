@@ -12,6 +12,15 @@ import {
 	normalizeOrigin as normalizeFileOrigin
 } from '$lib/server/csrf-origins';
 
+// Prevent crash from socket write-after-close errors
+process.on('uncaughtException', (err) => {
+	if (err && (err as NodeJS.ErrnoException).code === 'EOF' && (err as NodeJS.ErrnoException).syscall === 'write') {
+		console.warn('[server] Ignored socket write EOF');
+		return;
+	}
+	console.error('[server] Uncaught exception:', err);
+});
+
 // Log combined trusted origins at startup to aid debugging in packaged prod builds.
 (async () => {
 	try {
