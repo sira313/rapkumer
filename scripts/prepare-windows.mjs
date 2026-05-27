@@ -242,36 +242,6 @@ function main() {
 		}
 	}
 
-	// 15) Bundle standalone WeasyPrint executable for Windows
-	console.info('Downloading standalone WeasyPrint for Windows...');
-	{
-		const weasyDir = path.join(appStage, 'gtk-runtime');
-		fs.mkdirSync(weasyDir, { recursive: true });
-
-		const zipUrl =
-			'https://github.com/Kozea/WeasyPrint/releases/download/v68.1/weasyprint-windows.zip';
-		const zipPath = path.join(appStage, 'weasyprint-windows.zip');
-		try {
-			run('curl', ['-sL', '--max-time', '120', '-o', zipPath, zipUrl]);
-			run('bsdtar', [
-				'-xf',
-				zipPath,
-				'--strip-components',
-				'1',
-				'-C',
-				weasyDir,
-				'--include=dist/weasyprint.exe'
-			]);
-			fs.rmSync(zipPath, { force: true });
-			console.info('Standalone weasyprint.exe bundled successfully.');
-		} catch (err) {
-			console.warn('Failed to download standalone WeasyPrint:', err && (err.message || err));
-			console.warn(
-				'WeasyPrint will need to be installed on the target machine (venv auto-creation requires Python 3).'
-			);
-		}
-	}
-
 	console.info('\nStaging complete. Contents available at', appStage);
 }
 

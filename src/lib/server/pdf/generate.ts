@@ -1,4 +1,4 @@
-import { renderPDF } from './weasyprint';
+import { renderPDF } from './pagedpdf';
 import { renderCoverHTML } from './templates/cover';
 import { renderRaporHTML } from './templates/rapor';
 import { renderBiodataHTML } from './templates/biodata';

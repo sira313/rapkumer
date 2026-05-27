@@ -69,6 +69,8 @@
 		"@libsql/client": "^0.15.15",
 		"drizzle-orm": "^0.44.7",
 		"exceljs": "^4.4.0",
+		"pagedjs-cli": "^0.4.3",
+		"puppeteer-core": "^25.1.0",
 		"unzipper": "^0.12.3"
 	}
 }

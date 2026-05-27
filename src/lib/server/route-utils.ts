@@ -41,12 +41,13 @@ export async function fetchMuridList(
 	kelasId: string | null,
 	kelasIds: number[]
 ) {
-	if (!sekolahId || !kelasIds.length) return [] as Array<{
-		id: number;
-		nama: string;
-		nis: string | null;
-		nisn: string | null;
-	}>;
+	if (!sekolahId || !kelasIds.length)
+		return [] as Array<{
+			id: number;
+			nama: string;
+			nis: string | null;
+			nisn: string | null;
+		}>;
 	const filter = and(
 		eq(tableMurid.sekolahId, sekolahId),
 		kelasId ? eq(tableMurid.kelasId, Number(kelasId)) : inArray(tableMurid.kelasId, kelasIds)

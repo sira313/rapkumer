@@ -315,7 +315,15 @@ const sqliteErrors = {
 	SQLITE_CONSTRAINT_FOREIGNKEY: 'Data memiliki relasi ke data lainnya yang masih utuh'
 };
 
-export const handleError = ({ error, message, status }: { error: unknown; message: string; status: number }) => {
+export const handleError = ({
+	error,
+	message,
+	status
+}: {
+	error: unknown;
+	message: string;
+	status: number;
+}) => {
 	console.error(error);
 	if (status >= 500) {
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any

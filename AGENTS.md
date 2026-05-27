@@ -15,7 +15,7 @@ pnpm format                # prettier --write .
 ## Stack
 
 - **SvelteKit 2 + Svelte 5 runes** — no `export let`, `$:`, or `(on:click)`. Use `$props()`, `$state`, `$derived`.
-- **WeasyPrint** — server-side PDF generation via Python (spawned as subprocess). Venv at `node_modules/.weasyprint-venv` (auto-created by `pnpm dev`, requires Python 3). Override with `WEASYPRINT_BIN` env.
+- **PagedJS + Puppeteer** — server-side PDF generation. Uses `puppeteer-core` with system Chrome/Chromium. Override Chrome path with `PUPPETEER_EXECUTABLE_PATH` env var. PagedJS polyfill from `pagedjs-cli` package.
 - **DaisyUI 5 on TailwindCSS 4** — CSS via `@import "tailwindcss"` + `@plugin "daisyui"` in `src/app.css`. No `tailwind.config.js`.
 - **Drizzle ORM + SQLite** — libsql client when `DB_URL` is set, else `file:./data/database.sqlite3`. Casing: `snake_case`.
 - **pnpm** only. `engine-strict=true` in `.npmrc`.

@@ -2,7 +2,7 @@ import fs from 'fs';
 import fsPromises from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { spawn, execSync } from 'child_process';
+import { spawn } from 'child_process';
 import net from 'net';
 import os from 'os';
 
@@ -55,68 +55,6 @@ async function waitForPort(port, attempts = 10, delayMs = 1000) {
 	return false;
 }
 
-async function ensureWeasyPrintVenv(appHome, logFile) {
-	const standaloneExe = path.join(appHome, 'gtk-runtime', 'weasyprint.exe');
-	if (fs.existsSync(standaloneExe)) {
-		await appendLog(logFile, 'WeasyPrint standalone executable found, skipping venv creation.');
-		return;
-	}
-
-	const venvDir = path.join(appHome, 'node_modules', '.weasyprint-venv');
-	const weasyBin =
-		process.platform === 'win32'
-			? path.join(venvDir, 'Scripts', 'weasyprint.exe')
-			: path.join(venvDir, 'bin', 'weasyprint');
-
-	if (fs.existsSync(weasyBin)) {
-		await appendLog(logFile, 'WeasyPrint venv already exists, skipping creation.');
-		return;
-	}
-
-	await appendLog(logFile, 'WeasyPrint venv not found. Attempting to create it...');
-	console.log('Menyiapkan WeasyPrint untuk cetak PDF...');
-
-	const pythonCmds =
-		process.platform === 'win32' ? ['python', 'python3', 'py'] : ['python3', 'python'];
-
-	let pythonCmd = null;
-	for (const cmd of pythonCmds) {
-		try {
-			execSync(`${cmd} --version`, { stdio: 'ignore' });
-			pythonCmd = cmd;
-			break;
-		} catch {
-			/* skip */
-		}
-	}
-
-	if (!pythonCmd) {
-		const msg =
-			'Python 3 tidak ditemukan. Cetak PDF tidak akan berfungsi. Install Python 3 dan jalankan ulang aplikasi.';
-		console.warn(msg);
-		await appendLog(logFile, msg);
-		return;
-	}
-
-	try {
-		await appendLog(logFile, `Creating venv with ${pythonCmd}...`);
-		execSync(`${pythonCmd} -m venv "${venvDir}"`, { stdio: 'inherit' });
-
-		const pipDir = path.join(venvDir, process.platform === 'win32' ? 'Scripts' : 'bin');
-		const pipCmd = path.join(pipDir, 'pip');
-
-		await appendLog(logFile, 'Installing weasyprint via pip...');
-		execSync(`"${pipCmd}" install weasyprint`, { stdio: 'inherit' });
-
-		await appendLog(logFile, 'WeasyPrint venv created successfully.');
-		console.log('WeasyPrint siap digunakan.');
-	} catch (err) {
-		const msg = `Gagal membuat WeasyPrint venv: ${String(err)}. Cetak PDF tidak akan berfungsi.`;
-		console.warn(msg);
-		await appendLog(logFile, msg);
-	}
-}
-
 async function main() {
 	const __filename = fileURLToPath(import.meta.url);
 	const APP_HOME = path.dirname(__filename);
@@ -151,8 +89,7 @@ async function main() {
 		await appendLog(LOG_FILE, `Error while ensuring database: ${String(err)}`);
 	}
 
-	// Ensure WeasyPrint virtual environment exists for PDF generation
-	await ensureWeasyPrintVenv(APP_HOME, LOG_FILE);
+	// PagedJS + Puppeteer will use system Chrome/Chromium for PDF generation
 
 	// Prepare DB URL (replace backslashes with slashes)
 	const DB_URL = 'file:' + dstDb.replace(/\\/g, '/');
