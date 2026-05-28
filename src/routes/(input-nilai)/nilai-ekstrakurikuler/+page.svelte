@@ -1,12 +1,17 @@
 <script lang="ts">
 	/* eslint-disable svelte/no-navigation-without-resolve -- file-level: intentional prebuilt hrefs and small navigation helpers */
-	import { goto } from '$app/navigation';
+	import { goto, invalidate } from '$app/navigation';
 	import { page } from '$app/state';
 	import Icon from '$lib/components/icon.svelte';
 	import DeskripsiCell from '$lib/components/nilai-ekstrakurikuler/deskripsi-cell.svelte';
 	import { searchQueryMarker } from '$lib/utils';
 	import type { EkstrakurikulerNilaiKategori } from '$lib/ekstrakurikuler';
 	import { onDestroy } from 'svelte';
+	import { toast } from '$lib/components/toast.svelte';
+	import { showModal } from '$lib/components/global-modal.svelte';
+	import ActionButtons from '$lib/components/nilai-ekstrakurikuler/action-buttons.svelte';
+	import ImportModalBody from '$lib/components/nilai-ekstrakurikuler/import-modal-body.svelte';
+	import { downloadTemplate, importNilai } from '$lib/components/nilai-ekstrakurikuler/api';
 
 	type EkstrakurikulerOption = {
 		id: number;
@@ -71,6 +76,8 @@
 	);
 	let searchTerm = $state(data.search ?? '');
 	let searchTimer: ReturnType<typeof setTimeout> | undefined;
+	let isDownloadingTemplate = $state(false);
+	let isImportingFile = $state(false);
 	const kelasAktif = $derived(page.data.kelasAktif ?? null);
 	const kelasAktifLabel = $derived.by(() => {
 		if (!kelasAktif) return null;
@@ -180,6 +187,91 @@
 		gotoPage(pageNumber);
 	}
 
+	async function handleDownloadTemplate() {
+		if (!selectedEkstrakValue || !selectedEkstrakHasTujuan || !kelasAktif?.id) {
+			toast(
+				'Pilih ekstrakurikuler dan pastikan memiliki tujuan pembelajaran terlebih dahulu',
+				'error'
+			);
+			return;
+		}
+
+		isDownloadingTemplate = true;
+		try {
+			const success = await downloadTemplate(selectedEkstrakValue, kelasAktif.id);
+			if (success) {
+				toast('Template berhasil diunduh', 'success');
+			} else {
+				toast('Gagal mengunduh template', 'error');
+			}
+		} catch (err) {
+			console.error(err);
+			toast('Terjadi kesalahan saat mengunduh template', 'error');
+		} finally {
+			isDownloadingTemplate = false;
+		}
+	}
+
+	function openImportModal() {
+		if (!selectedEkstrakValue || !selectedEkstrakHasTujuan || !kelasAktif?.id) {
+			toast(
+				'Pilih ekstrakurikuler dan pastikan memiliki tujuan pembelajaran terlebih dahulu',
+				'error'
+			);
+			return;
+		}
+
+		let uploader: () => File | null = () => null;
+
+		showModal({
+			title: 'Import Nilai dari Excel',
+			body: ImportModalBody,
+			bodyProps: {
+				setUploader: (fn: () => File | null) => (uploader = fn)
+			},
+			onPositive: {
+				label: 'Import',
+				icon: 'import',
+				action: async ({ close }: { close: () => void }) => {
+					const file = uploader();
+					if (!file) {
+						toast('Pilih file terlebih dahulu.', 'error');
+						return;
+					}
+
+					isImportingFile = true;
+
+					try {
+						const result = await importNilai(file, selectedEkstrakValue, kelasAktif?.id ?? 0);
+
+						if (result.success) {
+							toast(result.message || 'Nilai berhasil diimport', 'success');
+							close();
+							await invalidate('app:nilai-ekstrakurikuler');
+							await goto(`?ekstrakurikuler_id=${selectedEkstrakValue}`);
+						} else {
+							toast(result.message || 'Gagal import nilai', 'error');
+						}
+					} catch (err) {
+						console.error(err);
+						toast(
+							'Terjadi kesalahan saat import: ' + String((err as Error)?.message ?? err),
+							'error'
+						);
+					} finally {
+						isImportingFile = false;
+					}
+				}
+			},
+			onNegative: { label: 'Batal', icon: 'close' },
+			dismissible: true
+		});
+	}
+
+	async function handleFileImport() {
+		openImportModal();
+	}
+
 	function buildNilaiLink(muridId: number) {
 		if (!selectedEkstrak) return '#';
 		const redirectTarget = encodeURIComponent(`${page.url.pathname}${page.url.search}`);
@@ -208,6 +300,14 @@
 			{/if}
 		</div>
 	</div>
+
+	<ActionButtons
+		isDownloading={isDownloadingTemplate}
+		isImporting={isImportingFile}
+		disabled={!selectedEkstrakHasTujuan || !canEdit}
+		onDownload={handleDownloadTemplate}
+		onImport={handleFileImport}
+	/>
 
 	<div class="flex flex-col items-center gap-2 sm:flex-row">
 		<label class="w-full md:max-w-80">

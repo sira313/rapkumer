@@ -69,7 +69,7 @@
 			<label class="flex flex-col gap-2" aria-busy={submitting}>
 				<span class="text-sm font-semibold">Catatan</span>
 				<textarea
-					class="textarea textarea-bordered bg-base-200 dark:bg-base-100 w-full dark:border-none"
+					class="textarea textarea-bordered bg-base-200 dark:bg-base-300 w-full dark:border-none"
 					name="catatan"
 					rows="5"
 					value={catatanValue}
