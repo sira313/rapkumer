@@ -66,9 +66,7 @@
 			id={inputId}
 		/>
 		<div class="label">
-			<span class="label-text-alt text-base-content/70">
-				Contoh file: file-backup.sqlite3
-			</span>
+			<span class="label-text-alt text-base-content/70"> Contoh file: file-backup.sqlite3 </span>
 		</div>
 	</div>
 
