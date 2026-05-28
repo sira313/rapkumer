@@ -92,7 +92,7 @@ export function renderRaporHTML(data: RaporPrintData): string {
 			data.rombel.fase
 		],
 		['Sekolah', formatUpper(data.sekolah.nama), 'Semester', data.periode.semester],
-		['Alamat', data.sekolah.alamat, 'Tahun Pelajaran', data.periode.tahunPelajaran]
+		['Alamat', data.sekolah.alamat, 'Tahun Ajaran', data.periode.tahunPelajaran]
 	];
 
 	const ortuCol = `<td style="width:50%;text-align:center;vertical-align:top;padding-bottom:12pt;">
