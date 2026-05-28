@@ -266,6 +266,7 @@
 			<Icon name="info" />
 			<span>
 				Belum ada data kokurikuler untuk kelas ini. Tambahkan terlebih dahulu di menu
+				<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 				<strong><a class="link" href="/kokurikuler">Kokurikuler</a></strong>.
 			</span>
 		</div>
