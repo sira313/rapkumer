@@ -216,6 +216,12 @@ body {
 
 .grid-table td {
 	vertical-align: top;
+	orphans: 2;
+	widows: 2;
+}
+
+.grid-table tr.first-data-row {
+	page-break-before: avoid;
 }
 
 .grid-table th {
@@ -224,6 +230,13 @@ body {
 	text-align: center;
 	vertical-align: middle;
 }
+
+.grid-table .col-no { width: 6%; }
+.grid-table .col-mata-pelajaran { width: 28%; }
+.grid-table .col-nilai { width: 12%; }
+.grid-table .col-capaian { width: 54%; }
+.grid-table .col-ekstra { width: 30%; }
+.grid-table .col-keterangan { width: 64%; }
 
 .grid-table tr.group-header td {
 	border: 1px solid #000;
@@ -406,10 +419,10 @@ ${identityRows
 <table class="grid-table">
 	<thead>
 		<tr>
-			<th style="width:6%;">No.</th>
-			<th style="width:28%;">Mata Pelajaran</th>
-			<th style="width:12%;">Nilai Akhir</th>
-			<th style="width:54%;">Capaian Kompetensi</th>
+			<th class="col-no">No.</th>
+			<th class="col-mata-pelajaran">Mata Pelajaran</th>
+			<th class="col-nilai">Nilai Akhir</th>
+			<th class="col-capaian">Capaian Kompetensi</th>
 		</tr>
 	</thead>
 	<tbody>
@@ -423,12 +436,15 @@ ${jenisOrder
 		</tr>
 ${group.items
 	.map(
-		(item, i) => `		<tr style="page-break-inside:avoid;">
-			<td style="text-align:center;">${i + 1}</td>
-			<td>${item.mataPelajaran}</td>
-			<td style="text-align:center;">${formatValue(item.nilaiAkhir)}</td>
-			<td>${formatValue(item.deskripsi)}</td>
-		</tr>`
+		(item, i) => {
+			const cls = i === 0 ? ' class="first-data-row"' : '';
+			return `		<tr${cls}>
+			<td class="col-no" style="text-align:center;">${i + 1}</td>
+			<td class="col-mata-pelajaran">${item.mataPelajaran}</td>
+			<td class="col-nilai" style="text-align:center;">${formatValue(item.nilaiAkhir)}</td>
+			<td class="col-capaian">${formatValue(item.deskripsi)}</td>
+		</tr>`;
+		}
 	)
 	.join('\n')}`;
 	})
@@ -453,9 +469,9 @@ ${
 <table class="grid-table">
 	<thead>
 		<tr>
-			<th style="width:6%;">No.</th>
-			<th style="width:30%;">Ekstrakurikuler</th>
-			<th style="width:64%;">Keterangan</th>
+			<th class="col-no">No.</th>
+			<th class="col-ekstra">Ekstrakurikuler</th>
+			<th class="col-keterangan">Keterangan</th>
 		</tr>
 	</thead>
 	<tbody>
@@ -463,9 +479,9 @@ ${
 			.map(
 				(e, i) => `
 		<tr>
-			<td style="text-align:center;">${i + 1}</td>
-			<td>${e.nama}</td>
-			<td>${formatValue(e.deskripsi)}</td>
+			<td class="col-no" style="text-align:center;">${i + 1}</td>
+			<td class="col-ekstra">${e.nama}</td>
+			<td class="col-keterangan">${formatValue(e.deskripsi)}</td>
 		</tr>`
 			)
 			.join('\n')}
@@ -476,8 +492,8 @@ ${
 }
 
 <table class="combined-table">
-	<col>
-	<col>
+	<col style="width:20%;">
+	<col style="width:15%;">
 	<col style="width:12pt;">
 	<col>
 	<tr>
