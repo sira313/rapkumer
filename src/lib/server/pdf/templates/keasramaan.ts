@@ -408,7 +408,7 @@ ${logoUrl ? `<img src="${logoUrl}" alt="Watermark" class="watermark">` : ''}
 		<td class="label">Alamat</td>
 		<td class="colon">:</td>
 		<td class="value-left">${formatValue(data.sekolah.alamat)}</td>
-		<td class="label-right">Tahun Pelajaran</td>
+		<td class="label-right">Tahun Ajaran</td>
 		<td class="colon-right">:</td>
 		<td class="value-right">${data.periode.tahunAjaran}</td>
 	</tr>
