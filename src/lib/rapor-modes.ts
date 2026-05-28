@@ -246,7 +246,7 @@ export function buildFullDescMode(muridNama: string, descriptors: CapaianDescrip
 	}
 
 	if (achievedParagraph && notAchievedParagraph) {
-		return `${achievedParagraph}\n\n${notAchievedParagraph}`;
+		return `${achievedParagraph}\n${notAchievedParagraph}`;
 	}
 	if (achievedParagraph) return achievedParagraph;
 	if (notAchievedParagraph) return notAchievedParagraph;

@@ -218,12 +218,6 @@ body {
 	widows: 1;
 }
 
-.grid-table td {
-	vertical-align: top;
-	orphans: 2;
-	widows: 2;
-}
-
 .grid-table tr.first-data-row {
 	page-break-before: avoid;
 }
@@ -238,7 +232,7 @@ body {
 .grid-table .col-no { width: 6%; }
 .grid-table .col-mata-pelajaran { width: 28%; }
 .grid-table .col-nilai { width: 12%; }
-.grid-table .col-capaian { width: 54%; }
+.grid-table .col-capaian { width: 54%; white-space: pre-line; }
 .grid-table .col-ekstra { width: 30%; }
 .grid-table .col-keterangan { width: 64%; }
 
