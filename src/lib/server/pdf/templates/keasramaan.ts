@@ -106,7 +106,7 @@ body {
 	padding: 2.8mm 4.2mm;
 	font-weight: bold;
 	text-align: center;
-	background: #fff;
+	background: #f0f0f0;
 }
 
 .main-table td {

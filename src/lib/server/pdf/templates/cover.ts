@@ -248,7 +248,7 @@ ${coverStyles()}
 			<div style="font-size:13pt;margin-bottom:1mm">NISN / NIS</div>
 			<div style="border:2px solid #000;padding:3mm 8mm;font-size:13pt;font-weight:bold;text-align:center;min-width:120mm">${nisnNis}</div>
 		</div>
-		<div class="cover-bottom-line">${header1}</div>
+		<div class="cover-bottom-line" style="margin-top:5mm">${header1}</div>
 		<div class="cover-bottom-line">${header2}</div>
 	</div>
 </div>

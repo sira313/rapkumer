@@ -131,17 +131,22 @@ export async function generateBulkPDF(items: BulkItem[]): Promise<Uint8Array> {
 				? templatePage.trim()
 				: '@page { size: A4 portrait; margin: 20mm; }';
 
-	// Build body content
+	// Build body content.
+	// Templates with @bottom-left (rapor, keasramaan) need a running element
+	// wrapper (.sp) so PagedJS can display per-student footer text via
+	// content: element(footer-left). Templates without footer (cover, biodata,
+	// piagam) keep their original structure — body as direct parent — so CSS
+	// rules like `.cover-page { height: 100% }` resolve against <body> properly.
 	const bodies: string[] = [];
 
 	for (let i = 0; i < htmls.length; i++) {
 		const bodyMatch = htmls[i].match(/<body[^>]*>([\s\S]*)<\/body>/i);
 		if (!bodyMatch) throw new Error(`Failed to extract body from student ${i}`);
 
-		// For templates with @bottom-left, prepend a running element whose content
-		// PagedJS will display in the margin box via content: element(footer-left).
-		let runningFooter = '';
 		if (hasBottomLeft) {
+			// For templates with @bottom-left, prepend a running element whose content
+			// PagedJS will display in the margin box via content: element(footer-left).
+			let runningFooter = '';
 			const blMatch = htmls[i].match(/@bottom-left\s*\{([\s\S]*?)\}/i);
 			if (blMatch) {
 				const contentMatch = blMatch[1].match(/content:\s*"([^"]*)"/i);
@@ -150,10 +155,16 @@ export async function generateBulkPDF(items: BulkItem[]): Promise<Uint8Array> {
 					runningFooter = `<span class="footer-left">${footerText}</span>`;
 				}
 			}
+			const cls = i === 0 ? 'sp' : 'sp sp-break';
+			bodies.push(`<div class="${cls}">${runningFooter}${bodyMatch[1]}</div>`);
+		} else {
+			// No footer needed — preserve original body structure so direct-child
+			// CSS (e.g. `.cover-page { height: 100% }`) resolves against <body>.
+			if (i > 0) {
+				bodies.push(`<div class="sp-break"></div>`);
+			}
+			bodies.push(bodyMatch[1]);
 		}
-
-		const cls = i === 0 ? 'sp' : 'sp sp-break';
-		bodies.push(`<div class="${cls}">${runningFooter}${bodyMatch[1]}</div>`);
 	}
 
 	// Strip duplicate fixed-position elements that should appear only once
