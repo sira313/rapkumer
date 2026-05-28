@@ -212,6 +212,10 @@ body {
 .grid-table td {
 	border: 1px solid #000;
 	padding: 4pt 6pt;
+	vertical-align: top;
+	page-break-inside: auto;
+	orphans: 1;
+	widows: 1;
 }
 
 .grid-table td {
