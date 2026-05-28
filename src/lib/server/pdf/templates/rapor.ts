@@ -266,6 +266,7 @@ thead { display: table-header-group; }
 
 .combined-table {
 	border-collapse: collapse;
+	table-layout: fixed;
 	width: 100%;
 	margin-top: 12pt;
 	page-break-inside: avoid;
@@ -273,7 +274,7 @@ thead { display: table-header-group; }
 
 .combined-table th {
 	border: 1px solid #000;
-	padding: 3pt 6pt;
+	padding: 4pt 8pt;
 	font-weight: bold;
 	background: #f0f0f0;
 	text-align: center;
@@ -281,7 +282,7 @@ thead { display: table-header-group; }
 
 .combined-table td {
 	border: 1px solid #000;
-	padding: 3pt 6pt;
+	padding: 4pt 8pt;
 	text-align: center;
 }
 
@@ -292,7 +293,7 @@ thead { display: table-header-group; }
 .combined-table .sep-col {
 	border-top: none;
 	border-bottom: none;
-	width: 12pt;
+	width: 18pt;
 	padding: 0;
 	background: none;
 }
@@ -475,14 +476,14 @@ ${
 }
 
 <table class="combined-table">
-	<col style="width:auto;">
-	<col style="width:auto;">
+	<col>
+	<col>
 	<col style="width:12pt;">
-	<col style="width:auto;">
+	<col>
 	<tr>
-		<th colspan="2" style="width:38%;">Ketidakhadiran</th>
+		<th colspan="2">Ketidakhadiran</th>
 		<th class="sep-col">&nbsp;</th>
-		<th style="width:62%;">Catatan Wali Kelas</th>
+		<th>Catatan Wali Kelas</th>
 	</tr>
 	<tr>
 		<td class="left-cell">Sakit</td>
