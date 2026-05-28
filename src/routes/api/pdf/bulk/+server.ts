@@ -24,6 +24,62 @@ type BulkRequest = {
 	bgLogo?: boolean;
 };
 
+async function processStudent(
+	locals: App.Locals,
+	body: BulkRequest,
+	muridId: number
+): Promise<Uint8Array> {
+	const url = new URL('http://localhost');
+	url.searchParams.set('murid_id', String(muridId));
+	if (body.kelasId) url.searchParams.set('kelas_id', String(body.kelasId));
+	if (body.tpMode === 'full-desc') url.searchParams.set('full_tp', 'desc');
+	if (body.criteria) {
+		url.searchParams.set('krit_cukup', String(body.criteria.kritCukup));
+		url.searchParams.set('krit_baik', String(body.criteria.kritBaik));
+	}
+	if (body.bgLogo) url.searchParams.set('bg_logo', '1');
+
+	let data: Record<string, unknown>;
+	switch (body.docType) {
+		case 'rapor': {
+			const p = await getRaporPreviewPayload({ locals, url });
+			data = p.raporData as unknown as Record<string, unknown>;
+			break;
+		}
+		case 'cover': {
+			const p = await getCoverPreviewPayload({ locals, url });
+			data = p.coverData as unknown as Record<string, unknown>;
+			break;
+		}
+		case 'biodata': {
+			const p = await getBiodataPreviewPayload({ locals, url });
+			data = p.biodataData as unknown as Record<string, unknown>;
+			break;
+		}
+		case 'keasramaan': {
+			const p = await getKeasramaanPreviewPayload({ locals, url });
+			if (!p) throw error(400, 'Data rapor keasramaan tidak ditemukan.');
+			data = p.keasramaanData as unknown as Record<string, unknown>;
+			break;
+		}
+		case 'piagam': {
+			const p = await getPiagamPreviewPayload({ locals, url });
+			data = p.piagamData as unknown as Record<string, unknown>;
+			break;
+		}
+		default:
+			throw error(400, `Unknown document type: ${body.docType}`);
+	}
+
+	return generatePDF(body.docType, data, body.template);
+}
+
+function* batches<T>(items: T[], size: number): Generator<T[]> {
+	for (let i = 0; i < items.length; i += size) {
+		yield items.slice(i, i + size);
+	}
+}
+
 export const POST = (async ({ locals, request }) => {
 	const body: BulkRequest = await request.json();
 
@@ -35,52 +91,19 @@ export const POST = (async ({ locals, request }) => {
 	const files: string[] = [];
 
 	try {
-		for (const muridId of body.muridIds) {
-			const url = new URL('http://localhost');
-			url.searchParams.set('murid_id', String(muridId));
-			if (body.kelasId) url.searchParams.set('kelas_id', String(body.kelasId));
-			if (body.tpMode === 'full-desc') url.searchParams.set('full_tp', 'desc');
-			if (body.criteria) {
-				url.searchParams.set('krit_cukup', String(body.criteria.kritCukup));
-				url.searchParams.set('krit_baik', String(body.criteria.kritBaik));
-			}
-			if (body.bgLogo) url.searchParams.set('bg_logo', '1');
+		const results: Uint8Array[] = [];
+		const CONCURRENCY = 3;
 
-			let data: Record<string, unknown>;
-			switch (body.docType) {
-				case 'rapor': {
-					const p = await getRaporPreviewPayload({ locals, url });
-					data = p.raporData as unknown as Record<string, unknown>;
-					break;
-				}
-				case 'cover': {
-					const p = await getCoverPreviewPayload({ locals, url });
-					data = p.coverData as unknown as Record<string, unknown>;
-					break;
-				}
-				case 'biodata': {
-					const p = await getBiodataPreviewPayload({ locals, url });
-					data = p.biodataData as unknown as Record<string, unknown>;
-					break;
-				}
-				case 'keasramaan': {
-					const p = await getKeasramaanPreviewPayload({ locals, url });
-					if (!p) throw error(400, 'Data rapor keasramaan tidak ditemukan.');
-					data = p.keasramaanData as unknown as Record<string, unknown>;
-					break;
-				}
-				case 'piagam': {
-					const p = await getPiagamPreviewPayload({ locals, url });
-					data = p.piagamData as unknown as Record<string, unknown>;
-					break;
-				}
-				default:
-					throw error(400, `Unknown document type: ${body.docType}`);
-			}
+		for (const batch of batches(body.muridIds, CONCURRENCY)) {
+			const chunk = await Promise.all(
+				batch.map((muridId) => processStudent(locals, body, muridId))
+			);
+			results.push(...chunk);
+		}
 
-			const pdfBuffer = await generatePDF(body.docType, data, body.template);
-			const filePath = join(tmpDir, `${muridId}.pdf`);
-			writeFileSync(filePath, pdfBuffer);
+		for (let i = 0; i < body.muridIds.length; i++) {
+			const filePath = join(tmpDir, `${body.muridIds[i]}.pdf`);
+			writeFileSync(filePath, results[i]);
 			files.push(filePath);
 		}
 
