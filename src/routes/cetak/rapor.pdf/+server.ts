@@ -12,7 +12,7 @@ async function handle({ locals, url }: { locals: App.Locals; url: URL }) {
 
 	const filename = `Rapor_${payload.raporData?.murid?.nama || 'dokumen'}_${payload.raporData?.periode?.tahunPelajaran || ''}_${payload.raporData?.periode?.semester || ''}.pdf`;
 
-	return new Response(new Blob([pdfBuffer as any], { type: 'application/pdf' }), {
+	return new Response(new Blob([pdfBuffer as BlobPart], { type: 'application/pdf' }), {
 		headers: {
 			'Content-Disposition': `inline; filename="${filename}"`
 		}

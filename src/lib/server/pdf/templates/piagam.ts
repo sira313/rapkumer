@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { sharedStyles, formatValue, formatUpper, FALLBACK } from './shared';
+import { sharedStyles, formatUpper } from './shared';
 
 export interface PiagamPrintData {
 	sekolah: {

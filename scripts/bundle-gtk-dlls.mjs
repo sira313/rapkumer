@@ -42,13 +42,6 @@ function run(cmd, args = [], opts = {}) {
 	return res;
 }
 
-function runOutput(cmd, args = [], opts = {}) {
-	const res = spawnSync(cmd, args, { stdio: 'pipe', timeout: 120000, ...opts });
-	if (res.error) throw new Error(`Command error: ${res.error.message}`);
-	if (res.status !== 0) throw new Error(`Exited with code ${res.status}: ${cmd} ${args.join(' ')}`);
-	return res.stdout.toString().trim();
-}
-
 async function main() {
 	const targetDir = process.argv[2];
 	if (!targetDir) {

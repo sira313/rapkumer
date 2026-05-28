@@ -12,7 +12,7 @@ async function handle({ locals, url }: { locals: App.Locals; url: URL }) {
 
 	const filename = `Biodata_${payload.biodataData?.murid?.nama?.replace(/\s+/g, '_') || 'dokumen'}.pdf`;
 
-	return new Response(new Blob([pdfBuffer as any], { type: 'application/pdf' }), {
+	return new Response(new Blob([pdfBuffer as BlobPart], { type: 'application/pdf' }), {
 		headers: {
 			'Content-Disposition': `inline; filename="${filename}"`
 		}

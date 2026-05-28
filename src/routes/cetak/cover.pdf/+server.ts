@@ -10,7 +10,7 @@ async function handle({ locals, url }: { locals: App.Locals; url: URL }) {
 		payload.coverData as unknown as Record<string, unknown>
 	);
 
-	return new Response(new Blob([pdfBuffer as any], { type: 'application/pdf' }), {
+	return new Response(new Blob([pdfBuffer as BlobPart], { type: 'application/pdf' }), {
 		headers: {
 			'Content-Disposition': `inline; filename="Cover_Rapor_${payload.coverData?.murid?.nama?.replace(/\s+/g, '_') || 'dokumen'}.pdf"`
 		}

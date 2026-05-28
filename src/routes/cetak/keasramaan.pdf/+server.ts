@@ -16,7 +16,7 @@ async function handle({ locals, url }: { locals: App.Locals; url: URL }) {
 
 	const filename = `Rapor_Keasramaan_${payload.keasramaanData?.murid?.nama || 'dokumen'}_${payload.keasramaanData?.periode?.tahunAjaran || ''}_${payload.keasramaanData?.periode?.semester || ''}.pdf`;
 
-	return new Response(new Blob([pdfBuffer as any], { type: 'application/pdf' }), {
+	return new Response(new Blob([pdfBuffer as BlobPart], { type: 'application/pdf' }), {
 		headers: {
 			'Content-Disposition': `inline; filename="${filename}"`
 		}
