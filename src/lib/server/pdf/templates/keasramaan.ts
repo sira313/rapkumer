@@ -134,6 +134,7 @@ body {
 
 .main-table .col-deskripsi {
 	text-align: left;
+	white-space: pre-line;
 }
 
 thead { display: table-header-group; }

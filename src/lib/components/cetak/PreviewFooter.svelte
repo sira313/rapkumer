@@ -202,6 +202,9 @@
 				<Icon name="gear" />
 				Kriteria
 			</button>
+		{/if}
+
+		{#if isRaporSelected || isKeasramaanSelected}
 			<div class="flex flex-row gap-2">
 				<label class="sr-only" for="tp-mode-select">TP mode</label>
 				<select
@@ -241,25 +244,6 @@
 		{/if}
 
 		{#if isBiodataSelected}
-			<label class="swap whitespace-nowrap shadow-none">
-				<input
-					type="checkbox"
-					checked={showBgLogo}
-					onchange={(e) => onToggleBgLogo((e.currentTarget as HTMLInputElement).checked)}
-				/>
-				<div
-					class="btn btn-soft swap-on btn-sm shadow-none"
-					title="Tambahkan watermark logo sekolah"
-				>
-					BG OFF
-				</div>
-				<div class="btn btn-soft swap-off btn-sm shadow-none" title="Hapus watermark logo sekolah">
-					BG ON
-				</div>
-			</label>
-		{/if}
-
-		{#if isKeasramaanSelected}
 			<label class="swap whitespace-nowrap shadow-none">
 				<input
 					type="checkbox"

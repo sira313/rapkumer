@@ -20,6 +20,7 @@ import {
 	fallbackTempat,
 	getLogoSrc
 } from '$lib/server/pdf/preview-utils';
+import { parseTPMode } from '$lib/rapor-params';
 
 export type KeasramaanContext = {
 	locals: App.Locals;
@@ -51,7 +52,54 @@ function lowercaseFirstChar(text: string): string {
 	return text.charAt(0).toLowerCase() + text.slice(1);
 }
 
-function buildIndicatorDeskripsi(
+type KeasramaanTPData = {
+	nilai: number;
+	deskripsi: string;
+	predikat: PredikatKey;
+};
+
+function buildKeasramaanCompactMode(muridNama: string, tpData: KeasramaanTPData[]): string {
+	if (!tpData.length) return '';
+
+	// Sort all by nilai descending for highest, ascending for lowest
+	const sortedDesc = [...tpData].sort((a, b) => b.nilai - a.nilai);
+	const sortedAsc = [...tpData].sort((a, b) => a.nilai - b.nilai);
+
+	const lines: string[] = [];
+
+	// Paragraph 1: highest TP
+	const highest = sortedDesc[0];
+	const cleanHighest = highest.deskripsi.replace(/[.!?]+$/gu, '').trim();
+	lines.push(`Ananda ${muridNama} ${narrativeFor(highest)} ${cleanHighest}.`);
+
+	// Paragraph 2: lowest TP (skip if only 1 TP — same as highest)
+	if (tpData.length > 1) {
+		const lowest = sortedAsc[0];
+		const cleanLowest = lowest.deskripsi.replace(/[.!?]+$/gu, '').trim();
+		if (lowest.predikat === 'perlu-bimbingan') {
+			lines.push(`Ananda ${muridNama} masih perlu bimbingan dalam ${cleanLowest}.`);
+		} else {
+			lines.push(`Ananda ${muridNama} ${narrativeFor(lowest)} ${cleanLowest}.`);
+		}
+	}
+
+	return lines.join('\n');
+}
+
+function narrativeFor(d: KeasramaanTPData): string {
+	switch (d.predikat) {
+		case 'sangat-baik':
+			return 'menunjukkan penguasaan yang sangat baik dalam';
+		case 'baik':
+			return 'menunjukkan penguasaan yang baik dalam';
+		case 'cukup':
+			return 'cukup mampu';
+		default:
+			return '';
+	}
+}
+
+function buildKeasramaanFullDescMode(
 	muridNama: string,
 	tpsByPredikat: Record<PredikatKey, string[]>
 ): string {
@@ -98,7 +146,7 @@ function buildIndicatorDeskripsi(
 
 	// Return both paragraphs separated by newline, or just the achieved one if no belum tercapai
 	if (achievedParagraph && notAchievedParagraph) {
-		return `${achievedParagraph}\n\n${notAchievedParagraph}`;
+		return `${achievedParagraph}\n${notAchievedParagraph}`;
 	}
 	if (achievedParagraph) return achievedParagraph;
 	if (notAchievedParagraph) return notAchievedParagraph;
@@ -156,6 +204,7 @@ export async function getKeasramaanPreviewPayload({ locals, url }: KeasramaanCon
 
 	const muridId = optionalInteger('murid_id', url.searchParams.get('murid_id'));
 	const kelasId = optionalInteger('kelas_id', url.searchParams.get('kelas_id'));
+	const tpMode = parseTPMode(url.searchParams.get('full_tp'));
 
 	// If no murid_id provided, return null (used in bulk preview mode)
 	if (!muridId) {
@@ -303,34 +352,55 @@ export async function getKeasramaanPreviewPayload({ locals, url }: KeasramaanCon
 						predikat = hurfToPredikat[huruf || 'C'] || 'cukup';
 					}
 
-					// Build comprehensive deskripsi by grouping all TP by their predikat
-					// First, calculate predikat for each TP
-					const tpsByPredikat: Record<PredikatKey, string[]> = {
-						'sangat-baik': [],
-						baik: [],
-						cukup: [],
-						'perlu-bimbingan': []
-					};
+					// Build descriptive text based on tpMode
+					if (tpMode === 'compact') {
+						// Build individual TP data for compact mode
+						const tpData: KeasramaanTPData[] = [];
 
-					for (let i = 0; i < asesmen.nilaiTP.length; i++) {
-						const tpNilai = asesmen.nilaiTP[i];
-						const tpDesc = asesmen.tpDescriptions[i];
-						if (tpNilai === null || !tpDesc) continue;
+						for (let i = 0; i < asesmen.nilaiTP.length; i++) {
+							const tpNilai = asesmen.nilaiTP[i];
+							const tpDesc = asesmen.tpDescriptions[i];
+							if (tpNilai === null || !tpDesc) continue;
 
-						// Convert TP nilai to predikat
-						const tpHuruf = nilaiAngkaToHuruf(tpNilai as number);
-						const tpHurfToPredikat: Record<string, PredikatKey> = {
-							A: 'sangat-baik',
-							B: 'baik',
-							C: 'cukup',
-							D: 'perlu-bimbingan'
+							const tpHuruf = nilaiAngkaToHuruf(tpNilai as number);
+							const tpHurfToPredikat: Record<string, PredikatKey> = {
+								A: 'sangat-baik',
+								B: 'baik',
+								C: 'cukup',
+								D: 'perlu-bimbingan'
+							};
+							const tpPredikat = tpHurfToPredikat[tpHuruf || 'C'] || 'cukup';
+							tpData.push({ nilai: tpNilai as number, deskripsi: tpDesc, predikat: tpPredikat });
+						}
+
+						deskripsi = buildKeasramaanCompactMode(murid.nama, tpData);
+					} else {
+						// Build full-desc by grouping all TP by their predikat
+						const tpsByPredikat: Record<PredikatKey, string[]> = {
+							'sangat-baik': [],
+							baik: [],
+							cukup: [],
+							'perlu-bimbingan': []
 						};
-						const tpPredikat = tpHurfToPredikat[tpHuruf || 'C'] || 'cukup';
-						tpsByPredikat[tpPredikat].push(tpDesc);
-					}
 
-					// Build descriptive text using helper function
-					deskripsi = buildIndicatorDeskripsi(murid.nama, tpsByPredikat);
+						for (let i = 0; i < asesmen.nilaiTP.length; i++) {
+							const tpNilai = asesmen.nilaiTP[i];
+							const tpDesc = asesmen.tpDescriptions[i];
+							if (tpNilai === null || !tpDesc) continue;
+
+							const tpHuruf = nilaiAngkaToHuruf(tpNilai as number);
+							const tpHurfToPredikat: Record<string, PredikatKey> = {
+								A: 'sangat-baik',
+								B: 'baik',
+								C: 'cukup',
+								D: 'perlu-bimbingan'
+							};
+							const tpPredikat = tpHurfToPredikat[tpHuruf || 'C'] || 'cukup';
+							tpsByPredikat[tpPredikat].push(tpDesc);
+						}
+
+						deskripsi = buildKeasramaanFullDescMode(murid.nama, tpsByPredikat);
+					}
 				}
 
 				return {
