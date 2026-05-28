@@ -127,12 +127,6 @@ function joinList(items: string[]): string {
 	return items.slice(0, -1).join(', ') + ', dan ' + items.at(-1);
 }
 
-// Capitalize first letter
-function capitalizeFirst(s: string) {
-	if (!s) return s;
-	return s.charAt(0).toUpperCase() + s.slice(1);
-}
-
 // Compact mode: Show exactly 2 TP with new logic
 // - tercapai (achieved): cukup, baik, sangat baik - digabung jadi 1 baris
 // - belum tercapai (not achieved): perlu bimbingan
@@ -212,29 +206,41 @@ export function buildFullDescMode(muridNama: string, descriptors: CapaianDescrip
 	}
 
 	const achievedOrder: PredikatKey[] = ['sangat-baik', 'baik', 'cukup'];
-	const achievedSentences: string[] = [];
+	const achievedSegments: string[] = [];
 
-	for (let i = 0; i < achievedOrder.length; i++) {
-		const key = achievedOrder[i];
+	for (const key of achievedOrder) {
 		const list = groups[key];
 		if (!list.length) continue;
 
 		const descs = list.map((it) => it.deskripsi.replace(/[.!?]+$/gu, '').trim());
 		const joined = joinList(descs);
 
-		let phrase = '';
-		if (key === 'sangat-baik') phrase = `menunjukkan penguasaan yang sangat baik dalam ${joined}.`;
-		else if (key === 'baik') phrase = `menunjukkan penguasaan yang baik dalam ${joined}.`;
-		else phrase = `cukup mampu ${joined}.`;
-
-		if (achievedSentences.length === 0) {
-			achievedSentences.push(`Ananda ${muridNama} ${phrase}`);
-		} else {
-			achievedSentences.push(capitalizeFirst(phrase));
-		}
+		if (key === 'sangat-baik')
+			achievedSegments.push(`menunjukkan penguasaan yang sangat baik dalam ${joined}`);
+		else if (key === 'baik')
+			achievedSegments.push(`menunjukkan penguasaan yang baik dalam ${joined}`);
+		else achievedSegments.push(`cukup mampu ${joined}`);
 	}
 
-	const achievedParagraph = achievedSentences.length ? achievedSentences.join(' ') : '';
+	let achievedParagraph = '';
+	if (achievedSegments.length === 1) {
+		achievedParagraph = `Ananda ${muridNama} ${achievedSegments[0]}.`;
+	} else if (achievedSegments.length > 1) {
+		const parts: string[] = [];
+		for (let i = 0; i < achievedSegments.length; i++) {
+			if (i === 0) {
+				parts.push(`Ananda ${muridNama} ${achievedSegments[i]}`);
+			} else if (i === achievedSegments.length - 1) {
+				const lastPhrase = achievedSegments[i].startsWith('cukup mampu')
+					? achievedSegments[i].replace('cukup mampu', 'serta cukup mampu dalam')
+					: `serta ${achievedSegments[i]}`;
+				parts.push(lastPhrase);
+			} else {
+				parts.push(achievedSegments[i]);
+			}
+		}
+		achievedParagraph = parts.join('; ') + '.';
+	}
 
 	// Build "tidak tercapai" paragraph
 	const needList = groups['perlu-bimbingan'];

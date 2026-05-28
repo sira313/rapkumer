@@ -104,36 +104,46 @@ function buildKeasramaanFullDescMode(
 	tpsByPredikat: Record<PredikatKey, string[]>
 ): string {
 	const achievedOrder: PredikatKey[] = ['sangat-baik', 'baik', 'cukup'];
-	const achievedSentences: string[] = [];
+	const achievedSegments: string[] = [];
 
 	// Build "tercapai" paragraph
 	for (const key of achievedOrder) {
 		const tpList = tpsByPredikat[key] || [];
 		if (!tpList.length) continue;
 
-		// Clean descriptions (remove trailing punctuation) and lowercase first char
 		const cleanDescs = tpList.map((d) => lowercaseFirstChar(d.replace(/[.!?]+$/gu, '').trim()));
 		const joined = joinList(cleanDescs);
 
-		let phrase = '';
 		if (key === 'sangat-baik') {
-			phrase = `menunjukkan penguasaan yang sangat baik dalam ${joined}`;
+			achievedSegments.push(`menunjukkan penguasaan yang sangat baik dalam ${joined}`);
 		} else if (key === 'baik') {
-			phrase = `menunjukkan penguasaan yang baik dalam ${joined}`;
+			achievedSegments.push(`menunjukkan penguasaan yang baik dalam ${joined}`);
 		} else if (key === 'cukup') {
-			phrase = `cukup mampu ${joined}`;
-		}
-
-		if (achievedSentences.length === 0) {
-			// First sentence: add student name
-			achievedSentences.push(`Ananda ${muridNama} ${phrase}`);
-		} else {
-			// Subsequent phrases: join with comma and lowercase
-			achievedSentences.push(`, ${phrase}`);
+			achievedSegments.push(`cukup mampu ${joined}`);
 		}
 	}
 
-	const achievedParagraph = achievedSentences.length > 0 ? achievedSentences.join('') + '.' : '';
+	// Join segments with "; " and prefix last with "serta"
+	let achievedParagraph = '';
+	if (achievedSegments.length === 1) {
+		achievedParagraph = `Ananda ${muridNama} ${achievedSegments[0]}.`;
+	} else if (achievedSegments.length > 1) {
+		const parts: string[] = [];
+		for (let i = 0; i < achievedSegments.length; i++) {
+			if (i === 0) {
+				parts.push(`Ananda ${muridNama} ${achievedSegments[i]}`);
+			} else if (i === achievedSegments.length - 1) {
+				// Last segment gets "serta" prefix
+				const lastPhrase = achievedSegments[i].startsWith('cukup mampu')
+					? achievedSegments[i].replace('cukup mampu', 'serta cukup mampu dalam')
+					: `serta ${achievedSegments[i]}`;
+				parts.push(lastPhrase);
+			} else {
+				parts.push(achievedSegments[i]);
+			}
+		}
+		achievedParagraph = parts.join('; ') + '.';
+	}
 
 	// Build "belum tercapai" paragraph
 	const needList = tpsByPredikat['perlu-bimbingan'] || [];
