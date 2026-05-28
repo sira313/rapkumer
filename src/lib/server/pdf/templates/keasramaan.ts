@@ -96,47 +96,26 @@ body {
 
 .main-table {
 	width: 100%;
-	border-collapse: separate;
-	border-spacing: 0;
+	border-collapse: collapse;
 	font-size: 10pt;
 	margin-bottom: 4.2mm;
 }
 
 .main-table th {
-	border: 0.15mm solid #000;
+	border: 0.3mm solid #000;
 	padding: 2.8mm 4.2mm;
 	font-weight: bold;
 	text-align: center;
 	background: #fff;
-	box-decoration-break: clone;
 }
 
 .main-table td {
-	border: 0.15mm solid #000;
+	border: 0.3mm solid #000;
 	padding: 1.4mm 2.8mm;
 	vertical-align: top;
 	page-break-inside: auto;
 	orphans: 1;
 	widows: 1;
-	box-decoration-break: clone;
-}
-
-.main-table th:first-child,
-.main-table td:first-child {
-	border-left-width: 0.3mm;
-}
-
-.main-table th:last-child,
-.main-table td:last-child {
-	border-right-width: 0.3mm;
-}
-
-.main-table thead tr:first-child th {
-	border-top-width: 0.3mm;
-}
-
-.main-table tbody:last-child tr:last-child td {
-	border-bottom-width: 0.3mm;
 }
 
 .main-table .col-no {
