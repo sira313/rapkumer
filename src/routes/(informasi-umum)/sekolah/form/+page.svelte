@@ -4,6 +4,8 @@
 	import { onMount } from 'svelte';
 	import FormEnhance from '$lib/components/form-enhance.svelte';
 	import Icon from '$lib/components/icon.svelte';
+	import { showModal } from '$lib/components/global-modal.svelte';
+	import ImportDatabaseModal from '$lib/components/modals/import-database-modal.svelte';
 	import { jenjangPendidikanSederajat, nauganOptions } from '$lib/statics';
 
 	let { data } = $props();
@@ -41,6 +43,14 @@
 	// the first matching option for that value (usually the base label). To show the
 	// stored variant label (e.g., "Madrasah Ibtidaiyah (MI)") we programmatically
 	// select the option whose data-variant matches initialSekolah.jenjangVariant.
+	function handleImportDb() {
+		showModal({
+			title: 'Import Database',
+			body: ImportDatabaseModal,
+			dismissible: true
+		});
+	}
+
 	onMount(() => {
 		if (!initialSekolah?.jenjangVariant) return;
 		// run after microtask to let any form population actions finish
@@ -352,6 +362,10 @@
 					</a>
 				{/if}
 
+				<button type="button" class="btn btn-soft shadow-none" onclick={handleImportDb}>
+					<Icon name="import" />
+					Import DB
+				</button>
 				<button class="btn btn-primary shadow-none" disabled={submitting}>
 					{#if submitting}
 						<span class="loading loading-spinner"></span>

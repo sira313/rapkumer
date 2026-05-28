@@ -271,7 +271,7 @@ const cookieParser: Handle = async ({ event, resolve }) => {
 		});
 	}
 
-	if (!sekolah?.id && event.route.id != '/(informasi-umum)/sekolah/form') {
+	if (!sekolah?.id && event.route.id != '/(informasi-umum)/sekolah/form' && event.route.id != '/api/database/import') {
 		throw redirect(303, `/sekolah/form?init`);
 	}
 
