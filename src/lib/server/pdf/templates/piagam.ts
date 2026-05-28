@@ -150,6 +150,7 @@ function piagamStyles(margin16mm = true): string {
 	background-size: cover;
 	background-position: center;
 	background-repeat: no-repeat;
+	opacity: 0.6;
 }
 
 .font-palatino {
