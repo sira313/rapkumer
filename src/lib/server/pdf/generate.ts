@@ -37,15 +37,41 @@ export async function generatePDF(
 }
 
 /**
+ * Extract all @page CSS blocks using brace counting so nested rules
+ * (@bottom-left, @bottom-right) are handled correctly.
+ */
+function extractPageBlocks(css: string): string[] {
+	const blocks: string[] = [];
+	const re = /@page\s*\{/g;
+	let match: RegExpExecArray | null;
+	while ((match = re.exec(css)) !== null) {
+		let depth = 1;
+		const start = match.index;
+		let i = match.index + match[0].length;
+		while (i < css.length && depth > 0) {
+			if (css[i] === '{') depth++;
+			else if (css[i] === '}') depth--;
+			i++;
+		}
+		if (depth === 0) {
+			blocks.push(css.substring(start, i));
+		}
+	}
+	return blocks;
+}
+
+/**
  * Build a combined CSS string for bulk PDF generation using named pages.
  *
  * Strategy:
- * 1. Extract the base @page from the first student's style (keeps size/margins,
- *    replaces @bottom-right with a generic page counter, strips @bottom-left).
- * 2. For each student create a named page @page sN { @bottom-left { ... } }.
- * 3. Wrap each student's body in <div style="page: sN"> to activate the page name.
- * 4. Inter-student spacing via sp-break class (page-break-before: always).
- * 5. Non-page CSS (sharedStyles + template styles) is kept verbatim.
+ * 1. Extract all @page blocks from the first student's CSS with brace counting.
+ * 2. Use the template-specific @page (one with @bottom-left/@bottom-right) as base,
+ *    stripping both footer rules (they'll be provided per-student).
+ * 3. For each student create a named page @page sN with both @bottom-left and
+ *    @bottom-right so PagedJS doesn't need @page inheritance.
+ * 4. Wrap each student's body in <div style="page: sN"> to activate the page name.
+ * 5. Inter-student spacing via sp-break class (page-break-before: always).
+ * 6. Single watermark at the combined level to prevent fixed-position stacking.
  */
 
 type BulkItem = {
@@ -68,21 +94,36 @@ export async function generateBulkPDF(items: BulkItem[]): Promise<Uint8Array> {
 
 	const allCSS = styleMatch[1];
 
-	// 1. Non-page CSS: everything outside @page blocks
-	const nonPageCSS = allCSS.replace(/@page\s*\{[\s\S]*?\}/g, '').trim();
+	// Extract all @page blocks using brace counting (handles nested @bottom-left/rules)
+	const pageBlocks = extractPageBlocks(allCSS);
 
-	// 2. Base @page (size/margins from first student, generic @bottom-right, no @bottom-left)
-	const pageMatch = allCSS.match(/@page\s*\{[\s\S]*?\}/);
-	const basePage = pageMatch
-		? pageMatch[0]
-			.replace(/@bottom-left\s*\{[\s\S]*?\}/g, '')
-			.replace(
-				/@bottom-right\s*\{[\s\S]*?\}/g,
-				`@bottom-right {\n\t\tcontent: "Halaman: " counter(page);\n\t\tfont-size: 9pt;\n\t\tfont-family: Helvetica, Arial, sans-serif;\n\t\tcolor: #555;\n\t}`
-			)
+	// Remove all complete @page blocks from CSS to get non-page CSS
+	let nonPageCSS = allCSS;
+	for (const block of pageBlocks) {
+		nonPageCSS = nonPageCSS.replace(block, '');
+	}
+	nonPageCSS = nonPageCSS.trim();
+
+	// Use the template-specific @page (one with @bottom-left or @bottom-right) as base.
+	// Falls back to the last @page block, or first, or a sensible default.
+	const templatePage =
+		pageBlocks.find((b) => /@bottom-(left|right)/.test(b)) ??
+		pageBlocks[pageBlocks.length - 1] ??
+		pageBlocks[0];
+
+	// Strip both @bottom-left and @bottom-right from base (they'll be provided per-student)
+	const basePage = templatePage
+		? templatePage
+				.replace(/@bottom-left\s*\{[\s\S]*?\}/g, '')
+				.replace(/@bottom-right\s*\{[\s\S]*?\}/g, '')
+				.trim()
 		: '@page { size: A4 portrait; margin: 20mm; }';
 
-	// 3. Build named pages + body content
+	// Extract @bottom-right content from the template for use in each named page
+	const brMatch = templatePage ? templatePage.match(/@bottom-right\s*\{([\s\S]*?)\}/i) : null;
+	const bottomRightContent = brMatch ? brMatch[1].trim() : '';
+
+	// Build named pages + body content
 	const namedPages: string[] = [];
 	const bodies: string[] = [];
 
@@ -92,14 +133,25 @@ export async function generateBulkPDF(items: BulkItem[]): Promise<Uint8Array> {
 
 		const blMatch = htmls[i].match(/@bottom-left\s*\{([\s\S]*?)\}/i);
 		if (blMatch) {
-			namedPages.push(
-				`@page s${i} {\n\t@bottom-left {\n\t\t${blMatch[1].trim()}\n\t}\n}`
-			);
+			let namedPageCss = `@page s${i} {\n\t@bottom-left {\n\t\t${blMatch[1].trim()}\n\t}\n`;
+			if (bottomRightContent) {
+				namedPageCss += `\t@bottom-right {\n\t\t${bottomRightContent}\n\t}\n`;
+			}
+			namedPageCss += '}';
+			namedPages.push(namedPageCss);
 		}
 
 		const cls = i === 0 ? 'sp' : 'sp sp-break';
 		bodies.push(`<div class="${cls}" style="page: s${i}">${bodyMatch[1]}</div>`);
 	}
+
+	// Strip duplicate watermarks from all bodies and add one at the combined level.
+	// position: fixed elements are rendered on every page by PagedJS; having N of them
+	// would stack opacity (0.12 × N → near opaque).
+	const watermarkRe = /<img[^>]*\bclass\s*=\s*"watermark"[^>]*>/gi;
+	const watermarkMatch = bodies[0].match(watermarkRe);
+	const watermarkHtml = watermarkMatch ? watermarkMatch[0] : '';
+	const cleanedBodies = bodies.map((body) => body.replace(watermarkRe, ''));
 
 	const combined = `<!DOCTYPE html>
 <html lang="id">
@@ -116,7 +168,8 @@ ${namedPages.join('\n\n')}
 </style>
 </head>
 <body>
-${bodies.join('\n')}
+${watermarkHtml}
+${cleanedBodies.join('\n')}
 </body>
 </html>`;
 
