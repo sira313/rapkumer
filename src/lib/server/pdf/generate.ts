@@ -61,17 +61,17 @@ function extractPageBlocks(css: string): string[] {
 }
 
 /**
- * Build a combined CSS string for bulk PDF generation using named pages.
+ * Build a combined CSS string for bulk PDF generation using running elements.
  *
  * Strategy:
  * 1. Extract all @page blocks from the first student's CSS with brace counting.
- * 2. Use the template-specific @page (one with @bottom-left/@bottom-right) as base,
- *    stripping both footer rules (they'll be provided per-student).
- * 3. For each student create a named page @page sN with both @bottom-left and
- *    @bottom-right so PagedJS doesn't need @page inheritance.
- * 4. Wrap each student's body in <div style="page: sN"> to activate the page name.
- * 5. Inter-student spacing via sp-break class (page-break-before: always).
- * 6. Single watermark at the combined level to prevent fixed-position stacking.
+ * 2. Remove all @page blocks from CSS to get non-page CSS.
+ * 3. For templates with @bottom-left/@bottom-right, replace the content string
+ *    with content: element(footer-left) so each student can supply their own
+ *    footer via a <span class="footer-left"> (position: running) prepended to
+ *    their body content. PagedJS running elements update per-student naturally.
+ * 4. Inter-student spacing via sp-break class (page-break-before: always).
+ * 5. Single watermark at the combined level to prevent fixed-position stacking.
  */
 
 type BulkItem = {
@@ -94,6 +94,12 @@ export async function generateBulkPDF(items: BulkItem[]): Promise<Uint8Array> {
 
 	const allCSS = styleMatch[1];
 
+	// Extract <body> class attribute (e.g. "font-palatino", "font-garamond") from
+	// the first student's HTML so it can be applied to the combined <body> tag.
+	const bodyClassRe = /<body[^>]*\sclass="([^"]*)"[^>]*>/i;
+	const bodyClassMatch = htmls[0].match(bodyClassRe);
+	const bodyClass = bodyClassMatch ? bodyClassMatch[1] : '';
+
 	// Extract all @page blocks using brace counting (handles nested @bottom-left/rules)
 	const pageBlocks = extractPageBlocks(allCSS);
 
@@ -111,47 +117,58 @@ export async function generateBulkPDF(items: BulkItem[]): Promise<Uint8Array> {
 		pageBlocks[pageBlocks.length - 1] ??
 		pageBlocks[0];
 
-	// Strip both @bottom-left and @bottom-right from base (they'll be provided per-student)
-	const basePage = templatePage
-		? templatePage
-				.replace(/@bottom-left\s*\{[\s\S]*?\}/g, '')
-				.replace(/@bottom-right\s*\{[\s\S]*?\}/g, '')
-				.trim()
-		: '@page { size: A4 portrait; margin: 20mm; }';
+	const hasBottomLeft = templatePage ? /@bottom-left/.test(templatePage) : false;
 
-	// Extract @bottom-right content from the template for use in each named page
-	const brMatch = templatePage ? templatePage.match(/@bottom-right\s*\{([\s\S]*?)\}/i) : null;
-	const bottomRightContent = brMatch ? brMatch[1].trim() : '';
+	// Build base @page.
+	// For templates with @bottom-left: replace the content string with a running
+	// element reference so each student can supply their own footer text via
+	// <span style="position: running(footer-left)">.
+	// For templates without: use the @page as-is (no per-student footer needed).
+	const basePage =
+		hasBottomLeft && templatePage
+			? templatePage.replace(/content:\s*"[^"]*"/, 'content: element(footer-left)').trim()
+			: templatePage
+				? templatePage.trim()
+				: '@page { size: A4 portrait; margin: 20mm; }';
 
-	// Build named pages + body content
-	const namedPages: string[] = [];
+	// Build body content
 	const bodies: string[] = [];
 
 	for (let i = 0; i < htmls.length; i++) {
-		const bodyMatch = htmls[i].match(/<body>([\s\S]*)<\/body>/i);
+		const bodyMatch = htmls[i].match(/<body[^>]*>([\s\S]*)<\/body>/i);
 		if (!bodyMatch) throw new Error(`Failed to extract body from student ${i}`);
 
-		const blMatch = htmls[i].match(/@bottom-left\s*\{([\s\S]*?)\}/i);
-		if (blMatch) {
-			let namedPageCss = `@page s${i} {\n\t@bottom-left {\n\t\t${blMatch[1].trim()}\n\t}\n`;
-			if (bottomRightContent) {
-				namedPageCss += `\t@bottom-right {\n\t\t${bottomRightContent}\n\t}\n`;
+		// For templates with @bottom-left, prepend a running element whose content
+		// PagedJS will display in the margin box via content: element(footer-left).
+		let runningFooter = '';
+		if (hasBottomLeft) {
+			const blMatch = htmls[i].match(/@bottom-left\s*\{([\s\S]*?)\}/i);
+			if (blMatch) {
+				const contentMatch = blMatch[1].match(/content:\s*"([^"]*)"/i);
+				const footerText = contentMatch ? contentMatch[1] : '';
+				if (footerText) {
+					runningFooter = `<span class="footer-left">${footerText}</span>`;
+				}
 			}
-			namedPageCss += '}';
-			namedPages.push(namedPageCss);
 		}
 
 		const cls = i === 0 ? 'sp' : 'sp sp-break';
-		bodies.push(`<div class="${cls}" style="page: s${i}">${bodyMatch[1]}</div>`);
+		bodies.push(`<div class="${cls}">${runningFooter}${bodyMatch[1]}</div>`);
 	}
 
-	// Strip duplicate watermarks from all bodies and add one at the combined level.
-	// position: fixed elements are rendered on every page by PagedJS; having N of them
-	// would stack opacity (0.12 × N → near opaque).
+	// Strip duplicate fixed-position elements that should appear only once
+	// in the combined PDF (watermark, piagam background).
+	// position: fixed elements are rendered on every page by PagedJS; having N of
+	// them would stack opacity (0.8 × N → near opaque).
 	const watermarkRe = /<img[^>]*\bclass\s*=\s*"watermark"[^>]*>/gi;
 	const watermarkMatch = bodies[0].match(watermarkRe);
 	const watermarkHtml = watermarkMatch ? watermarkMatch[0] : '';
-	const cleanedBodies = bodies.map((body) => body.replace(watermarkRe, ''));
+
+	const piagamBgRe = /<div\s+class="piagam-bg"[^>]*><\/div>/gi;
+	const piagamBgMatch = bodies[0].match(piagamBgRe);
+	const piagamBgHtml = piagamBgMatch ? piagamBgMatch[0] : '';
+
+	const cleanedBodies = bodies.map((body) => body.replace(watermarkRe, '').replace(piagamBgRe, ''));
 
 	const combined = `<!DOCTYPE html>
 <html lang="id">
@@ -162,13 +179,23 @@ ${nonPageCSS}
 
 ${basePage}
 
-${namedPages.join('\n\n')}
-
 .sp-break { page-break-before: always; }
+
+.footer-left {
+	position: running(footer-left);
+	font-size: 9pt;
+	font-family: Helvetica, Arial, sans-serif;
+	color: #555;
+}
+
+@media print {
+	.footer-left { position: running(footer-left); }
+}
 </style>
 </head>
-<body>
+<body${bodyClass ? ` class="${bodyClass}"` : ''}>
 ${watermarkHtml}
+${piagamBgHtml}
 ${cleanedBodies.join('\n')}
 </body>
 </html>`;

@@ -435,17 +435,15 @@ ${jenisOrder
 			<td colspan="4">${jenisLabels[jenis]}</td>
 		</tr>
 ${group.items
-	.map(
-		(item, i) => {
-			const cls = i === 0 ? ' class="first-data-row"' : '';
-			return `		<tr${cls}>
+	.map((item, i) => {
+		const cls = i === 0 ? ' class="first-data-row"' : '';
+		return `		<tr${cls}>
 			<td class="col-no" style="text-align:center;">${i + 1}</td>
 			<td class="col-mata-pelajaran">${item.mataPelajaran}</td>
 			<td class="col-nilai" style="text-align:center;">${formatValue(item.nilaiAkhir)}</td>
 			<td class="col-capaian">${formatValue(item.deskripsi)}</td>
 		</tr>`;
-		}
-	)
+	})
 	.join('\n')}`;
 	})
 	.join('\n')}
