@@ -1,6 +1,5 @@
 <script lang="ts">
 	/* eslint-disable @typescript-eslint/no-unused-vars */
-	/* eslint-disable @typescript-eslint/no-explicit-any */
 	import { page } from '$app/state';
 	import PreviewHeader from '$lib/components/cetak/PreviewHeader.svelte';
 	import DocumentMuridSelector from '$lib/components/cetak/DocumentMuridSelector.svelte';
@@ -17,16 +16,6 @@
 	} from '$lib/single-preview-logic';
 	import { loadBulkPreviews_robust, buildBulkErrorMessage } from '$lib/bulk-preview-logic';
 	import { DEFAULT_RAPOR_CRITERIA } from '$lib/rapor-params';
-	import {
-		downloadKeasramaanPDF,
-		generateKeasramaanPDF
-	} from '$lib/utils/pdf/keasramaan-pdf-generator';
-	import { downloadRaporPDF, generateRaporPDF } from '$lib/utils/pdf/rapor-pdf-generator';
-	import { downloadCoverPDF, generateCoverPDF } from '$lib/utils/pdf/cover-pdf-generator';
-	import { downloadBiodataPDF, generateBiodataPDF } from '$lib/utils/pdf/biodata-pdf-generator';
-	import { downloadPiagamPDF, generatePiagamPDF } from '$lib/utils/pdf/piagam-pdf-generator';
-	import { jsPDF } from 'jspdf';
-
 	let { data } = $props();
 
 	const documentOptions: Array<{ value: DocumentType; label: string }> = [
@@ -47,8 +36,12 @@
 	let previewPrintable = $state<HTMLDivElement | null>(null);
 	let previewLoading = $state(false);
 	let previewError = $state<string | null>(null);
-	let showBgLogo = $state(false);
+	let showBgLogo = $state(true);
 	let downloadLoading = $state(false);
+
+	let pdfViewerUrl = $state('');
+	let pdfViewerTitle = $state('');
+	let pdfViewerEl = $state<HTMLElement | null>(null);
 
 	// show TP listing: 'compact' | 'full-desc'
 	let fullTP = $state<'compact' | 'full-desc'>('compact');
@@ -230,6 +223,10 @@
 		waitingForPrintable = false;
 	}
 
+	const docLabel = $derived(
+		selectedDocumentEntry?.label?.replace(/\s+/g, '-')?.toLowerCase() ?? selectedDocument
+	);
+
 	async function handleDownloadSingle() {
 		const documentType = selectedDocument;
 		if (!documentType) {
@@ -257,23 +254,53 @@
 			return;
 		}
 
+		await loadPdf(murid);
+	}
+
+	async function scrollToViewer() {
+		await tick();
+		pdfViewerEl?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+	}
+
+	async function loadPdf(murid: MuridData) {
+		const documentType = selectedDocument;
+		if (!documentType) return;
 		downloadLoading = true;
-
 		try {
-			const result = await loadSinglePreview({
-				documentType,
-				murid,
-				kelasId: data.kelasId ? Number(data.kelasId) : undefined,
-				tpMode: fullTP,
-				criteria: { kritCukup, kritBaik },
-				signal: new AbortController().signal
+			const res = await fetch('/api/pdf/token', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					docType: documentType,
+					muridId: murid.id,
+					kelasId: data.kelasId ? Number(data.kelasId) : undefined,
+					tpMode: fullTP,
+					kriteria: { kritCukup, kritBaik },
+					template: documentType === 'piagam' ? selectedTemplate : undefined,
+					docLabel,
+					bgLogo: showBgLogo
+				})
 			});
+			if (!res.ok) throw new Error('Gagal mendapatkan token');
+			const { token, slug } = await res.json();
 
-			await generatePDFFromPreviewData(documentType, result.data);
+			const pdfRes = await fetch(`/cetak/pdf/${slug}/${token}`);
+			if (!pdfRes.ok) throw new Error('Gagal memuat PDF');
+			const blob = await pdfRes.blob();
+
+			if (pdfViewerUrl) URL.revokeObjectURL(pdfViewerUrl);
+			pdfViewerUrl = URL.createObjectURL(blob);
+			pdfViewerTitle = slug
+				.split('-')
+				.map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
+				.join(' ');
+
+			scrollToViewer();
+
+			toast('PDF berhasil dimuat', 'success');
 		} catch (err) {
 			console.error('Download error:', err);
-			const errorMsg = err instanceof Error ? err.message : 'Gagal membuat PDF';
-			toast(errorMsg, 'error');
+			toast('Gagal membuka PDF', 'error');
 		} finally {
 			downloadLoading = false;
 		}
@@ -288,8 +315,13 @@
 		const targetIndex = currentIndex + offset;
 		if (targetIndex < 0 || targetIndex >= list.length) return;
 		const targetId = list[targetIndex];
+		const wasViewerOpen = !!pdfViewerUrl;
 		selectedMuridId = targetId;
 		await tick();
+		if (wasViewerOpen) {
+			const murid = selectedMurid;
+			if (murid) loadPdf(murid);
+		}
 	}
 
 	async function handleDownloadBulk() {
@@ -302,7 +334,6 @@
 			return;
 		}
 
-		// untuk piagam gunakan ranking options, untuk lainnya gunakan semua murid
 		const muridList = isPiagamSelected
 			? piagamRankingOptions.map((option) => ({
 					id: option.muridId,
@@ -323,26 +354,36 @@
 		downloadLoading = true;
 
 		try {
-			const result = await loadBulkPreviews_robust({
-				documentType,
-				muridList,
-				kelasId: data.kelasId ? Number(data.kelasId) : undefined,
-				tpMode: fullTP,
-				criteria: { kritCukup, kritBaik },
-				signal: new AbortController().signal
+			const res = await fetch('/api/pdf/bulk', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					docType: documentType,
+					muridIds: muridList.map((m) => m.id),
+					kelasId: data.kelasId ? Number(data.kelasId) : undefined,
+					tpMode: fullTP === 'full-desc' ? 'full-desc' : undefined,
+					criteria: { kritCukup, kritBaik },
+					template: documentType === 'piagam' ? selectedTemplate : undefined,
+					docLabel: selectedDocumentEntry?.label ?? documentType,
+					kelasLabel: kelasAktifLabel ? kelasAktifLabel.replace(/\s+/g, '') : 'Semua-Kelas',
+					bgLogo: showBgLogo
+				})
 			});
 
-			if (!result.isValid) {
-				const docLabel = selectedDocumentEntry?.label ?? 'dokumen';
-				const errorMsg = buildBulkErrorMessage(docLabel, result.failureCount, result.failedMurids);
-				toast(errorMsg, 'warning');
-
-				if (result.data.length === 0) {
-					return;
-				}
+			if (!res.ok) {
+				const errBody = await res.json().catch(() => ({}));
+				throw new Error(errBody?.message || 'Gagal membuat PDF bulk');
 			}
 
-			await generateBulkPDFFromPreviewData(documentType, result.data);
+			const blob = await res.blob();
+			const filename = `${selectedDocumentEntry?.label || documentType}-${kelasAktifLabel ? kelasAktifLabel.replace(/\s+/g, '') : 'Semua-Kelas'}-${muridList.length}murid.pdf`;
+			const url = URL.createObjectURL(blob);
+			const a = document.createElement('a');
+			a.href = url;
+			a.download = filename;
+			a.click();
+			URL.revokeObjectURL(url);
+
 			toast('PDF berhasil dibuat!', 'success');
 		} catch (err) {
 			console.error('Bulk download error:', err);
@@ -433,924 +474,6 @@
 		waitingForPrintable = true;
 	});
 
-	async function generatePDFFromPreviewData(doc: DocumentType, previewData: PreviewPayload) {
-		if (doc === 'keasramaan') {
-			const keasramaanData = (previewData as { keasramaanData?: typeof previewData })
-				.keasramaanData;
-			if (!keasramaanData || typeof keasramaanData !== 'object') {
-				toast('Data keasramaan tidak tersedia', 'error');
-				return;
-			}
-
-			// Type assertion untuk keasramaanData
-			const data = keasramaanData as any;
-
-			try {
-				await downloadKeasramaanPDF({
-					sekolah: {
-						nama: data.sekolah.nama,
-						npsn: data.sekolah.npsn || '',
-						alamat: data.sekolah.alamat || '',
-						logoUrl: data.sekolah.logoUrl
-					},
-					murid: {
-						nama: data.murid.nama,
-						nis: data.murid.nis || '',
-						nisn: data.murid.nisn || ''
-					},
-					rombel: {
-						nama: data.rombel.nama,
-						fase: data.rombel.fase
-					},
-					periode: {
-						tahunAjaran: data.periode.tahunAjaran,
-						semester: data.periode.semester
-					},
-					waliAsrama: data.waliAsrama
-						? {
-								nama: data.waliAsrama.nama,
-								nip: data.waliAsrama.nip || ''
-							}
-						: undefined,
-					waliAsuh: data.waliAsuh
-						? {
-								nama: data.waliAsuh.nama,
-								nip: data.waliAsuh.nip || ''
-							}
-						: undefined,
-					kepalaSekolah: data.kepalaSekolah
-						? {
-								nama: data.kepalaSekolah.nama,
-								nip: data.kepalaSekolah.nip || '',
-								statusKepalaSekolah: data.kepalaSekolah.statusKepalaSekolah
-							}
-						: undefined,
-					ttd: data.ttd
-						? {
-								tempat: data.ttd.tempat,
-								tanggal: data.ttd.tanggal
-							}
-						: undefined,
-					kehadiran: data.kehadiran
-						? {
-								sakit: data.kehadiran.sakit,
-								izin: data.kehadiran.izin,
-								alfa: data.kehadiran.alfa
-							}
-						: undefined,
-					keasramaanRows: data.keasramaanRows || [],
-					showBgLogo: showBgLogo
-				});
-			} catch (error) {
-				console.error('PDF generation error:', error);
-				toast('Gagal membuat PDF', 'error');
-			}
-		} else if (doc === 'rapor') {
-			const raporData = (previewData as { raporData?: typeof previewData }).raporData;
-			if (!raporData || typeof raporData !== 'object') {
-				toast('Data rapor tidak tersedia', 'error');
-				return;
-			}
-
-			// Type assertion untuk raporData
-			const data = raporData as any;
-
-			try {
-				// Build intrakurikuler data
-				const intrakurikuler =
-					data.nilaiIntrakurikuler?.map((item: any, idx: number) => ({
-						nomor: idx + 1,
-						mataPelajaran: item.mataPelajaran || '',
-						nilai: item.nilaiAkhir,
-						deskripsi: item.deskripsi || '',
-						jenis: item.jenis || 'wajib'
-					})) || [];
-
-				// Build ekstrakurikuler data (already in correct format)
-				const ekstrakurikuler = Array.isArray(data.ekstrakurikuler)
-					? data.ekstrakurikuler.map((item: any) => ({
-							nama: item.nama || '',
-							deskripsi: item.deskripsi || ''
-						}))
-					: [];
-
-				// Build kokurikuler data (kokurikuler is a string, not array)
-				// Convert to array format for PDF with single entry
-				const kokurikuler =
-					data.kokurikuler && typeof data.kokurikuler === 'string' && data.hasKokurikuler
-						? [
-								{
-									dimensi: 'Profil Pelajar Pancasila',
-									deskripsi: data.kokurikuler
-								}
-							]
-						: [];
-
-				await downloadRaporPDF({
-					sekolah: {
-						nama: data.sekolah.nama || '',
-						npsn: data.sekolah.npsn || '',
-						alamat: data.sekolah.alamat || '',
-						logoUrl: data.sekolah.logoUrl
-					},
-					murid: {
-						nama: data.murid.nama || '',
-						nis: data.murid.nis || '',
-						nisn: data.murid.nisn || ''
-					},
-					rombel: {
-						nama: data.rombel.nama || '',
-						fase: data.rombel.fase
-					},
-					periode: {
-						tahunPelajaran: data.periode.tahunPelajaran || '',
-						semester: data.periode.semester || ''
-					},
-					waliKelas: data.waliKelas
-						? {
-								nama: data.waliKelas.nama || '',
-								nip: data.waliKelas.nip || ''
-							}
-						: undefined,
-					kepalaSekolah: data.kepalaSekolah
-						? {
-								nama: data.kepalaSekolah.nama || '',
-								nip: data.kepalaSekolah.nip || '',
-								statusKepalaSekolah: data.kepalaSekolah.statusKepalaSekolah
-							}
-						: undefined,
-					ttd: data.ttd
-						? {
-								tempat: data.ttd.tempat || '',
-								tanggal: data.ttd.tanggal || ''
-							}
-						: undefined,
-					kehadiran: data.ketidakhadiran
-						? {
-								sakit: data.ketidakhadiran.sakit ?? 0,
-								izin: data.ketidakhadiran.izin ?? 0,
-								alfa: data.ketidakhadiran.tanpaKeterangan ?? 0
-							}
-						: undefined,
-					catatanWali: data.catatanWali,
-					tanggapanOrangTua: data.tanggapanOrangTua || '',
-					intrakurikuler,
-					ekstrakurikuler,
-					kokurikuler,
-					hasKokurikuler: data.hasKokurikuler,
-					jenjangVariant: data.sekolah?.jenjangVariant,
-					showBgLogo: showBgLogo
-				});
-			} catch (error) {
-				console.error('PDF generation error:', error);
-				toast('Gagal membuat PDF', 'error');
-			}
-		} else if (doc === 'cover') {
-			const coverData = (previewData as { coverData?: typeof previewData }).coverData;
-			if (!coverData || typeof coverData !== 'object') {
-				toast('Data cover tidak tersedia', 'error');
-				return;
-			}
-
-			// Type assertion untuk coverData
-			const data = coverData as any;
-
-			try {
-				await downloadCoverPDF({
-					sekolah: {
-						nama: data.sekolah.nama,
-						jenjang: data.sekolah.jenjang,
-						jenjangVariant: data.sekolah.jenjangVariant,
-						npsn: data.sekolah.npsn,
-						naungan: data.sekolah.naungan,
-						alamat: data.sekolah.alamat,
-						website: data.sekolah.website,
-						email: data.sekolah.email,
-						logoUrl: data.sekolah.logoUrl
-					},
-					murid: data.murid,
-					showBgLogo: showBgLogo
-				});
-			} catch (error) {
-				console.error('PDF generation error:', error);
-				toast('Gagal membuat PDF', 'error');
-			}
-		} else if (doc === 'biodata') {
-			const biodataData = (previewData as { biodataData?: typeof previewData }).biodataData;
-			if (!biodataData || typeof biodataData !== 'object') {
-				toast('Data biodata tidak tersedia', 'error');
-				return;
-			}
-
-			// Type assertion untuk biodataData
-			const data = biodataData as any;
-
-			try {
-				await downloadBiodataPDF({
-					sekolah: {
-						nama: data.sekolah.nama,
-						logoUrl: data.sekolah.logoUrl,
-						statusKepalaSekolah: data.sekolah.statusKepalaSekolah
-					},
-					murid: {
-						id: data.murid.id,
-						foto: data.murid.foto,
-						nama: data.murid.nama,
-						nis: data.murid.nis,
-						nisn: data.murid.nisn,
-						tempatLahir: data.murid.tempatLahir,
-						tanggalLahir: data.murid.tanggalLahir,
-						jenisKelamin: data.murid.jenisKelamin,
-						agama: data.murid.agama,
-						pendidikanSebelumnya: data.murid.pendidikanSebelumnya,
-						alamat: data.murid.alamat
-					},
-					orangTua: {
-						ayah: {
-							nama: data.orangTua.ayah.nama,
-							pekerjaan: data.orangTua.ayah.pekerjaan
-						},
-						ibu: {
-							nama: data.orangTua.ibu.nama,
-							pekerjaan: data.orangTua.ibu.pekerjaan
-						},
-						alamat: data.orangTua.alamat
-					},
-					wali: {
-						nama: data.wali.nama,
-						pekerjaan: data.wali.pekerjaan,
-						alamat: data.wali.alamat
-					},
-					ttd: {
-						tempat: data.ttd.tempat,
-						tanggal: data.ttd.tanggal,
-						kepalaSekolah: data.ttd.kepalaSekolah,
-						nip: data.ttd.nip
-					},
-					showBgLogo: showBgLogo
-				});
-			} catch (error) {
-				console.error('PDF generation error:', error);
-				toast('Gagal membuat PDF', 'error');
-			}
-		} else if (doc === 'piagam') {
-			const piagamData = (previewData as { piagamData?: typeof previewData }).piagamData;
-			if (!piagamData || typeof piagamData !== 'object') {
-				toast('Data piagam tidak tersedia', 'error');
-				return;
-			}
-
-			// Type assertion untuk piagamData
-			const data = piagamData as any;
-
-			try {
-				// Load background image
-				let bgImage: string | null = null;
-				try {
-					const response = await fetch(`/api/sekolah/piagam-bg/${selectedTemplate}`);
-					const blob = await response.blob();
-					bgImage = await new Promise<string>((resolve) => {
-						const reader = new FileReader();
-						reader.onloadend = () => resolve(reader.result as string);
-						reader.readAsDataURL(blob);
-					});
-				} catch (error) {
-					console.error('Error loading piagam background:', error);
-				}
-
-				await downloadPiagamPDF({
-					sekolah: {
-						nama: data.sekolah.nama,
-						jenjang: data.sekolah.jenjang,
-						npsn: data.sekolah.npsn,
-						alamat: {
-							jalan: data.sekolah.alamat.jalan || '',
-							desa: data.sekolah.alamat.desa || '',
-							kecamatan: data.sekolah.alamat.kecamatan || '',
-							kabupaten: data.sekolah.alamat.kabupaten || '',
-							provinsi: data.sekolah.alamat.provinsi,
-							kodePos: data.sekolah.alamat.kodePos
-						},
-						website: data.sekolah.website,
-						email: data.sekolah.email,
-						logoUrl: data.sekolah.logoUrl,
-						logoDinasUrl: data.sekolah.logoDinasUrl
-					},
-					murid: {
-						nama: data.murid.nama
-					},
-					penghargaan: {
-						rataRata: data.penghargaan.rataRata,
-						rataRataFormatted: data.penghargaan.rataRataFormatted,
-						ranking: data.penghargaan.ranking,
-						rankingLabel: data.penghargaan.rankingLabel,
-						judul: data.penghargaan.judul,
-						subjudul: data.penghargaan.subjudul,
-						motivasi: data.penghargaan.motivasi
-					},
-					periode: {
-						semester: data.periode.semester,
-						tahunAjaran: data.periode.tahunAjaran
-					},
-					ttd: {
-						tempat: data.ttd.tempat,
-						tanggal: data.ttd.tanggal,
-						kepalaSekolah: {
-							nama: data.ttd.kepalaSekolah.nama,
-							nip: data.ttd.kepalaSekolah.nip,
-							statusKepalaSekolah: data.ttd.kepalaSekolah.statusKepalaSekolah
-						},
-						waliKelas: {
-							nama: data.ttd.waliKelas.nama,
-							nip: data.ttd.waliKelas.nip
-						}
-					},
-					template: selectedTemplate,
-					bgImage
-				});
-			} catch (error) {
-				console.error('PDF generation error:', error);
-				toast('Gagal membuat PDF', 'error');
-			}
-		} else {
-			toast(
-				'Export PDF hanya tersedia untuk Cover, Biodata, Rapor, Piagam, dan Rapor Keasramaan',
-				'warning'
-			);
-		}
-	}
-
-	async function generateBulkPDFFromPreviewData(
-		doc: DocumentType,
-		previewDataList: Array<{ murid: MuridData; data: PreviewPayload }>
-	) {
-		if (previewDataList.length === 0) return;
-
-		// Buat PDF pertama
-		const firstItem = previewDataList[0];
-		let mergedPdf: jsPDF;
-
-		if (doc === 'keasramaan') {
-			const keasramaanData = (firstItem.data as any).keasramaanData;
-			mergedPdf = await generateKeasramaanPDF({
-				sekolah: {
-					nama: keasramaanData.sekolah.nama,
-					npsn: keasramaanData.sekolah.npsn || '',
-					alamat: keasramaanData.sekolah.alamat || '',
-					logoUrl: keasramaanData.sekolah.logoUrl
-				},
-				murid: {
-					nama: keasramaanData.murid.nama,
-					nis: keasramaanData.murid.nis || '',
-					nisn: keasramaanData.murid.nisn || ''
-				},
-				rombel: {
-					nama: keasramaanData.rombel.nama,
-					fase: keasramaanData.rombel.fase
-				},
-				periode: {
-					tahunAjaran: keasramaanData.periode.tahunAjaran,
-					semester: keasramaanData.periode.semester
-				},
-				waliAsrama: keasramaanData.waliAsrama
-					? {
-							nama: keasramaanData.waliAsrama.nama,
-							nip: keasramaanData.waliAsrama.nip || ''
-						}
-					: undefined,
-				waliAsuh: keasramaanData.waliAsuh
-					? {
-							nama: keasramaanData.waliAsuh.nama,
-							nip: keasramaanData.waliAsuh.nip || ''
-						}
-					: undefined,
-				kepalaSekolah: keasramaanData.kepalaSekolah
-					? {
-							nama: keasramaanData.kepalaSekolah.nama,
-							nip: keasramaanData.kepalaSekolah.nip || '',
-							statusKepalaSekolah: keasramaanData.kepalaSekolah.statusKepalaSekolah
-						}
-					: undefined,
-				ttd: keasramaanData.ttd
-					? {
-							tempat: keasramaanData.ttd.tempat,
-							tanggal: keasramaanData.ttd.tanggal
-						}
-					: undefined,
-				kehadiran: keasramaanData.kehadiran
-					? {
-							sakit: keasramaanData.kehadiran.sakit,
-							izin: keasramaanData.kehadiran.izin,
-							alfa: keasramaanData.kehadiran.alfa
-						}
-					: undefined,
-				keasramaanRows: keasramaanData.keasramaanRows || [],
-				showBgLogo: showBgLogo
-			});
-		} else if (doc === 'rapor') {
-			const raporData = (firstItem.data as any).raporData;
-			const intrakurikuler =
-				raporData.nilaiIntrakurikuler?.map((item: any, idx: number) => ({
-					nomor: idx + 1,
-					mataPelajaran: item.mataPelajaran || '',
-					nilai: item.nilaiAkhir,
-					deskripsi: item.deskripsi || '',
-					jenis: item.jenis || 'wajib'
-				})) || [];
-
-			const ekstrakurikuler = Array.isArray(raporData.ekstrakurikuler)
-				? raporData.ekstrakurikuler.map((item: any) => ({
-						nama: item.nama || '',
-						deskripsi: item.deskripsi || ''
-					}))
-				: [];
-
-			const kokurikuler =
-				raporData.kokurikuler &&
-				typeof raporData.kokurikuler === 'string' &&
-				raporData.hasKokurikuler
-					? [
-							{
-								dimensi: 'Profil Pelajar Pancasila',
-								deskripsi: raporData.kokurikuler
-							}
-						]
-					: [];
-
-			mergedPdf = await generateRaporPDF({
-				sekolah: {
-					nama: raporData.sekolah.nama || '',
-					npsn: raporData.sekolah.npsn || '',
-					alamat: raporData.sekolah.alamat || '',
-					logoUrl: raporData.sekolah.logoUrl
-				},
-				murid: {
-					nama: raporData.murid.nama || '',
-					nis: raporData.murid.nis || '',
-					nisn: raporData.murid.nisn || ''
-				},
-				rombel: {
-					nama: raporData.rombel.nama || '',
-					fase: raporData.rombel.fase
-				},
-				periode: {
-					tahunPelajaran: raporData.periode.tahunPelajaran || '',
-					semester: raporData.periode.semester || ''
-				},
-				waliKelas: raporData.waliKelas
-					? {
-							nama: raporData.waliKelas.nama || '',
-							nip: raporData.waliKelas.nip || ''
-						}
-					: undefined,
-				kepalaSekolah: raporData.kepalaSekolah
-					? {
-							nama: raporData.kepalaSekolah.nama || '',
-							nip: raporData.kepalaSekolah.nip || '',
-							statusKepalaSekolah: raporData.kepalaSekolah.statusKepalaSekolah
-						}
-					: undefined,
-				ttd: raporData.ttd
-					? {
-							tempat: raporData.ttd.tempat || '',
-							tanggal: raporData.ttd.tanggal || ''
-						}
-					: undefined,
-				kehadiran: raporData.ketidakhadiran
-					? {
-							sakit: raporData.ketidakhadiran.sakit ?? 0,
-							izin: raporData.ketidakhadiran.izin ?? 0,
-							alfa: raporData.ketidakhadiran.tanpaKeterangan ?? 0
-						}
-					: undefined,
-				catatanWali: raporData.catatanWali,
-				tanggapanOrangTua: raporData.tanggapanOrangTua || '',
-				intrakurikuler,
-				ekstrakurikuler,
-				kokurikuler,
-				hasKokurikuler: raporData.hasKokurikuler,
-				jenjangVariant: raporData.sekolah?.jenjangVariant,
-				showBgLogo: showBgLogo
-			});
-		} else if (doc === 'cover') {
-			const coverData = (firstItem.data as any).coverData;
-			mergedPdf = await generateCoverPDF({
-				sekolah: {
-					nama: coverData.sekolah.nama,
-					jenjang: coverData.sekolah.jenjang,
-					jenjangVariant: coverData.sekolah.jenjangVariant,
-					npsn: coverData.sekolah.npsn,
-					naungan: coverData.sekolah.naungan,
-					alamat: coverData.sekolah.alamat,
-					website: coverData.sekolah.website,
-					email: coverData.sekolah.email,
-					logoUrl: coverData.sekolah.logoUrl
-				},
-				murid: coverData.murid,
-				showBgLogo: showBgLogo
-			});
-		} else if (doc === 'biodata') {
-			const biodataData = (firstItem.data as any).biodataData;
-			mergedPdf = await generateBiodataPDF({
-				sekolah: {
-					nama: biodataData.sekolah.nama,
-					logoUrl: biodataData.sekolah.logoUrl,
-					statusKepalaSekolah: biodataData.sekolah.statusKepalaSekolah
-				},
-				murid: {
-					id: biodataData.murid.id,
-					foto: biodataData.murid.foto,
-					nama: biodataData.murid.nama,
-					nis: biodataData.murid.nis,
-					nisn: biodataData.murid.nisn,
-					tempatLahir: biodataData.murid.tempatLahir,
-					tanggalLahir: biodataData.murid.tanggalLahir,
-					jenisKelamin: biodataData.murid.jenisKelamin,
-					agama: biodataData.murid.agama,
-					pendidikanSebelumnya: biodataData.murid.pendidikanSebelumnya,
-					alamat: biodataData.murid.alamat
-				},
-				orangTua: {
-					ayah: {
-						nama: biodataData.orangTua.ayah.nama,
-						pekerjaan: biodataData.orangTua.ayah.pekerjaan
-					},
-					ibu: {
-						nama: biodataData.orangTua.ibu.nama,
-						pekerjaan: biodataData.orangTua.ibu.pekerjaan
-					},
-					alamat: biodataData.orangTua.alamat
-				},
-				wali: {
-					nama: biodataData.wali.nama,
-					pekerjaan: biodataData.wali.pekerjaan,
-					alamat: biodataData.wali.alamat
-				},
-				ttd: {
-					tempat: biodataData.ttd.tempat,
-					tanggal: biodataData.ttd.tanggal,
-					kepalaSekolah: biodataData.ttd.kepalaSekolah,
-					nip: biodataData.ttd.nip
-				},
-				showBgLogo: showBgLogo
-			});
-		} else if (doc === 'piagam') {
-			const piagamData = (firstItem.data as any).piagamData;
-			let bgImage: string | null = null;
-			try {
-				const response = await fetch(`/api/sekolah/piagam-bg/${selectedTemplate}`);
-				const blob = await response.blob();
-				const reader = new FileReader();
-				bgImage = await new Promise<string>((resolve) => {
-					reader.onload = () => resolve(reader.result as string);
-					reader.readAsDataURL(blob);
-				});
-			} catch (error) {
-				console.error('Error loading background image:', error);
-			}
-
-			mergedPdf = await generatePiagamPDF({
-				sekolah: {
-					nama: piagamData.sekolah.nama,
-					jenjang: piagamData.sekolah.jenjang,
-					npsn: piagamData.sekolah.npsn,
-					alamat: piagamData.sekolah.alamat,
-					website: piagamData.sekolah.website,
-					email: piagamData.sekolah.email,
-					logoUrl: piagamData.sekolah.logoUrl,
-					logoDinasUrl: piagamData.sekolah.logoDinasUrl
-				},
-				murid: {
-					nama: piagamData.murid.nama
-				},
-				penghargaan: {
-					rataRata: piagamData.penghargaan.rataRata,
-					rataRataFormatted: piagamData.penghargaan.rataRataFormatted,
-					ranking: piagamData.penghargaan.ranking,
-					rankingLabel: piagamData.penghargaan.rankingLabel,
-					judul: piagamData.penghargaan.judul,
-					subjudul: piagamData.penghargaan.subjudul,
-					motivasi: piagamData.penghargaan.motivasi
-				},
-				periode: {
-					semester: piagamData.periode.semester,
-					tahunAjaran: piagamData.periode.tahunAjaran
-				},
-				ttd: {
-					tempat: piagamData.ttd.tempat,
-					tanggal: piagamData.ttd.tanggal,
-					kepalaSekolah: {
-						nama: piagamData.ttd.kepalaSekolah.nama,
-						nip: piagamData.ttd.kepalaSekolah.nip,
-						statusKepalaSekolah: piagamData.ttd.kepalaSekolah.statusKepalaSekolah
-					},
-					waliKelas: {
-						nama: piagamData.ttd.waliKelas.nama,
-						nip: piagamData.ttd.waliKelas.nip
-					}
-				},
-				template: selectedTemplate,
-				bgImage
-			});
-		} else {
-			toast('Tipe dokumen tidak didukung untuk bulk download', 'error');
-			return;
-		}
-
-		// Tambahkan halaman untuk murid lainnya
-		for (let i = 1; i < previewDataList.length; i++) {
-			const item = previewDataList[i];
-			let pdf: jsPDF;
-
-			if (doc === 'keasramaan') {
-				const keasramaanData = (item.data as any).keasramaanData;
-				pdf = await generateKeasramaanPDF({
-					sekolah: {
-						nama: keasramaanData.sekolah.nama,
-						npsn: keasramaanData.sekolah.npsn || '',
-						alamat: keasramaanData.sekolah.alamat || '',
-						logoUrl: keasramaanData.sekolah.logoUrl
-					},
-					murid: {
-						nama: keasramaanData.murid.nama,
-						nis: keasramaanData.murid.nis || '',
-						nisn: keasramaanData.murid.nisn || ''
-					},
-					rombel: {
-						nama: keasramaanData.rombel.nama,
-						fase: keasramaanData.rombel.fase
-					},
-					periode: {
-						tahunAjaran: keasramaanData.periode.tahunAjaran,
-						semester: keasramaanData.periode.semester
-					},
-					waliAsrama: keasramaanData.waliAsrama
-						? {
-								nama: keasramaanData.waliAsrama.nama,
-								nip: keasramaanData.waliAsrama.nip || ''
-							}
-						: undefined,
-					waliAsuh: keasramaanData.waliAsuh
-						? {
-								nama: keasramaanData.waliAsuh.nama,
-								nip: keasramaanData.waliAsuh.nip || ''
-							}
-						: undefined,
-					kepalaSekolah: keasramaanData.kepalaSekolah
-						? {
-								nama: keasramaanData.kepalaSekolah.nama,
-								nip: keasramaanData.kepalaSekolah.nip || '',
-								statusKepalaSekolah: keasramaanData.kepalaSekolah.statusKepalaSekolah
-							}
-						: undefined,
-					ttd: keasramaanData.ttd
-						? {
-								tempat: keasramaanData.ttd.tempat,
-								tanggal: keasramaanData.ttd.tanggal
-							}
-						: undefined,
-					kehadiran: keasramaanData.kehadiran
-						? {
-								sakit: keasramaanData.kehadiran.sakit,
-								izin: keasramaanData.kehadiran.izin,
-								alfa: keasramaanData.kehadiran.alfa
-							}
-						: undefined,
-					keasramaanRows: keasramaanData.keasramaanRows || [],
-					showBgLogo: showBgLogo
-				});
-			} else if (doc === 'rapor') {
-				const raporData = (item.data as any).raporData;
-				const intrakurikuler =
-					raporData.nilaiIntrakurikuler?.map((item: any, idx: number) => ({
-						nomor: idx + 1,
-						mataPelajaran: item.mataPelajaran || '',
-						nilai: item.nilaiAkhir,
-						deskripsi: item.deskripsi || '',
-						jenis: item.jenis || 'wajib'
-					})) || [];
-
-				const ekstrakurikuler = Array.isArray(raporData.ekstrakurikuler)
-					? raporData.ekstrakurikuler.map((item: any) => ({
-							nama: item.nama || '',
-							deskripsi: item.deskripsi || ''
-						}))
-					: [];
-
-				const kokurikuler =
-					raporData.kokurikuler &&
-					typeof raporData.kokurikuler === 'string' &&
-					raporData.hasKokurikuler
-						? [
-								{
-									dimensi: 'Profil Pelajar Pancasila',
-									deskripsi: raporData.kokurikuler
-								}
-							]
-						: [];
-
-				pdf = await generateRaporPDF({
-					sekolah: {
-						nama: raporData.sekolah.nama || '',
-						npsn: raporData.sekolah.npsn || '',
-						alamat: raporData.sekolah.alamat || '',
-						logoUrl: raporData.sekolah.logoUrl
-					},
-					murid: {
-						nama: raporData.murid.nama || '',
-						nis: raporData.murid.nis || '',
-						nisn: raporData.murid.nisn || ''
-					},
-					rombel: {
-						nama: raporData.rombel.nama || '',
-						fase: raporData.rombel.fase
-					},
-					periode: {
-						tahunPelajaran: raporData.periode.tahunPelajaran || '',
-						semester: raporData.periode.semester || ''
-					},
-					waliKelas: raporData.waliKelas
-						? {
-								nama: raporData.waliKelas.nama || '',
-								nip: raporData.waliKelas.nip || ''
-							}
-						: undefined,
-					kepalaSekolah: raporData.kepalaSekolah
-						? {
-								nama: raporData.kepalaSekolah.nama || '',
-								nip: raporData.kepalaSekolah.nip || '',
-								statusKepalaSekolah: raporData.kepalaSekolah.statusKepalaSekolah
-							}
-						: undefined,
-					ttd: raporData.ttd
-						? {
-								tempat: raporData.ttd.tempat || '',
-								tanggal: raporData.ttd.tanggal || ''
-							}
-						: undefined,
-					kehadiran: raporData.ketidakhadiran
-						? {
-								sakit: raporData.ketidakhadiran.sakit ?? 0,
-								izin: raporData.ketidakhadiran.izin ?? 0,
-								alfa: raporData.ketidakhadiran.tanpaKeterangan ?? 0
-							}
-						: undefined,
-					catatanWali: raporData.catatanWali,
-					tanggapanOrangTua: raporData.tanggapanOrangTua || '',
-					intrakurikuler,
-					ekstrakurikuler,
-					kokurikuler,
-					hasKokurikuler: raporData.hasKokurikuler,
-					jenjangVariant: raporData.sekolah?.jenjangVariant,
-					showBgLogo: showBgLogo
-				});
-			} else if (doc === 'cover') {
-				const coverData = (item.data as any).coverData;
-				pdf = await generateCoverPDF({
-					sekolah: {
-						nama: coverData.sekolah.nama,
-						jenjang: coverData.sekolah.jenjang,
-						jenjangVariant: coverData.sekolah.jenjangVariant,
-						npsn: coverData.sekolah.npsn,
-						naungan: coverData.sekolah.naungan,
-						alamat: coverData.sekolah.alamat,
-						website: coverData.sekolah.website,
-						email: coverData.sekolah.email,
-						logoUrl: coverData.sekolah.logoUrl
-					},
-					murid: coverData.murid,
-					showBgLogo: showBgLogo
-				});
-			} else if (doc === 'biodata') {
-				const biodataData = (item.data as any).biodataData;
-				pdf = await generateBiodataPDF({
-					sekolah: {
-						nama: biodataData.sekolah.nama,
-						logoUrl: biodataData.sekolah.logoUrl,
-						statusKepalaSekolah: biodataData.sekolah.statusKepalaSekolah
-					},
-					murid: {
-						id: biodataData.murid.id,
-						foto: biodataData.murid.foto,
-						nama: biodataData.murid.nama,
-						nis: biodataData.murid.nis,
-						nisn: biodataData.murid.nisn,
-						tempatLahir: biodataData.murid.tempatLahir,
-						tanggalLahir: biodataData.murid.tanggalLahir,
-						jenisKelamin: biodataData.murid.jenisKelamin,
-						agama: biodataData.murid.agama,
-						pendidikanSebelumnya: biodataData.murid.pendidikanSebelumnya,
-						alamat: biodataData.murid.alamat
-					},
-					orangTua: {
-						ayah: {
-							nama: biodataData.orangTua.ayah.nama,
-							pekerjaan: biodataData.orangTua.ayah.pekerjaan
-						},
-						ibu: {
-							nama: biodataData.orangTua.ibu.nama,
-							pekerjaan: biodataData.orangTua.ibu.pekerjaan
-						},
-						alamat: biodataData.orangTua.alamat
-					},
-					wali: {
-						nama: biodataData.wali.nama,
-						pekerjaan: biodataData.wali.pekerjaan,
-						alamat: biodataData.wali.alamat
-					},
-					ttd: {
-						tempat: biodataData.ttd.tempat,
-						tanggal: biodataData.ttd.tanggal,
-						kepalaSekolah: biodataData.ttd.kepalaSekolah,
-						nip: biodataData.ttd.nip
-					},
-					showBgLogo: showBgLogo
-				});
-			} else if (doc === 'piagam') {
-				const piagamData = (item.data as any).piagamData;
-				let bgImage: string | null = null;
-				try {
-					const response = await fetch(`/api/sekolah/piagam-bg/${selectedTemplate}`);
-					const blob = await response.blob();
-					const reader = new FileReader();
-					bgImage = await new Promise<string>((resolve) => {
-						reader.onload = () => resolve(reader.result as string);
-						reader.readAsDataURL(blob);
-					});
-				} catch (error) {
-					console.error('Error loading background image:', error);
-				}
-
-				pdf = await generatePiagamPDF({
-					sekolah: {
-						nama: piagamData.sekolah.nama,
-						jenjang: piagamData.sekolah.jenjang,
-						npsn: piagamData.sekolah.npsn,
-						alamat: piagamData.sekolah.alamat,
-						website: piagamData.sekolah.website,
-						email: piagamData.sekolah.email,
-						logoUrl: piagamData.sekolah.logoUrl,
-						logoDinasUrl: piagamData.sekolah.logoDinasUrl
-					},
-					murid: {
-						nama: piagamData.murid.nama
-					},
-					penghargaan: {
-						rataRata: piagamData.penghargaan.rataRata,
-						rataRataFormatted: piagamData.penghargaan.rataRataFormatted,
-						ranking: piagamData.penghargaan.ranking,
-						rankingLabel: piagamData.penghargaan.rankingLabel,
-						judul: piagamData.penghargaan.judul,
-						subjudul: piagamData.penghargaan.subjudul,
-						motivasi: piagamData.penghargaan.motivasi
-					},
-					periode: {
-						semester: piagamData.periode.semester,
-						tahunAjaran: piagamData.periode.tahunAjaran
-					},
-					ttd: {
-						tempat: piagamData.ttd.tempat,
-						tanggal: piagamData.ttd.tanggal,
-						kepalaSekolah: {
-							nama: piagamData.ttd.kepalaSekolah.nama,
-							nip: piagamData.ttd.kepalaSekolah.nip,
-							statusKepalaSekolah: piagamData.ttd.kepalaSekolah.statusKepalaSekolah
-						},
-						waliKelas: {
-							nama: piagamData.ttd.waliKelas.nama,
-							nip: piagamData.ttd.waliKelas.nip
-						}
-					},
-					template: selectedTemplate,
-					bgImage
-				});
-			} else {
-				continue;
-			}
-
-			// Gabungkan halaman dari PDF baru ke mergedPdf
-			const pageCount = pdf.getNumberOfPages();
-			// Gunakan orientasi yang sesuai dengan tipe dokumen
-			const orientation = doc === 'piagam' ? 'landscape' : 'portrait';
-			for (let pageNum = 1; pageNum <= pageCount; pageNum++) {
-				// Tambah halaman baru dengan orientasi yang sesuai
-				mergedPdf.addPage('a4', orientation);
-
-				// Copy semua objek dari halaman PDF sumber ke halaman merged
-				const pageData = (pdf as any).internal.pages[pageNum];
-				if (pageData) {
-					(mergedPdf as any).internal.pages[mergedPdf.internal.pages.length - 1] = pageData;
-				}
-			}
-		}
-
-		// Download PDF gabungan
-		const docLabel = selectedDocumentEntry?.label || doc;
-		const kelasLabel = kelasAktifLabel ? kelasAktifLabel.replace(/\s+/g, '') : 'Semua-Kelas';
-		const filename = `${docLabel}-${kelasLabel}-${previewDataList.length}murid.pdf`;
-		mergedPdf.save(filename);
-	}
-
 	async function handleBgRefresh() {
 		bgRefreshKey = Date.now();
 	}
@@ -1364,6 +487,7 @@
 		{canNavigateMurid}
 		{hasPrevMurid}
 		{hasNextMurid}
+		loading={downloadLoading}
 		onNavigatePrev={() => navigateMurid('prev')}
 		onNavigateNext={() => navigateMurid('next')}
 	/>
@@ -1427,6 +551,18 @@
 		onBgRefresh={handleBgRefresh}
 	/>
 </div>
+
+{#if pdfViewerUrl}
+	<object
+		bind:this={pdfViewerEl}
+		data={pdfViewerUrl}
+		type="application/pdf"
+		class="rounded-box mt-4 h-[85vh] w-full"
+		title={pdfViewerTitle}
+	>
+		<embed src={pdfViewerUrl} type="application/pdf" class="h-full w-full" />
+	</object>
+{/if}
 
 <PreviewContent
 	{previewDocument}

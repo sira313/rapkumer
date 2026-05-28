@@ -12,6 +12,19 @@ import {
 	normalizeOrigin as normalizeFileOrigin
 } from '$lib/server/csrf-origins';
 
+// Prevent crash from socket write-after-close errors
+process.on('uncaughtException', (err) => {
+	if (
+		err &&
+		(err as NodeJS.ErrnoException).code === 'EOF' &&
+		(err as NodeJS.ErrnoException).syscall === 'write'
+	) {
+		console.warn('[server] Ignored socket write EOF');
+		return;
+	}
+	console.error('[server] Uncaught exception:', err);
+});
+
 // Log combined trusted origins at startup to aid debugging in packaged prod builds.
 (async () => {
 	try {
@@ -258,7 +271,11 @@ const cookieParser: Handle = async ({ event, resolve }) => {
 		});
 	}
 
-	if (!sekolah?.id && event.route.id != '/(informasi-umum)/sekolah/form') {
+	if (
+		!sekolah?.id &&
+		event.route.id != '/(informasi-umum)/sekolah/form' &&
+		event.route.id != '/api/database/import'
+	) {
 		throw redirect(303, `/sekolah/form?init`);
 	}
 
@@ -302,7 +319,15 @@ const sqliteErrors = {
 	SQLITE_CONSTRAINT_FOREIGNKEY: 'Data memiliki relasi ke data lainnya yang masih utuh'
 };
 
-export const handleError = ({ error, message, status }) => {
+export const handleError = ({
+	error,
+	message,
+	status
+}: {
+	error: unknown;
+	message: string;
+	status: number;
+}) => {
 	console.error(error);
 	if (status >= 500) {
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -2,38 +2,13 @@ import { error } from '@sveltejs/kit';
 import { and, eq } from 'drizzle-orm';
 import db from '$lib/server/db';
 import { tableMurid } from '$lib/server/db/schema';
+import type { CoverPrintData } from '$lib/server/pdf/templates/cover';
+import { requireInteger, optionalInteger, getLogoSrc } from '$lib/server/pdf/preview-utils';
 
 type CoverContext = {
 	locals: App.Locals;
 	url: URL;
 };
-
-function requireInteger(paramName: string, value: string | null): number {
-	if (!value) {
-		throw error(400, `Parameter ${paramName} wajib diisi.`);
-	}
-	const parsed = Number(value);
-	if (!Number.isInteger(parsed)) {
-		throw error(400, `Parameter ${paramName} tidak valid.`);
-	}
-	return parsed;
-}
-
-function optionalInteger(paramName: string, value: string | null): number | null {
-	if (!value) return null;
-	const parsed = Number(value);
-	if (!Number.isInteger(parsed)) {
-		throw error(400, `Parameter ${paramName} tidak valid.`);
-	}
-	return parsed;
-}
-
-function buildLogoUrl(sekolah: NonNullable<App.Locals['sekolah']>): string | null {
-	if (!sekolah.id) return null;
-	const updatedAt = sekolah.updatedAt ? Date.parse(sekolah.updatedAt) : NaN;
-	const suffix = Number.isFinite(updatedAt) ? `?v=${updatedAt}` : '';
-	return `/sekolah/logo${suffix}`;
-}
 
 export async function getCoverPreviewPayload({ locals, url }: CoverContext) {
 	const sekolah = locals.sekolah;
@@ -67,6 +42,8 @@ export async function getCoverPreviewPayload({ locals, url }: CoverContext) {
 		throw error(400, 'Murid tidak terdaftar pada kelas yang diminta.');
 	}
 
+	const logoSrc = await getLogoSrc(sekolah.id);
+
 	const coverData: CoverPrintData = {
 		sekolah: {
 			nama: sekolah.nama,
@@ -84,7 +61,7 @@ export async function getCoverPreviewPayload({ locals, url }: CoverContext) {
 			},
 			website: sekolah.website ?? null,
 			email: sekolah.email ?? null,
-			logoUrl: buildLogoUrl(sekolah)
+			logoSrc
 		},
 		murid: {
 			nama: murid.nama,

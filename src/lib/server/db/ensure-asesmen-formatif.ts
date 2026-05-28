@@ -1,11 +1,7 @@
-import db from '$lib/server/db';
-
-let ensured = false;
+import { ensureSchema } from './ensure-helper';
 
 export async function ensureAsesmenFormatifSchema() {
-	if (ensured) return;
-
-	const statements = [
+	await ensureSchema('asesmen_formatif', [
 		`CREATE TABLE IF NOT EXISTS "asesmen_formatif" (
 			"id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 			"murid_id" integer NOT NULL,
@@ -24,11 +20,5 @@ export async function ensureAsesmenFormatifSchema() {
 		`CREATE INDEX IF NOT EXISTS "asesmen_formatif_murid_idx" ON "asesmen_formatif" ("murid_id")`,
 		`CREATE INDEX IF NOT EXISTS "asesmen_formatif_mapel_idx" ON "asesmen_formatif" ("mata_pelajaran_id")`,
 		`CREATE INDEX IF NOT EXISTS "asesmen_formatif_tujuan_idx" ON "asesmen_formatif" ("tujuan_pembelajaran_id")`
-	];
-
-	for (const statement of statements) {
-		await db.$client.execute(statement);
-	}
-
-	ensured = true;
+	]);
 }

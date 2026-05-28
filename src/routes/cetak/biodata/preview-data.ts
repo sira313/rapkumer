@@ -1,8 +1,17 @@
 import { error } from '@sveltejs/kit';
+import fs from 'node:fs';
+import path from 'node:path';
 import { and, eq } from 'drizzle-orm';
 import db from '$lib/server/db';
 import { tableMurid } from '$lib/server/db/schema';
 import { jenisKelamin } from '$lib/statics';
+import {
+	requireInteger,
+	optionalInteger,
+	formatTanggal,
+	fallbackTempat,
+	getLogoSrc
+} from '$lib/server/pdf/preview-utils';
 
 type BiodataContext = {
 	locals: App.Locals;
@@ -14,39 +23,6 @@ type AlamatPayload = BiodataPrintData['murid']['alamat'];
 type OrangTuaAlamatPayload = BiodataPrintData['orangTua']['alamat'];
 
 type MuridJenisKelamin = keyof typeof jenisKelamin;
-
-const LOCALE_ID = 'id-ID';
-
-function requireInteger(paramName: string, value: string | null): number {
-	if (!value) {
-		throw error(400, `Parameter ${paramName} wajib diisi.`);
-	}
-	const parsed = Number(value);
-	if (!Number.isInteger(parsed)) {
-		throw error(400, `Parameter ${paramName} tidak valid.`);
-	}
-	return parsed;
-}
-
-function optionalInteger(paramName: string, value: string | null): number | null {
-	if (!value) return null;
-	const parsed = Number(value);
-	if (!Number.isInteger(parsed)) {
-		throw error(400, `Parameter ${paramName} tidak valid.`);
-	}
-	return parsed;
-}
-
-function formatTanggal(value: string | null | undefined): string {
-	if (!value) return '';
-	const parsed = new Date(value);
-	if (Number.isNaN(parsed.getTime())) return '';
-	return new Intl.DateTimeFormat(LOCALE_ID, {
-		day: 'numeric',
-		month: 'long',
-		year: 'numeric'
-	}).format(parsed);
-}
 
 function mapJenisKelamin(value: string | null | undefined): string {
 	if (!value) return '';
@@ -105,19 +81,23 @@ function composeOrangTuaAlamat(
 	};
 }
 
-function fallbackTempat(sekolah: NonNullable<App.Locals['sekolah']>): string {
-	const explicit = sekolah.lokasiTandaTangan?.trim();
-	if (explicit) return explicit;
-	const alamat = sekolah.alamat;
-	if (!alamat) return '';
-	return alamat.kabupaten || alamat.kecamatan || alamat.desa || '';
+function uploadsDir(): string {
+	const envPhoto = process.env.photo || 'file:./data/uploads';
+	const raw = envPhoto.startsWith('file:') ? envPhoto.slice(5) : envPhoto;
+	return path.resolve(raw);
 }
 
-function buildLogoUrl(sekolah: NonNullable<App.Locals['sekolah']>): string | null {
-	if (!sekolah.id) return null;
-	const updatedAt = sekolah.updatedAt ? Date.parse(sekolah.updatedAt) : NaN;
-	const suffix = Number.isFinite(updatedAt) ? `?v=${updatedAt}` : '';
-	return `/sekolah/logo/${sekolah.id}${suffix}`;
+function readFotoDataUri(filename: string | null | undefined): string | null {
+	if (!filename) return null;
+	try {
+		const filePath = path.join(uploadsDir(), filename);
+		const buffer = fs.readFileSync(filePath);
+		const ext = path.extname(filename).toLowerCase();
+		const mime = ext === '.png' ? 'image/png' : 'image/jpeg';
+		return `data:${mime};base64,${buffer.toString('base64')}`;
+	} catch {
+		return null;
+	}
 }
 
 export async function getBiodataPreviewPayload({ locals, url }: BiodataContext) {
@@ -160,15 +140,19 @@ export async function getBiodataPreviewPayload({ locals, url }: BiodataContext) 
 
 	const tanggalTtd = formatTanggal(murid.semester?.tanggalBagiRaport ?? murid.tanggalMasuk);
 
+	const showBgLogo = url.searchParams.get('bg_logo') === '1';
+	const bgLogoSrc = showBgLogo ? await getLogoSrc(sekolah.id) : null;
+
 	const biodataData: BiodataPrintData = {
 		sekolah: {
 			nama: sekolah.nama,
-			logoUrl: buildLogoUrl(sekolah),
+			bgLogoSrc,
 			statusKepalaSekolah: sekolah.statusKepalaSekolah ?? 'definitif'
 		},
+		showBgLogo,
 		murid: {
 			id: murid.id,
-			foto: murid.foto ?? null,
+			foto: readFotoDataUri(murid.foto),
 			nama: murid.nama,
 			nis: murid.nis,
 			nisn: murid.nisn,

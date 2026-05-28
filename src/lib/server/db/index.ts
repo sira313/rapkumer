@@ -52,13 +52,24 @@ function resolveInstalledDbUrl() {
 }
 const clientKey = '__rapkumerLibsqlClient';
 
+async function enableWAL(client: Client) {
+	try {
+		await client.execute('PRAGMA journal_mode=WAL');
+		await client.execute('PRAGMA busy_timeout=5000');
+	} catch (e) {
+		console.warn('[db] failed to enable WAL mode, concurrency may be limited:', e);
+	}
+}
+
 function createClientInstance(): Client {
 	const url = resolveInstalledDbUrl();
 	const authToken = env.DB_AUTH_TOKEN;
 	console.info(
 		`[db] creating libsql client; DB_URL=${url ? url : '(none)'}${authToken ? ' (auth token present)' : ''}`
 	);
-	return createClient({ url, authToken });
+	const client = createClient({ url, authToken });
+	enableWAL(client);
+	return client;
 }
 
 // create or reuse a client stored on globalThis so hot-reloads keep using same connection

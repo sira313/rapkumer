@@ -3,6 +3,15 @@ import { and, eq } from 'drizzle-orm';
 import db from '$lib/server/db';
 import { tableMurid } from '$lib/server/db/schema';
 import { computeNilaiAkhirRekap } from '$lib/server/nilai-akhir';
+import type { PiagamPrintData } from '$lib/server/pdf/templates/piagam';
+import {
+	requireInteger,
+	optionalInteger,
+	getLogoSrc,
+	getLogoDinasSrc,
+	formatTanggal,
+	fallbackTempat
+} from '$lib/server/pdf/preview-utils';
 
 const ORDINAL_WORDS: Record<number, string> = {
 	1: 'Pertama',
@@ -16,56 +25,6 @@ const ORDINAL_WORDS: Record<number, string> = {
 	9: 'Kesembilan',
 	10: 'Kesepuluh'
 };
-
-function requireInteger(paramName: string, value: string | null): number {
-	if (!value) {
-		throw error(400, `Parameter ${paramName} wajib diisi.`);
-	}
-	const parsed = Number(value);
-	if (!Number.isInteger(parsed)) {
-		throw error(400, `Parameter ${paramName} tidak valid.`);
-	}
-	return parsed;
-}
-
-function optionalInteger(paramName: string, value: string | null): number | null {
-	if (!value) return null;
-	const parsed = Number(value);
-	if (!Number.isInteger(parsed)) {
-		throw error(400, `Parameter ${paramName} tidak valid.`);
-	}
-	return parsed;
-}
-
-function buildLogoUrl(
-	sekolah: NonNullable<App.Locals['sekolah']>,
-	variant: 'sekolah' | 'dinas' = 'sekolah'
-): string | null {
-	if (!sekolah.id) return null;
-	const updatedAt = sekolah.updatedAt ? Date.parse(sekolah.updatedAt) : NaN;
-	const suffix = Number.isFinite(updatedAt) ? `?v=${updatedAt}` : '';
-	const basePath = variant === 'dinas' ? '/sekolah/logo-dinas' : '/sekolah/logo';
-	return `${basePath}${suffix}`;
-}
-
-function formatTanggal(value: string | Date | null | undefined): string {
-	if (!value) return '';
-	const date = value instanceof Date ? value : new Date(value);
-	if (Number.isNaN(date.getTime())) return '';
-	return new Intl.DateTimeFormat('id-ID', {
-		day: 'numeric',
-		month: 'long',
-		year: 'numeric'
-	}).format(date);
-}
-
-function fallbackTempat(sekolah: NonNullable<App.Locals['sekolah']>): string {
-	const explicit = sekolah.lokasiTandaTangan?.trim();
-	if (explicit) return explicit;
-	const alamat = sekolah.alamat;
-	if (!alamat) return '';
-	return alamat.kecamatan || alamat.kabupaten || alamat.desa || '';
-}
 
 function formatSemesterLabel(
 	semester:
@@ -166,8 +125,14 @@ export async function getPiagamPreviewPayload({ locals, url }: { locals: App.Loc
 	const muridRanking =
 		muridRekap && muridRekap.jumlahMapelDinilai > 0 ? muridRekap.peringkat : null;
 
+	const [logoSrc, logoDinasSrc] = await Promise.all([
+		getLogoSrc(sekolah.id),
+		getLogoDinasSrc(sekolah.id)
+	]);
+
 	const piagamData: PiagamPrintData = {
 		sekolah: {
+			id: sekolah.id,
 			nama: sekolah.nama,
 			jenjang: sekolah.jenjangPendidikan,
 			npsn: sekolah.npsn,
@@ -181,8 +146,8 @@ export async function getPiagamPreviewPayload({ locals, url }: { locals: App.Loc
 			},
 			website: sekolah.website ?? null,
 			email: sekolah.email ?? null,
-			logoUrl: buildLogoUrl(sekolah),
-			logoDinasUrl: buildLogoUrl(sekolah, 'dinas')
+			logoUrl: logoSrc,
+			logoDinasUrl: logoDinasSrc
 		},
 		murid: {
 			nama: murid.nama

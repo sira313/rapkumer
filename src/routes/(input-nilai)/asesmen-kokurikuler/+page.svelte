@@ -266,7 +266,7 @@
 			<Icon name="info" />
 			<span>
 				Belum ada data kokurikuler untuk kelas ini. Tambahkan terlebih dahulu di menu
-				<strong>Kokurikuler</strong>.
+				<strong><a class="link" href="/kokurikuler">Kokurikuler</a></strong>.
 			</span>
 		</div>
 	{:else if !selectedKokurikuler}

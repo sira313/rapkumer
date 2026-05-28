@@ -100,6 +100,20 @@
 	// Download template as Excel (.xlsx) — delegated to modular helper in $lib
 	async function downloadTemplate() {
 		try {
+			// Fetch all students in the class (bypass pagination) so the template
+			// includes every student, not just the current page.
+			const kelasId = (data as any).kelasAktif?.id ?? null;
+			let allMurid: { id: number; nama: string }[] | null = null;
+			if (kelasId) {
+				try {
+					const res = await fetch(`/api/murid/daftar?kelas_id=${kelasId}`);
+					if (res.ok) allMurid = await res.json();
+				} catch (_) {
+					// fall back to paginated list below
+				}
+			}
+			const daftarMuridExport = allMurid ?? data.daftarMurid;
+
 			// Determine which mata pelajaran to use
 			const mapelIdStr =
 				selectedMapelValue ?? data.selectedMapel?.id ?? data.mapelList?.[0]?.value ?? '';
@@ -183,7 +197,7 @@
 								await downloadTemplateXLSX({
 									mapelName: chosen.name,
 									kelasName: data.kelasAktif?.nama ?? 'Nama Kelas',
-									daftarMurid: data.daftarMurid,
+									daftarMurid: daftarMuridExport,
 									lingkupGroups: finalLingkupGroups,
 									mapelId: resolvedMapelId,
 									kelasId: kelasId
@@ -202,7 +216,7 @@
 			await downloadTemplateXLSX({
 				mapelName: currentMapelName,
 				kelasName: data.kelasAktif?.nama ?? 'Nama Kelas',
-				daftarMurid: data.daftarMurid,
+				daftarMurid: daftarMuridExport,
 				lingkupGroups,
 				mapelId: Number.isInteger(mapelId) && mapelId > 0 ? mapelId : null,
 				kelasId: (data as any).kelasAktif?.id ?? null

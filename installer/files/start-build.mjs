@@ -56,8 +56,8 @@ const candidates = [
 				await import(url);
 				return;
 			}
-		} catch {
-			// ignore and try next candidate
+		} catch (err) {
+			console.warn('[start-build] failed to load candidate:', cand, err && (err.message || err));
 		}
 	}
 

@@ -37,7 +37,10 @@
 	let previewPrintable = $state<HTMLDivElement | null>(null);
 	let previewLoading = $state(false);
 	let previewError = $state<string | null>(null);
-	let showBgLogo = $state(false);
+	let showBgLogo = $state(true);
+
+	// show TP listing: 'compact' | 'full-desc'
+	let fullTP = $state<'compact' | 'full-desc'>('compact');
 
 	// bulk print state
 	let isBulkMode = $state(false);
@@ -163,7 +166,7 @@
 				documentType,
 				murid,
 				kelasId: data.kelasId ? Number(data.kelasId) : undefined,
-				tpMode: 'compact',
+				tpMode: fullTP,
 				criteria: { kritCukup: 85, kritBaik: 95 },
 				signal: controller.signal
 			});
@@ -236,7 +239,7 @@
 				documentType,
 				muridList,
 				kelasId: data.kelasId ? Number(data.kelasId) : undefined,
-				tpMode: 'compact',
+				tpMode: fullTP,
 				criteria: { kritCukup: 85, kritBaik: 95 },
 				signal: controller.signal,
 				onProgress: (current, total) => {
@@ -379,13 +382,15 @@
 			isPiagamSelected={false}
 			selectedTemplate="1"
 			isRaporSelected={false}
-			tpMode="compact"
-			onToggleFullTP={() => {}}
+			tpMode={fullTP}
+			onToggleFullTP={(value: 'compact' | 'full-desc') => {
+				fullTP = value;
+			}}
 			kelasId={data.kelasId}
 			isBiodataSelected={false}
 			isKeasramaanSelected={true}
 			{showBgLogo}
-			onToggleBgLogo={(value) => {
+			onToggleBgLogo={(value: boolean) => {
 				showBgLogo = value;
 			}}
 			onBgRefresh={() => {

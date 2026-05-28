@@ -34,6 +34,7 @@ Persyaratan:
 
 - Node.js 20 LTS (direkomendasikan)
 - pnpm
+- Google Chrome atau Chromium (untuk rendering PDF via PagedJS + Puppeteer)
 
 Langkah singkat:
 
