@@ -20,6 +20,9 @@ importers:
       pagedjs-cli:
         specifier: ^0.4.3
         version: 0.4.3(typescript@5.9.3)
+      pdf-lib:
+        specifier: ^1.17.1
+        version: 1.17.1
       puppeteer-core:
         specifier: ^25.1.0
         version: 25.1.0
