@@ -1,3 +1,7 @@
+import { PDFDocument } from 'pdf-lib';
+import { mkdtemp, writeFile, readFile, unlink, rm } from 'node:fs/promises';
+import { tmpdir, availableParallelism } from 'node:os';
+import { join } from 'node:path';
 import { renderPDF } from './pagedpdf';
 import { renderCoverHTML } from './templates/cover';
 import { renderRaporHTML } from './templates/rapor';
@@ -36,142 +40,87 @@ export async function generatePDF(
 	return renderPDF(renderHTML(docType, data, template));
 }
 
-/**
- * Extract all @page CSS blocks using brace counting so nested rules
- * (@bottom-left, @bottom-right) are handled correctly.
- */
-function extractPageBlocks(css: string): string[] {
-	const blocks: string[] = [];
-	const re = /@page\s*\{/g;
-	let match: RegExpExecArray | null;
-	while ((match = re.exec(css)) !== null) {
-		let depth = 1;
-		const start = match.index;
-		let i = match.index + match[0].length;
-		while (i < css.length && depth > 0) {
-			if (css[i] === '{') depth++;
-			else if (css[i] === '}') depth--;
-			i++;
-		}
-		if (depth === 0) {
-			blocks.push(css.substring(start, i));
-		}
-	}
-	return blocks;
-}
-
-/** Build a combined CSS string for bulk PDF generation using running elements. */
 type BulkItem = {
 	docType: DocumentType;
 	data: Record<string, unknown>;
 	template?: '1' | '2';
 };
 
-export async function generateBulkPDF(items: BulkItem[]): Promise<Uint8Array> {
-	if (!items.length) throw new Error('No items to generate PDF for.');
+/** Jumlah worker concurrent untuk generate PDF individual. */
+const CONCURRENCY = Math.min(availableParallelism() || 4, 8);
 
-	const htmls = items.map((item) => renderHTML(item.docType, item.data, item.template));
+/** Tulis tiap PDF student ke temp file, return array path file. */
+async function generateAllPDFs(items: BulkItem[], tmpDir: string): Promise<string[]> {
+	const filePaths: string[] = new Array(items.length);
+	let index = 0;
 
-	if (htmls.length === 1) {
-		return renderPDF(htmls[0]);
-	}
-
-	const styleMatch = htmls[0].match(/<style[^>]*>([\s\S]*?)<\/style>/i);
-	if (!styleMatch) throw new Error('No style block found in first student HTML.');
-
-	const allCSS = styleMatch[1];
-
-	const bodyClassRe = /<body[^>]*\sclass="([^"]*)"[^>]*>/i;
-	const bodyClassMatch = htmls[0].match(bodyClassRe);
-	const bodyClass = bodyClassMatch ? bodyClassMatch[1] : '';
-
-	const pageBlocks = extractPageBlocks(allCSS);
-
-	let nonPageCSS = allCSS;
-	for (const block of pageBlocks) {
-		nonPageCSS = nonPageCSS.replace(block, '');
-	}
-	nonPageCSS = nonPageCSS.trim();
-
-	const templatePage =
-		pageBlocks.find((b) => /@bottom-(left|right)/.test(b)) ??
-		pageBlocks[pageBlocks.length - 1] ??
-		pageBlocks[0];
-
-	const hasBottomLeft = templatePage ? /@bottom-left/.test(templatePage) : false;
-
-	const basePage =
-		hasBottomLeft && templatePage
-			? templatePage.replace(/content:\s*"[^"]*"/, 'content: element(footer-left)').trim()
-			: templatePage
-				? templatePage.trim()
-				: '@page { size: A4 portrait; margin: 20mm; }';
-
-	const bodies: string[] = [];
-
-	for (let i = 0; i < htmls.length; i++) {
-		const bodyMatch = htmls[i].match(/<body[^>]*>([\s\S]*)<\/body>/i);
-		if (!bodyMatch) throw new Error(`Failed to extract body from student ${i}`);
-
-		if (hasBottomLeft) {
-			let runningFooter = '';
-			const blMatch = htmls[i].match(/@bottom-left\s*\{([\s\S]*?)\}/i);
-			if (blMatch) {
-				const contentMatch = blMatch[1].match(/content:\s*"([^"]*)"/i);
-				const footerText = contentMatch ? contentMatch[1] : '';
-				if (footerText) {
-					runningFooter = `<span class="footer-left">${footerText}</span>`;
-				}
-			}
-			const cls = i === 0 ? 'sp' : 'sp sp-break';
-			bodies.push(`<div class="${cls}">${runningFooter}${bodyMatch[1]}</div>`);
-		} else {
-			if (i > 0) {
-				bodies.push(`<div class="sp-break"></div>`);
-			}
-			bodies.push(bodyMatch[1]);
+	async function worker(): Promise<void> {
+		while (index < items.length) {
+			const i = index++;
+			const pdf = await generatePDF(items[i].docType, items[i].data, items[i].template);
+			const filePath = join(tmpDir, `${i}.pdf`);
+			await writeFile(filePath, pdf);
+			filePaths[i] = filePath;
 		}
 	}
 
-	const watermarkRe = /<img[^>]*\bclass\s*=\s*"watermark"[^>]*>/gi;
-	const watermarkMatch = bodies[0].match(watermarkRe);
-	const watermarkHtml = watermarkMatch ? watermarkMatch[0] : '';
-
-	const piagamBgRe = /<div\s+class="piagam-bg"[^>]*><\/div>/gi;
-	const piagamBgMatch = bodies[0].match(piagamBgRe);
-	const piagamBgHtml = piagamBgMatch ? piagamBgMatch[0] : '';
-
-	const cleanedBodies = bodies.map((body) => body.replace(watermarkRe, '').replace(piagamBgRe, ''));
-
-	const combined = `<!DOCTYPE html>
-<html lang="id">
-<head>
-<meta charset="UTF-8">
-<style>
-${nonPageCSS}
-
-${basePage}
-
-.sp-break { page-break-before: always; }
-
-.footer-left {
-	position: running(footer-left);
-	font-size: 9pt;
-	font-family: Helvetica, Arial, sans-serif;
-	color: #555;
+	const poolSize = Math.min(CONCURRENCY, items.length);
+	const workers = Array.from({ length: poolSize }, () => worker());
+	await Promise.all(workers);
+	return filePaths;
 }
 
-@media print {
-	.footer-left { position: running(footer-left); }
+/** Merge 2 file PDF menjadi 1 file output, lalu hapus file sumber. */
+async function mergeTwoPDFs(aPath: string, bPath: string, outPath: string): Promise<void> {
+	const [aBuf, bBuf] = await Promise.all([readFile(aPath), readFile(bPath)]);
+	const merged = await PDFDocument.create();
+	for (const buf of [aBuf, bBuf]) {
+		const pdf = await PDFDocument.load(buf);
+		const pages = await merged.copyPages(pdf, pdf.getPageIndices());
+		for (const page of pages) merged.addPage(page);
+	}
+	await writeFile(outPath, await merged.save());
+	await Promise.all([unlink(aPath), unlink(bPath)]);
 }
-</style>
-</head>
-<body${bodyClass ? ` class="${bodyClass}"` : ''}>
-${watermarkHtml}
-${piagamBgHtml}
-${cleanedBodies.join('\n')}
-</body>
-</html>`;
 
-	return renderPDF(combined);
+export async function generateBulkPDF(items: BulkItem[]): Promise<Uint8Array> {
+	if (!items.length) throw new Error('No items to generate PDF for.');
+	if (items.length === 1) return generatePDF(items[0].docType, items[0].data, items[0].template);
+
+	const tmpDir = await mkdtemp(join(tmpdir(), 'rapkumer-bulk-'));
+
+	try {
+		let batch = await generateAllPDFs(items, tmpDir);
+
+		// Binary merge tree — each round merges pairs into new files, deleting originals.
+		// Peak memory: only 2 PDFs loaded at a time per merge operation.
+		// Use a global counter so filenames are unique across all rounds, preventing
+		// a round-2 output from colliding with a round-1 input that hasn't been consumed yet.
+		let mergeId = 0;
+		while (batch.length > 1) {
+			const next: string[] = [];
+			const pairs: [string, string][] = [];
+
+			for (let i = 0; i < batch.length; i += 2) {
+				if (i + 1 < batch.length) {
+					pairs.push([batch[i], batch[i + 1]]);
+				} else {
+					next.push(batch[i]);
+				}
+			}
+
+			const mergedPaths = await Promise.all(
+				pairs.map(([a, b]) => {
+					const out = join(tmpDir, `m_${mergeId++}.pdf`);
+					return mergeTwoPDFs(a, b, out).then(() => out);
+				})
+			);
+
+			batch = [...next, ...mergedPaths];
+		}
+
+		return await readFile(batch[0]);
+	} finally {
+		await rm(tmpDir, { recursive: true, force: true });
+	}
 }
