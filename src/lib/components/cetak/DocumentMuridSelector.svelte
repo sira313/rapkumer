@@ -44,7 +44,7 @@
 	const documentOptions: Array<{ value: DocumentType; label: string }> = [
 		{ value: 'cover', label: 'Cover' },
 		{ value: 'biodata', label: 'Biodata' },
-		{ value: 'rapor', label: 'Rapor Akhir Semester' },
+		{ value: 'rapor', label: 'Rapor' },
 		{ value: 'piagam', label: 'Piagam' },
 		{ value: 'keasramaan', label: 'Rapor Keasramaan' }
 	];
