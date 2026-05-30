@@ -285,7 +285,8 @@
 					template: documentType === 'piagam' ? selectedTemplate : undefined,
 					docLabel,
 					bgLogo: showBgLogo,
-					raporPeriode: documentType === 'rapor' && selectedRaporPeriode ? selectedRaporPeriode : undefined
+					raporPeriode:
+						documentType === 'rapor' && selectedRaporPeriode ? selectedRaporPeriode : undefined
 				})
 			});
 			if (!res.ok) throw new Error('Gagal mendapatkan token');
@@ -374,7 +375,8 @@
 					docLabel: selectedDocumentEntry?.label ?? documentType,
 					kelasLabel: kelasAktifLabel ? kelasAktifLabel.replace(/\s+/g, '') : 'Semua-Kelas',
 					bgLogo: showBgLogo,
-					raporPeriode: documentType === 'rapor' && selectedRaporPeriode ? selectedRaporPeriode : undefined
+					raporPeriode:
+						documentType === 'rapor' && selectedRaporPeriode ? selectedRaporPeriode : undefined
 				})
 			});
 
