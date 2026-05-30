@@ -1,6 +1,11 @@
 // Single Murid Preview Logic - Encapsulated & Testable
 
-import { createPreviewURLSearchParams, type TPMode, type RaporCriteria } from '$lib/rapor-params';
+import {
+	createPreviewURLSearchParams,
+	type TPMode,
+	type RaporCriteria,
+	type RaporPeriode
+} from '$lib/rapor-params';
 import type { PreviewPayload } from '$lib/preview-types';
 
 export type MuridData = {
@@ -29,6 +34,7 @@ export type SinglePreviewRequest = {
 	kelasId?: number;
 	tpMode: TPMode;
 	criteria: RaporCriteria;
+	raporPeriode?: RaporPeriode;
 	signal?: AbortSignal;
 };
 
@@ -58,7 +64,8 @@ export async function loadSinglePreview(
 		muridId: request.murid.id,
 		kelasId: request.kelasId,
 		tpMode: request.tpMode,
-		criteria: request.criteria
+		criteria: request.criteria,
+		raporPeriode: request.raporPeriode
 	});
 
 	const response = await fetch(`${path}.json?${params.toString()}`, {

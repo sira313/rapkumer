@@ -1,24 +1,21 @@
 <script lang="ts">
 	const summary = [
 		{
-			title: 'Atribusi',
+			title: 'Gratis & Bebas',
 			description:
-				'Cantumkan nama Raporkumer dan tautan lisensi saat membagikan materi ini, serta sebutkan jika ada perubahan.'
+				'Perangkat lunak ini boleh digunakan, disalin, dan dimodifikasi secara gratis untuk keperluan nonkomersial.'
 		},
 		{
 			title: 'NonKomersial',
 			description:
-				'Gunakan materi hanya untuk tujuan nonkomersial; dilarang menjual atau memonetisasi langsung.'
+				'Dilarang menjual, menyewakan, atau memonetisasi perangkat lunak ini maupun hasil modifikasinya dalam bentuk apa pun.'
 		},
 		{
-			title: 'BerbagiSerupa',
+			title: 'Atribusi',
 			description:
-				'Jika Anda membuat adaptasi atau turunan dari materi ini, Anda harus mendistribusikannya di bawah lisensi yang sama (CC BY-NC-SA 4.0).'
+				'Cantumkan nama Raporkumer dan tautan repositori saat membagikan, serta sebutkan jika ada perubahan.'
 		}
 	];
-
-	const licenseUrl = 'https://creativecommons.org/licenses/by-nc-sa/4.0/deed.id';
-	const legalUrl = 'https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode.id';
 </script>
 
 <div class="flex w-full flex-col gap-4">
@@ -29,10 +26,9 @@
 				Ketentuan Penggunaan Raporkumer
 			</h1>
 			<p class="text-base-content/80 text-base md:text-lg">
-				Seluruh konten repositori ini berada di bawah lisensi Creative Commons
-				<strong>Atribusi-NonKomersial-BerbagiSerupa 4.0 Internasional</strong> (CC BY-NC-SA 4.0). Artinya,
-				Anda boleh membagikan dan membuat adaptasi dari materi ini selama mengikuti aturan berikut dan
-				mendistribusikan adaptasi tersebut di bawah lisensi yang sama.
+				Repositori ini menggunakan lisensi khas (custom license) yang melindungi hak pengembang
+				sekaligus memberikan kebebasan maksimal untuk penggunaan nonkomersial. Dengan menggunakan
+				perangkat lunak ini, Anda menyetujui ketentuan berikut.
 			</p>
 		</div>
 	</section>
@@ -51,63 +47,50 @@
 			<h2 class="text-base-content text-2xl font-semibold">Hak dan Batasan Utama</h2>
 			<ul class="text-base-content/80 list-inside list-disc space-y-2 text-base">
 				<li>
-					<span class="text-base-content font-medium">Berbagi:</span> diperbolehkan menyalin dan mendistribusikan
-					materi ini di media apa pun.
+					<span class="text-base-content font-medium">Gunakan & salin:</span> bebas menggunakan dan mendistribusikan
+					perangkat lunak ini di media apa pun untuk keperluan nonkomersial.
+				</li>
+				<li>
+					<span class="text-base-content font-medium">Modifikasi:</span> bebas memodifikasi untuk kebutuhan
+					pribadi atau kontribusi ke repositori asli.
 				</li>
 				<li>
 					<span class="text-base-content font-medium">Atribusi:</span> sertakan nama Raporkumer dan tautan
-					repositori saat membagikan.
+					repositori saat membagikan, serta sebutkan jika ada perubahan.
 				</li>
 				<li>
-					<span class="text-base-content font-medium">NonKomersial:</span> penggunaan untuk tujuan komersial
-					tidak diizinkan tanpa izin tertulis.
-				</li>
-				<li>
-					<span class="text-base-content font-medium">Berbagi Serupa:</span> jika Anda membuat adaptasi
-					atau turunan dari materi ini, Anda harus mendistribusikannya di bawah lisensi yang sama (CC
-					BY-NC-SA 4.0).
+					<span class="text-base-content font-medium">Larangan komersial:</span> dilarang menjual, menyewakan,
+					atau memonetisasi perangkat lunak ini maupun hasil modifikasinya.
 				</li>
 			</ul>
 			<p class="text-base-content/80 text-sm">
 				Lisensi ini tidak menggantikan hukum lain yang mungkin berlaku, seperti hak potret, privasi,
 				atau hak moral. Pastikan Anda mematuhi peraturan setempat saat menggunakan materi ini.
 			</p>
-			<div class="flex flex-wrap gap-3">
-				<a
-					class="btn btn-primary btn-soft shadow-none"
-					href={licenseUrl}
-					target="_blank"
-					rel="noreferrer"
-				>
-					Ringkasan Lisensi
-				</a>
-				<a class="btn btn-outline" href={legalUrl} target="_blank" rel="noreferrer">
-					Teks Hukum Lengkap
-				</a>
-			</div>
+			<p class="text-base-content/80 text-sm">
+				Teks lisensi lengkap tersedia di file <code>LICENSE</code> pada repositori ini.
+			</p>
 		</div>
 	</section>
 
 	<section class="rounded-box border-base-200/80 bg-base-100/95 border p-8 shadow-md sm:p-10">
 		<div class="space-y-4">
-			<h2 class="text-base-content text-2xl font-semibold">Pengecualian pada Aset Statis</h2>
+			<h2 class="text-base-content text-2xl font-semibold">Cakupan Lisensi</h2>
 			<p class="text-base-content/80 text-sm leading-relaxed">
-				Beberapa aset grafis yang termasuk dalam folder <code>static/</code> tidak dicakup oleh lisensi
-				CC BY-NC-SA 4.0 dari repositori ini. Aset-aset tersebut tetap berada di bawah lisensi atau hak
-				tempat penyusun aslinya. Untuk menghindari kebingungan, berikut daftar aset yang dikecualikan:
+				Lisensi ini mencakup seluruh kode sumber repositori beserta aset-aset berikut:
 			</p>
 			<ul class="text-base-content/80 list-inside list-disc space-y-2">
-				<li><code>static/bg-certificate.png</code></li>
-				<li><code>static/bg-certificate2.png</code></li>
-				<li><code>static/garudaPancasila.png</code></li>
-				<li><code>static/logo-kumer.png</code></li>
-				<li><code>static/tutwuri-bw.png</code></li>
-				<li><code>static/tutwuri.png</code></li>
+				<li>Seluruh kode sumber dalam repositori</li>
+				<li><code>static/logo.png</code></li>
+				<li><code>static/logo.ico</code></li>
+				<li><code>static/favicon.ico</code></li>
+				<li><code>static/favicon.png</code></li>
+				<li><code>static/bipmap2.png</code></li>
 			</ul>
 			<p class="text-base-content/80 text-sm leading-relaxed">
-				Pengecualian ini berarti jika Anda ingin menggunakan salah satu dari aset di atas, periksa
-				lisensi atau izin khusus yang berlaku untuk aset tersebut. Jika lisensi asli tidak
-				disertakan di file aset, hubungi tim pengembang untuk meminta klarifikasi atau izin.
+				Aset lain di luar daftar di atas (termasuk aset lain di folder <code>static/</code>) tetap
+				berada di bawah lisensi aslinya masing-masing. Lihat file <code>LICENSE</code> atau dokumentasi
+				terkait untuk informasi lebih lanjut.
 			</p>
 		</div>
 	</section>

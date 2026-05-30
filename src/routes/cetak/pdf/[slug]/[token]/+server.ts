@@ -23,6 +23,7 @@ export const GET = (async ({ locals, params }) => {
 	if (stored.kritBaik != null) url.searchParams.set('krit_baik', String(stored.kritBaik));
 	if (stored.template) url.searchParams.set('template', stored.template);
 	if (stored.bgLogo) url.searchParams.set('bg_logo', '1');
+	if (stored.raporPeriode) url.searchParams.set('rapor_periode', stored.raporPeriode);
 
 	const docType = stored.docType as DocumentType;
 

@@ -15,7 +15,7 @@
 		type PreviewPayload
 	} from '$lib/single-preview-logic';
 	import { loadBulkPreviews_robust, buildBulkErrorMessage } from '$lib/bulk-preview-logic';
-	import { DEFAULT_RAPOR_CRITERIA } from '$lib/rapor-params';
+	import { DEFAULT_RAPOR_CRITERIA, type RaporPeriode } from '$lib/rapor-params';
 	let { data } = $props();
 
 	const documentOptions: Array<{ value: DocumentType; label: string }> = [
@@ -27,6 +27,7 @@
 	];
 
 	let selectedDocument = $state<DocumentType | ''>('');
+	let selectedRaporPeriode = $state<RaporPeriode | ''>('');
 	let selectedMuridId = $state('');
 	let selectedTemplate = $state<'1' | '2'>('1');
 	let previewDocument = $state<DocumentType | ''>('');
@@ -223,9 +224,14 @@
 		waitingForPrintable = false;
 	}
 
-	const docLabel = $derived(
-		selectedDocumentEntry?.label?.replace(/\s+/g, '-')?.toLowerCase() ?? selectedDocument
-	);
+	const docLabel = $derived.by(() => {
+		const base =
+			selectedDocumentEntry?.label?.replace(/\s+/g, '-')?.toLowerCase() ?? selectedDocument;
+		if (selectedDocument === 'rapor' && selectedRaporPeriode === 'rts') {
+			return 'rapor-tengah-semester';
+		}
+		return base;
+	});
 
 	async function handleDownloadSingle() {
 		const documentType = selectedDocument;
@@ -278,7 +284,9 @@
 					kriteria: { kritCukup, kritBaik },
 					template: documentType === 'piagam' ? selectedTemplate : undefined,
 					docLabel,
-					bgLogo: showBgLogo
+					bgLogo: showBgLogo,
+					raporPeriode:
+						documentType === 'rapor' && selectedRaporPeriode ? selectedRaporPeriode : undefined
 				})
 			});
 			if (!res.ok) throw new Error('Gagal mendapatkan token');
@@ -366,7 +374,9 @@
 					template: documentType === 'piagam' ? selectedTemplate : undefined,
 					docLabel: selectedDocumentEntry?.label ?? documentType,
 					kelasLabel: kelasAktifLabel ? kelasAktifLabel.replace(/\s+/g, '') : 'Semua-Kelas',
-					bgLogo: showBgLogo
+					bgLogo: showBgLogo,
+					raporPeriode:
+						documentType === 'rapor' && selectedRaporPeriode ? selectedRaporPeriode : undefined
 				})
 			});
 
@@ -495,6 +505,7 @@
 	<DocumentMuridSelector
 		bind:selectedDocument
 		bind:selectedTemplate
+		bind:selectedRaporPeriode
 		bind:selectedMuridId
 		{daftarMurid}
 		{piagamRankingOptions}

@@ -5,7 +5,12 @@ import {
 	getSuccessfulResults,
 	validateBulkResults
 } from '$lib/bulk-preview-loader';
-import { createPreviewURLSearchParams, type TPMode, type RaporCriteria } from '$lib/rapor-params';
+import {
+	createPreviewURLSearchParams,
+	type TPMode,
+	type RaporCriteria,
+	type RaporPeriode
+} from '$lib/rapor-params';
 import type { MuridData, DocumentType } from './single-preview-logic';
 import type { PreviewPayload } from './preview-types';
 
@@ -15,6 +20,7 @@ export type BulkPreviewRequest = {
 	kelasId?: number;
 	tpMode: TPMode;
 	criteria: RaporCriteria;
+	raporPeriode?: RaporPeriode;
 	signal?: AbortSignal;
 	onProgress?: (current: number, total: number) => void;
 };
@@ -54,7 +60,8 @@ export async function loadBulkPreviews_robust(
 				muridId,
 				kelasId: request.kelasId,
 				tpMode: request.tpMode,
-				criteria: request.criteria
+				criteria: request.criteria,
+				raporPeriode: request.raporPeriode
 			});
 
 			const response = await fetch(`${path}.json?${params.toString()}`, {

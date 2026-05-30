@@ -68,9 +68,10 @@ Lebih detil tentang pola implementasi (Svelte 5 runes, DaisyUI, Tailwind v4, Dri
 
 ## Lisensi & Pengecualian
 
-Konten proyek ini berada di bawah lisensi Creative Commons Attribution-NonCommercial-ShareAlike 4.0
-(CC BY-NC-SA 4.0). Namun, ada beberapa aset statis yang dikecualikan dari cakupan lisensi ini — lihat
-[docs/LICENSING.md](https://github.com/sira313/raporkumer/blob/main/docs/CODE_SIGNING.md) dan file `LICENSE-CC-BY-NC-SA-4.0.md` di root untuk detail lengkap.
+Perangkat lunak ini menggunakan lisensi khas (custom license). Anda bebas menggunakan, memodifikasi,
+dan membagikannya untuk keperluan nonkomersial selama mencantumkan atribusi. Dilarang menjual atau
+memonetisasi perangkat lunak ini maupun hasil modifikasinya. Lihat file `LICENSE` di root untuk
+ketentuan lengkap dan daftar aset yang dicakup.
 
 Ikon pada `src/lib/icons` berasal dari [Feather](https://github.com/feathericons/feather) dan dirilis di bawah
 lisensi MIT — rincian dan kredit ada di [docs/ICON-CREDITS.md](https://github.com/sira313/raporkumer/blob/main/docs/ICON-CREDITS.md).

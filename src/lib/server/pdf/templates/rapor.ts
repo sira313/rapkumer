@@ -7,6 +7,7 @@ export interface RaporPrintData {
 		bgLogoSrc?: string | null;
 		jenjangVariant?: string | null;
 	};
+	raporPeriode?: 'rts' | 'ras';
 	murid: {
 		nama: string;
 		nis: string;
@@ -395,7 +396,7 @@ thead { display: table-header-group; }
 
 ${bgLogoSrc ? `<img src="${bgLogoSrc}" alt="" class="watermark">` : ''}
 
-<div class="header-title">LAPORAN HASIL BELAJAR</div>
+<div class="header-title">LAPORAN HASIL BELAJAR${data.raporPeriode === 'rts' ? '<br>TENGAH SEMESTER' : ''}</div>
 <div class="header-subtitle">(RAPOR)</div>
 
 <table class="identity-table">
@@ -516,14 +517,14 @@ ${
 </table>
 
 ${
-	isGenap
+	isGenap && data.raporPeriode !== 'rts'
 		? `
 <table class="combined-table">
 	<col style="width:70%;">
 	<col style="width:12pt;">
 	<col style="width:calc(30% - 12pt);">
 	<tr>
-		<th>Tanggapan Orang Tua</th>
+		<th>Tanggapan Orang Tua / Wali</th>
 		<th class="sep-col">&nbsp;</th>
 		<th>Keputusan</th>
 	</tr>
@@ -547,7 +548,7 @@ ${
 `
 		: `
 <table class="tanggapan-table" style="margin-top:12pt;">
-	<tr><th>Tanggapan Orang Tua</th></tr>
+	<tr><th>Tanggapan Orang Tua / Wali</th></tr>
 	<tr><td>${data.tanggapanOrangTua || ''}</td></tr>
 </table>
 `

@@ -11,6 +11,7 @@ import {
 	tableMuridEkstrakurikuler,
 	tablePegawai
 } from '$lib/server/db/schema';
+import { parseRaporPeriode } from '$lib/rapor-params';
 import {
 	jenisMapel,
 	agamaMapelNames,
@@ -175,6 +176,10 @@ export async function getRaporPreviewPayload({ locals, url }: RaporContext) {
 		fullTPParam === 'desc' || fullTPParam === 'full-desc' ? 'full-desc' : 'compact';
 
 	// read optional intrakurikuler criteria overrides from query params
+	// read optional rapor periode (rts = rapor tengah semester, ras = rapor akhir semester)
+	const raporPeriode = parseRaporPeriode(url.searchParams.get('rapor_periode'));
+	const isRTS = raporPeriode === 'rts';
+
 	const kritCukupParam = url.searchParams.get('krit_cukup');
 	const kritBaikParam = url.searchParams.get('krit_baik');
 	const kritCukup = kritCukupParam ? Number(kritCukupParam) : undefined;
@@ -384,7 +389,7 @@ export async function getRaporPreviewPayload({ locals, url }: RaporContext) {
 				normalizedName,
 				displayName,
 				kelompok: jenisMapel[mapel.jenis] ?? null,
-				nilaiAkhir: formatNilai(item.nilaiAkhir ?? null),
+				nilaiAkhir: formatNilai(isRTS ? (item.nilaiAkhirRts ?? null) : (item.nilaiAkhir ?? null)),
 				deskripsi: buildCapaianKompetensi(
 					muridNama,
 					tujuanScores,
@@ -550,6 +555,7 @@ export async function getRaporPreviewPayload({ locals, url }: RaporContext) {
 			jenjangVariant: sekolah.jenjangVariant ?? null
 		},
 		showBgLogo,
+		raporPeriode,
 		murid: {
 			nama: murid.nama,
 			nis: murid.nis,
@@ -596,7 +602,7 @@ export async function getRaporPreviewPayload({ locals, url }: RaporContext) {
 
 	return {
 		meta: {
-			title: `Rapor - ${murid.nama}`
+			title: isRTS ? `Rapor Tengah Semester - ${murid.nama}` : `Rapor - ${murid.nama}`
 		},
 		raporData
 	};

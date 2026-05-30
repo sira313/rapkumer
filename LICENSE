@@ -1,54 +1,56 @@
-Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)
-======================================================================================
+Lisensi Raporkumer
+==================
 
-Ringkasan singkat
------------------
-Lisensi ini memungkinkan orang untuk menyalin, mendistribusikan, menampilkan, dan membuat adaptasi dari karya sepanjang mereka memberikan atribusi kepada pemegang hak (Atribusi), tidak menggunakan karya untuk keperluan komersial (NonKomersial), dan jika mereka membuat adaptasi, mendistribusikannya di bawah lisensi yang sama (ShareAlike).
+Dengan ini, pemegang hak cipta memberikan izin kepada siapa pun yang memperoleh
+salinan dari perangkat lunak ini dan file-file terkait, untuk menggunakan,
+menyalin, memodifikasi, menggabungkan, memublikasikan, mendistribusikan, dan/atau
+menyalin perangkat lunak ini, dengan ketentuan sebagai berikut:
 
-Tautan resmi:
-- Ringkasan lisensi: https://creativecommons.org/licenses/by-nc-sa/4.0/deed.id
-- Teks hukum lengkap: https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode.id
+1. **Penggunaan Pribadi & Kontribusi**
+   Perangkat lunak ini boleh digunakan untuk keperluan pribadi, pendidikan,
+   penelitian, atau kontribusi ke repositori asli (Raporkumer).
 
-Izin umum (secara ringkas)
-- Anda boleh berbagi (menyalin dan menyebarluaskan) karya ini.
-- Anda boleh membuat adaptasi (mengubah, memodifikasi) asalkan versi turunan
-  dilisensikan di bawah syarat yang sama (ShareAlike).
+2. **Berbagi**
+   Diperbolehkan menyalin dan mendistribusikan perangkat lunak ini dalam bentuk
+   asli maupun termodifikasi, selama menyertakan pemberitahuan hak cipta ini.
 
-Pembatasan utama
-- Atribusi: Berikan kredit yang sesuai, tautan ke lisensi, dan beri tahu jika ada perubahan.
-- NonKomersial: Dilarang menggunakan materi untuk tujuan komersial tanpa izin tertulis.
+3. **Larangan Komersial**
+   Perangkat lunak ini dan setiap modifikasi, turunan, atau kontribusi
+   berdasarkannya TIDAK BOLEH diperjualbelikan, disewakan, dilisensikan kembali
+   secara komersial, atau digunakan untuk tujuan komersial dalam bentuk apa pun.
+   Termasuk namun tidak terbatas pada: menjual perangkat lunak itu sendiri,
+   menjual hasil modifikasi, atau memungut biaya untuk akses, unduhan,
+   atau dukungan.
 
-Penafian & hukum lain
-Lisensi ini tidak menggantikan hak privasi, hak potret, paten, merek dagang, atau hak moral. Pastikan mematuhi hukum lokal saat menggunakan materi.
+4. **Atribusi**
+   Setiap distribusi atau publikasi yang menggunakan perangkat lunak ini (atau
+   modifikasinya) harus mencantumkan kredit yang sesuai kepada pengembang asli
+   Raporkumer, menyertakan tautan ke repositori resmi, dan menyebutkan jika ada
+   perubahan yang dilakukan.
 
-Pengecualian pada Aset Statis
------------------------------
-Untuk kejelasan: beberapa aset grafis yang disertakan dalam folder `static/` tidak dicakup oleh lisensi CC BY-NC-SA 4.0 dari repositori ini. Aset-aset ini dapat memiliki lisensi atau izin terpisah; mereka disebutkan di bawah ini dan dikecualikan dari cakupan CC BY-NC-SA 4.0:
+5. **Cakupan Lisensi**
+   Lisensi ini berlaku untuk seluruh kode sumber dan aset berikut:
+   - Seluruh kode sumber dalam repositori ini
+   - `static/logo.png`
+   - `static/logo.ico`
+   - `static/favicon.ico`
+   - `static/favicon.png`
+   - `static/bipmap2.png`
 
-- static/bg-certificate.png
-- static/bg-certificate2.png
-- static/garudaPancasila.png
-- static/logo-kumer.png
-- static/tutwuri-bw.png
-- static/tutwuri.png
+   Aset lain di luar daftar di atas (termasuk namun tidak terbatas pada file di
+   folder `static/` yang tidak disebutkan) tetap berada di bawah lisensi aslinya
+   masing-masing sebagaimana ditentukan oleh pemegang hak cipta yang relevan.
 
-Jika Anda ingin menggunakan salah satu aset di atas, periksa lisensi atau izin yang terkait dengan aset tersebut. Jika lisensi asli tidak tersedia dalam repositori, silakan hubungi tim pengembang untuk meminta klarifikasi atau izin penggunaan.
+6. **Ikon Eksternal**
+   Ikon dalam folder `src/lib/icons/` berasal dari proyek Feather Icons
+   (https://github.com/feathericons/feather) dan dirilis di bawah lisensi MIT.
+   Penggunaan ikon tersebut harus mematuhi syarat lisensi MIT, bukan lisensi ini.
 
-Kredit Ikon
------------
-Ikon yang ada di `src/lib/icons` berasal dari proyek Feather (Feather Icons):
-https://github.com/feathericons/feather
-
-Feather Icons dirilis di bawah lisensi MIT. Penggunaan ikon harus mematuhi syarat-syarat lisensi MIT.
-Disarankan untuk mencantumkan kredit/tautan saat ikon digunakan di luar konteks teknis internal.
-
-Catatan tambahan untuk pengembang
----------------------------------
-- File ini adalah salinan informasi lisensi yang relevan untuk repositori ini dan berisi pengecualian
-  spesifik yang diterapkan oleh pemilik repositori.
-- Untuk kebutuhan hukum formal atau komersial, baca teks hukum lengkap di tautan resmi
-  Creative Commons atau konsultasikan penasihat hukum.
+7. **Penafian**
+   PERANGKAT LUNAK INI DISEDIAKAN "SEBAGAIMANA ADANYA", TANPA JAMINAN APA PUN,
+   BAIK TERSURAT MAUPUN TERSIRAT. DALAM HAL APA PUN PEMEGANG HAK CIPTA TIDAK
+   BERTANGGUNG JAWAB ATAS KLAIM, KERUGIAN, ATAU KEWAJIBAN LAINNYA YANG TIMBUL
+   DARI PENGGUNAAN PERANGKAT LUNAK INI.
 
 ---
-Dibuat dan ditautkan oleh tim Raporkumer.
-
+Raporkumer — Rapor Kurikulum Merdeka
