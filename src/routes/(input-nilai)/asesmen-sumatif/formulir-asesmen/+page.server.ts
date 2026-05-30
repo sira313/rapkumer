@@ -263,7 +263,8 @@ export async function load({ url, locals, depends }) {
 			sasTes: true,
 			sasNonTes: true,
 			sas: true,
-			nilaiAkhir: true
+			nilaiAkhir: true,
+			nilaiAkhirRts: true
 		},
 		where: and(
 			eq(tableAsesmenSumatif.muridId, murid.id),
@@ -298,6 +299,10 @@ export async function load({ url, locals, depends }) {
 			lingkup: Number(locals.sekolah?.sumatifBobotLingkup ?? 60),
 			sts: Number(locals.sekolah?.sumatifBobotSts ?? 20),
 			sas: Number(locals.sekolah?.sumatifBobotSas ?? 20)
+		},
+		sumatifWeightsRts: {
+			lingkup: Number(locals.sekolah?.sumatifBobotRtsLingkup ?? 70),
+			sts: Number(locals.sekolah?.sumatifBobotRtsSts ?? 30)
 		},
 		initialScores: {
 			naLingkup: normalizeScore(sumatifRecord?.naLingkup ?? null),
@@ -485,6 +490,25 @@ export const actions = {
 			sas = Math.round((sum / sasValues.length) * 100) / 100;
 		}
 
+		// Compute nilaiAkhirRTS using RTS bobot (lingkup + STS only, no SAS)
+		const rtsBobotLingkup = Number(locals.sekolah?.sumatifBobotRtsLingkup ?? 70);
+		const rtsBobotSts = Number(locals.sekolah?.sumatifBobotRtsSts ?? 30);
+
+		let nilaiAkhirRts: number | null = null;
+		let weightedRts = 0;
+		let totalWeightRts = 0;
+		if (naLingkup != null) {
+			weightedRts += naLingkup * rtsBobotLingkup;
+			totalWeightRts += rtsBobotLingkup;
+		}
+		if (sts != null) {
+			weightedRts += sts * rtsBobotSts;
+			totalWeightRts += rtsBobotSts;
+		}
+		if (totalWeightRts > 0) {
+			nilaiAkhirRts = Math.round((weightedRts / totalWeightRts) * 100) / 100;
+		}
+
 		// Compute final nilaiAkhir using sekolah-level weights (fallback to 60/20/20)
 		// Base sekolah weights
 		const baseWeights = {
@@ -590,6 +614,7 @@ export const actions = {
 					sasNonTes,
 					sas,
 					nilaiAkhir,
+					nilaiAkhirRts,
 					updatedAt: now
 				})
 				.onConflictDoUpdate({
@@ -603,6 +628,7 @@ export const actions = {
 						sasNonTes,
 						sas,
 						nilaiAkhir,
+						nilaiAkhirRts,
 						updatedAt: now
 					}
 				});
@@ -623,7 +649,8 @@ export const actions = {
 					sasTes,
 					sasNonTes,
 					sas,
-					nilaiAkhir
+					nilaiAkhir,
+					nilaiAkhirRts
 				}
 			}
 		};

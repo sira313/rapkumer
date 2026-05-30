@@ -22,6 +22,7 @@
 		no: number;
 		nama: string;
 		nilaiAkhir: number | null;
+		nilaiAkhirRts: number | null;
 		naLingkup: number | null;
 		sts: number | null;
 		sas: number | null;
@@ -73,9 +74,10 @@
 		bobotSaving = true;
 		bobotError = null;
 		try {
-			const body = rapor === 'rts'
-				? { lingkup: 70, sts: 30, rapor: 'rts' }
-				: { lingkup: 60, sts: 20, sas: 20 };
+			const body =
+				rapor === 'rts'
+					? { lingkup: 70, sts: 30, rapor: 'rts' }
+					: { lingkup: 60, sts: 20, sas: 20 };
 			const res = await fetch('/api/sekolah/sumatif-bobot', {
 				method: 'PUT',
 				headers: { 'content-type': 'application/json' },
@@ -696,7 +698,8 @@
 					<tr class="bg-base-200 dark:bg-base-300 text-base-content text-left font-bold">
 						<th style="width: 50px; min-width: 40px;">No</th>
 						<th class="min-w-48">Nama</th>
-						<th class="min-w-40">Nilai Akhir</th>
+						<th class="min-w-40">Nilai Tengah Semester</th>
+						<th class="min-w-40">Nilai Rapor Semester</th>
 						<th class="min-w-32">Aksi</th>
 					</tr>
 				</thead>
@@ -705,6 +708,21 @@
 						<tr>
 							<td>{murid.no}</td>
 							<td>{@html searchQueryMarker(data.page.search, murid.nama)}</td>
+							<td>
+								{#if murid.nilaiAkhirRts != null}
+									<p class="font-semibold">{formatScore(murid.nilaiAkhirRts)}</p>
+									<div class="text-base-content/70 mt-1 text-xs">
+										{#if murid.naLingkup != null}
+											<p>Lingkup Materi: {formatScore(murid.naLingkup)}</p>
+										{/if}
+										{#if murid.sts != null}
+											<p>STS: {formatScore(murid.sts)}</p>
+										{/if}
+									</div>
+								{:else}
+									<span class="text-base-content/60 text-sm italic">Belum dinilai</span>
+								{/if}
+							</td>
 							<td>
 								{#if murid.nilaiAkhir != null}
 									<p class="font-semibold">{formatScore(murid.nilaiAkhir)}</p>

@@ -1,8 +1,33 @@
 import db from '$lib/server/db';
-import { tableSekolah, tableAsesmenSumatif, tableMataPelajaran, tableKelas } from '$lib/server/db/schema';
+import {
+	tableSekolah,
+	tableAsesmenSumatif,
+	tableMataPelajaran,
+	tableKelas
+} from '$lib/server/db/schema';
 import { isAuthorizedUser } from '../../../pengguna/permissions';
 import { json } from '@sveltejs/kit';
 import { eq, inArray } from 'drizzle-orm';
+
+function recalcNilaiAkhirRts(
+	naLingkup: number | null | undefined,
+	sts: number | null | undefined,
+	bobotLingkup: number,
+	bobotSts: number
+) {
+	let weighted = 0;
+	let totalW = 0;
+	if (naLingkup != null) {
+		weighted += naLingkup * bobotLingkup;
+		totalW += bobotLingkup;
+	}
+	if (sts != null) {
+		weighted += sts * bobotSts;
+		totalW += bobotSts;
+	}
+	if (totalW === 0) return null;
+	return Math.round((weighted / totalW) * 100) / 100;
+}
 
 function recalcNilaiAkhir(
 	naLingkup: number | null | undefined,
@@ -12,14 +37,24 @@ function recalcNilaiAkhir(
 	bobotSts: number,
 	bobotSas: number
 ) {
-	const eff = sts == null
-		? { lingkup: 70, sts: 0, sas: 30 }
-		: { lingkup: bobotLingkup, sts: bobotSts, sas: bobotSas };
+	const eff =
+		sts == null
+			? { lingkup: 70, sts: 0, sas: 30 }
+			: { lingkup: bobotLingkup, sts: bobotSts, sas: bobotSas };
 	let weighted = 0;
 	let totalW = 0;
-	if (naLingkup != null) { weighted += naLingkup * eff.lingkup; totalW += eff.lingkup; }
-	if (sts != null) { weighted += sts * eff.sts; totalW += eff.sts; }
-	if (sas != null) { weighted += sas * eff.sas; totalW += eff.sas; }
+	if (naLingkup != null) {
+		weighted += naLingkup * eff.lingkup;
+		totalW += eff.lingkup;
+	}
+	if (sts != null) {
+		weighted += sts * eff.sts;
+		totalW += eff.sts;
+	}
+	if (sas != null) {
+		weighted += sas * eff.sas;
+		totalW += eff.sas;
+	}
 	if (totalW === 0) return null;
 	return Math.round((weighted / totalW) * 100) / 100;
 }
@@ -86,6 +121,49 @@ export async function PUT({ request, locals }) {
 		} catch (err) {
 			console.error('Gagal menyimpan bobot sumatif RTS', err);
 			return json({ error: 'Gagal menyimpan bobot.' }, { status: 500 });
+		}
+
+		// Recalculate stored nilaiAkhirRts for all records using the new RTS bobot
+		try {
+			const kelasRecords = await db
+				.select({ id: tableKelas.id })
+				.from(tableKelas)
+				.where(eq(tableKelas.sekolahId, sekolah.id));
+			const kelasIds = kelasRecords.map((r) => r.id);
+			if (kelasIds.length > 0) {
+				const mapelRecords = await db
+					.select({ id: tableMataPelajaran.id })
+					.from(tableMataPelajaran)
+					.where(inArray(tableMataPelajaran.kelasId, kelasIds));
+				const mapelIds = mapelRecords.map((r) => r.id);
+				if (mapelIds.length > 0) {
+					const records = await db
+						.select({
+							id: tableAsesmenSumatif.id,
+							naLingkup: tableAsesmenSumatif.naLingkup,
+							sts: tableAsesmenSumatif.sts,
+							nilaiAkhirRts: tableAsesmenSumatif.nilaiAkhirRts
+						})
+						.from(tableAsesmenSumatif)
+						.where(inArray(tableAsesmenSumatif.mataPelajaranId, mapelIds));
+
+					for (const record of records) {
+						const newNilai = recalcNilaiAkhirRts(record.naLingkup, record.sts, intLingkup, intSts);
+						if (newNilai !== record.nilaiAkhirRts) {
+							await db
+								.update(tableAsesmenSumatif)
+								.set({ nilaiAkhirRts: newNilai })
+								.where(eq(tableAsesmenSumatif.id, record.id));
+						}
+					}
+				}
+			}
+		} catch (err) {
+			console.error('Gagal memperbarui nilai akhir RTS', err);
+			return json(
+				{ error: 'Bobot tersimpan, tapi gagal memperbarui nilai akhir RTS.' },
+				{ status: 500 }
+			);
 		}
 
 		return json({ message: 'Bobot sumatif RTS berhasil diperbarui.' });

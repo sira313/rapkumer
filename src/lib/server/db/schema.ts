@@ -488,6 +488,7 @@ export const tableAsesmenSumatif = sqliteTable(
 		sasNonTes: real(),
 		sas: real(),
 		nilaiAkhir: real(),
+		nilaiAkhirRts: real(),
 		...audit
 	},
 	(table) => [

@@ -463,6 +463,7 @@ async function main() {
 			{ table: 'murid', column: 'wali_asuh_nip', type: 'TEXT' }, // Columns for mata_pelajaran relations used by asesmen/tujuan tables
 			{ table: 'tujuan_pembelajaran', column: 'mata_pelajaran_id', type: 'INTEGER' },
 			{ table: 'asesmen_sumatif', column: 'mata_pelajaran_id', type: 'INTEGER' },
+			{ table: 'asesmen_sumatif', column: 'nilai_akhir_rts', type: 'REAL' },
 			{ table: 'asesmen_sumatif_tujuan', column: 'mata_pelajaran_id', type: 'INTEGER' },
 			{ table: 'asesmen_formatif', column: 'mata_pelajaran_id', type: 'INTEGER' },
 			// Tabel murid_ekstrakurikuler untuk tracking nilai kosong per murid (0030)

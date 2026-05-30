@@ -27,6 +27,7 @@
 		murid: { id: number; nama: string };
 		mapel: { id: number; kkm: number };
 		sumatifWeights: { lingkup: number; sts: number; sas: number };
+		sumatifWeightsRts: { lingkup: number; sts: number };
 		hasLingkupComplete: boolean;
 		hasTujuan: boolean;
 		entries: TujuanEntry[];
@@ -51,6 +52,7 @@
 			sasNonTes: number | null;
 			sas: number | null;
 			nilaiAkhir: number | null;
+			nilaiAkhirRts: number | null;
 		};
 	};
 
@@ -217,8 +219,69 @@
 	});
 	const kkm = $derived.by(() => Math.max(0, data.mapel.kkm ?? 0));
 
+	const nilaiAkhirRts = $derived.by(() => {
+		const bobot = {
+			lingkup: data.sumatifWeightsRts?.lingkup ?? 70,
+			sts: data.sumatifWeightsRts?.sts ?? 30
+		};
+		let weighted = 0;
+		let totalW = 0;
+		if (naSumatifLingkup != null) {
+			weighted += naSumatifLingkup * bobot.lingkup;
+			totalW += bobot.lingkup;
+		}
+		if (nilaiSts != null) {
+			weighted += nilaiSts * bobot.sts;
+			totalW += bobot.sts;
+		}
+		if (totalW === 0) return null;
+		return Math.round((weighted / totalW) * 100) / 100;
+	});
+
 	const nilaiAkhirCategory = $derived.by((): NilaiAkhirCategory | null => {
 		const nilai = nilaiAkhir;
+		if (nilai == null) return null;
+		const baseKkm = Math.max(0, kkm);
+		const thresholdCukup = baseKkm * 1.15;
+		const thresholdBaik = baseKkm * 1.3;
+		if (nilai < baseKkm) {
+			return {
+				key: 'perlu-bimbingan',
+				label: 'Perlu Bimbingan',
+				className: 'alert-error',
+				icon: 'error',
+				description: `Nilai akhir berada di bawah KKM (${formatScore(baseKkm)}).`
+			};
+		}
+		if (nilai < thresholdCukup) {
+			return {
+				key: 'cukup',
+				label: 'Cukup',
+				className: 'alert-warning',
+				icon: 'alert',
+				description: `Nilai akhir berada pada rentang ≥ KKM (${formatScore(baseKkm)}) dan < ${formatScore(thresholdCukup)}.`
+			};
+		}
+		if (nilai < thresholdBaik) {
+			return {
+				key: 'baik',
+				label: 'Baik',
+				className: 'alert-success',
+				icon: 'check',
+				description: `Nilai akhir berada pada rentang ≥ ${formatScore(thresholdCukup)} dan < ${formatScore(thresholdBaik)}.`
+			};
+		}
+		return {
+			key: 'sangat-baik',
+			label: 'Sangat Baik',
+			className: 'alert-info',
+			icon: 'info',
+			description: `Nilai akhir minimal ${formatScore(thresholdBaik)} (≥ 130% dari KKM).`
+		};
+	});
+
+	const nilaiAkhirRtsCategory = $derived.by((): NilaiAkhirCategory | null => {
+		const nilai = nilaiAkhirRts;
 		if (nilai == null) return null;
 		const baseKkm = Math.max(0, kkm);
 		const thresholdCukup = baseKkm * 1.15;
@@ -445,6 +508,18 @@
 			/>
 
 			<SasSummaryCard {nilaiSas} {formatScore} />
+
+			<NilaiAkhirCard
+				title="Nilai Rapor Tengah Semester"
+				nilaiAkhir={nilaiAkhirRts}
+				nilaiAkhirCategory={nilaiAkhirRtsCategory}
+				{kkm}
+				{formatScore}
+				sumatifWeights={{
+					lingkup: data.sumatifWeightsRts?.lingkup ?? 70,
+					sts: data.sumatifWeightsRts?.sts ?? 30
+				}}
+			/>
 
 			<NilaiAkhirCard
 				{nilaiAkhir}

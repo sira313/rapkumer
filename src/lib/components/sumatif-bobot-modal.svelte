@@ -32,8 +32,7 @@
 
 	const dispatch = createEventDispatcher();
 
-	$: totalRas =
-		(Number(lingkupLocal) || 0) + (Number(stsLocal) || 0) + (Number(sasLocal) || 0);
+	$: totalRas = (Number(lingkupLocal) || 0) + (Number(stsLocal) || 0) + (Number(sasLocal) || 0);
 	$: totalRts = (Number(lingkupRtsLocal) || 0) + (Number(stsRtsLocal) || 0);
 	$: currentTotal = activeTab === 'ras' ? totalRas : totalRts;
 	$: isComplete = currentTotal === 100;
