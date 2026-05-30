@@ -9,6 +9,7 @@ type PdfParams = {
 	kritBaik?: number;
 	template?: '1' | '2';
 	bgLogo?: boolean;
+	raporPeriode?: string;
 	slug: string;
 };
 

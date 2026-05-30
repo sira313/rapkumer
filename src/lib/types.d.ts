@@ -102,6 +102,7 @@ interface RaporPrintData {
 		bgLogoSrc?: string | null;
 		jenjangVariant?: string | null;
 	};
+	raporPeriode?: 'rts' | 'ras';
 	murid: {
 		nama: string;
 		nis: string;

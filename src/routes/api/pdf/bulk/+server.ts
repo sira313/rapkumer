@@ -18,6 +18,7 @@ type BulkRequest = {
 	docLabel?: string;
 	kelasLabel?: string;
 	bgLogo?: boolean;
+	raporPeriode?: string;
 };
 
 async function fetchStudentData(
@@ -34,6 +35,7 @@ async function fetchStudentData(
 		url.searchParams.set('krit_baik', String(body.criteria.kritBaik));
 	}
 	if (body.bgLogo) url.searchParams.set('bg_logo', '1');
+	if (body.raporPeriode) url.searchParams.set('rapor_periode', body.raporPeriode);
 
 	switch (body.docType) {
 		case 'rapor': {

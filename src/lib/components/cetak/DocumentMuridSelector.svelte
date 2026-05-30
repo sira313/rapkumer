@@ -2,6 +2,7 @@
 	import Icon from '$lib/components/icon.svelte';
 
 	type DocumentType = 'cover' | 'biodata' | 'rapor' | 'piagam' | 'keasramaan';
+	type RaporPeriode = 'rts' | 'ras';
 
 	type MuridData = {
 		id: number;
@@ -20,6 +21,7 @@
 	let {
 		selectedDocument = $bindable(''),
 		selectedTemplate = $bindable<'1' | '2'>('1'),
+		selectedRaporPeriode = $bindable<RaporPeriode>('ras'),
 		selectedMuridId = $bindable(''),
 		daftarMurid = [],
 		piagamRankingOptions = [],
@@ -31,6 +33,7 @@
 	}: {
 		selectedDocument: DocumentType | '';
 		selectedTemplate: '1' | '2';
+		selectedRaporPeriode?: RaporPeriode | '';
 		selectedMuridId: string;
 		daftarMurid: MuridData[];
 		piagamRankingOptions: PiagamRankingOption[];
@@ -96,6 +99,17 @@
 		>
 			<option value="1">Template 1</option>
 			<option value="2">Template 2</option>
+		</select>
+	{/if}
+	{#if selectedDocument === 'rapor'}
+		<select
+			class="select bg-base-200 w-full dark:border-none"
+			bind:value={selectedRaporPeriode}
+			title="Pilih periode rapor"
+		>
+			<option value="">Pilih periode…</option>
+			<option value="ras">Rapor Akhir Semester</option>
+			<option value="rts">Rapor Tengah Semester</option>
 		</select>
 	{/if}
 	{#if isPiagamSelected}

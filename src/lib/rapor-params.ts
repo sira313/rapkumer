@@ -1,5 +1,12 @@
 // Robust Parameter & Criteria Management for Rapor Preview
 
+export type RaporPeriode = 'rts' | 'ras';
+
+export function parseRaporPeriode(value: string | null): RaporPeriode {
+	if (value === 'rts' || value === 'ras') return value;
+	return 'ras';
+}
+
 export interface RaporCriteria {
 	kritCukup: number;
 	kritBaik: number;
@@ -54,6 +61,7 @@ export interface PreviewURLParams {
 	kelasId?: number;
 	tpMode: TPMode;
 	criteria: RaporCriteria;
+	raporPeriode: RaporPeriode;
 }
 
 export function buildPreviewURLParams(url: URL): PreviewURLParams {
@@ -73,11 +81,14 @@ export function buildPreviewURLParams(url: URL): PreviewURLParams {
 		url.searchParams.get('krit_baik')
 	);
 
+	const raporPeriode = parseRaporPeriode(url.searchParams.get('rapor_periode'));
+
 	return {
 		muridId: Number(muridIdStr),
 		kelasId,
 		tpMode,
-		criteria
+		criteria,
+		raporPeriode
 	};
 }
 
@@ -86,6 +97,7 @@ export function createPreviewURLSearchParams(params: {
 	kelasId?: number;
 	tpMode?: TPMode;
 	criteria?: RaporCriteria;
+	raporPeriode?: RaporPeriode;
 }): URLSearchParams {
 	const searchParams = new URLSearchParams();
 	searchParams.set('murid_id', String(params.muridId));
@@ -101,6 +113,10 @@ export function createPreviewURLSearchParams(params: {
 	const criteria = params.criteria ?? DEFAULT_RAPOR_CRITERIA;
 	searchParams.set('krit_cukup', String(criteria.kritCukup));
 	searchParams.set('krit_baik', String(criteria.kritBaik));
+
+	if (params.raporPeriode && params.raporPeriode !== 'ras') {
+		searchParams.set('rapor_periode', params.raporPeriode);
+	}
 
 	return searchParams;
 }
