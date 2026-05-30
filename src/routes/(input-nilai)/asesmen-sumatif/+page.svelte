@@ -63,18 +63,23 @@
 	let bobotLingkup = $state<number>(60);
 	let bobotSts = $state<number>(20);
 	let bobotSas = $state<number>(20);
+	let bobotLingkupRts = $state<number>(70);
+	let bobotStsRts = $state<number>(30);
 	let bobotLoading = $state(false);
 	let bobotSaving = $state(false);
 	let bobotError = $state<string | null>(null);
 
-	async function resetBobotToDefault() {
+	async function resetBobotToDefault(rapor: string = 'ras') {
 		bobotSaving = true;
 		bobotError = null;
 		try {
+			const body = rapor === 'rts'
+				? { lingkup: 70, sts: 30, rapor: 'rts' }
+				: { lingkup: 60, sts: 20, sas: 20 };
 			const res = await fetch('/api/sekolah/sumatif-bobot', {
 				method: 'PUT',
 				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ lingkup: 60, sts: 20, sas: 20 })
+				body: JSON.stringify(body)
 			});
 			const payload = await res.json();
 			if (!res.ok) {
@@ -82,9 +87,14 @@
 			}
 			toast(payload?.message ?? 'Bobot dikembalikan ke default.', 'success');
 			// update local state
-			bobotLingkup = 60;
-			bobotSts = 20;
-			bobotSas = 20;
+			if (rapor === 'rts') {
+				bobotLingkupRts = 70;
+				bobotStsRts = 30;
+			} else {
+				bobotLingkup = 60;
+				bobotSts = 20;
+				bobotSas = 20;
+			}
 			bobotError = null;
 			showBobotModal = false;
 			await invalidate('app:asesmen-sumatif');
@@ -340,9 +350,11 @@
 			const res = await fetch('/api/sekolah/sumatif-bobot');
 			if (!res.ok) throw new Error('Gagal memuat bobot.');
 			const jsonData = await res.json();
-			bobotLingkup = Number(jsonData.lingkup ?? 60);
-			bobotSts = Number(jsonData.sts ?? 20);
-			bobotSas = Number(jsonData.sas ?? 20);
+			bobotLingkup = Number(jsonData.ras?.lingkup ?? 60);
+			bobotSts = Number(jsonData.ras?.sts ?? 20);
+			bobotSas = Number(jsonData.ras?.sas ?? 20);
+			bobotLingkupRts = Number(jsonData.rts?.lingkup ?? 70);
+			bobotStsRts = Number(jsonData.rts?.sts ?? 30);
 			showBobotModal = true;
 		} catch (err) {
 			bobotError = String((err as Error)?.message ?? 'Gagal memuat bobot.');
@@ -356,7 +368,48 @@
 		bobotSaving = true;
 		bobotError = null;
 
-		// accept values from modal event detail, otherwise fall back to current parent state
+		const rapor = event?.detail?.rapor ?? 'ras';
+
+		if (rapor === 'rts') {
+			const lingkupVal = event?.detail?.lingkup ?? bobotLingkupRts;
+			const stsVal = event?.detail?.sts ?? bobotStsRts;
+
+			const total = (Number(lingkupVal) || 0) + (Number(stsVal) || 0);
+			if (total !== 100) {
+				bobotError = 'Jumlah bobot harus berjumlah 100.';
+				bobotSaving = false;
+				return;
+			}
+			try {
+				const res = await fetch('/api/sekolah/sumatif-bobot', {
+					method: 'PUT',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({
+						lingkup: Math.round(Number(lingkupVal)),
+						sts: Math.round(Number(stsVal)),
+						rapor: 'rts'
+					})
+				});
+				const payload = await res.json();
+				if (!res.ok) {
+					throw new Error(payload?.error ?? 'Gagal menyimpan bobot.');
+				}
+				toast(payload?.message ?? 'Bobot tersimpan.', 'success');
+				bobotLingkupRts = Math.round(Number(lingkupVal));
+				bobotStsRts = Math.round(Number(stsVal));
+				showBobotModal = false;
+				await invalidate('app:asesmen-sumatif');
+				await invalidate('app:asesmen-sumatif/formulir');
+			} catch (err) {
+				bobotError = String((err as Error)?.message ?? 'Gagal menyimpan bobot.');
+				toast(bobotError, 'error');
+			} finally {
+				bobotSaving = false;
+			}
+			return;
+		}
+
+		// RAS default
 		const lingkupVal = event?.detail?.lingkup ?? bobotLingkup;
 		const stsVal = event?.detail?.sts ?? bobotSts;
 		const sasVal = event?.detail?.sas ?? bobotSas;
@@ -382,12 +435,10 @@
 				throw new Error(payload?.error ?? 'Gagal menyimpan bobot.');
 			}
 			toast(payload?.message ?? 'Bobot tersimpan.', 'success');
-			// update parent's state to the saved values
 			bobotLingkup = Math.round(Number(lingkupVal));
 			bobotSts = Math.round(Number(stsVal));
 			bobotSas = Math.round(Number(sasVal));
 			showBobotModal = false;
-			// refresh related loads
 			await invalidate('app:asesmen-sumatif');
 			await invalidate('app:asesmen-sumatif/formulir');
 		} catch (err) {
@@ -726,13 +777,14 @@
 	lingkup={bobotLingkup}
 	sts={bobotSts}
 	sas={bobotSas}
+	lingkupRts={bobotLingkupRts}
+	stsRts={bobotStsRts}
 	loading={bobotLoading}
 	saving={bobotSaving}
 	error={bobotError}
 	on:close={() => (showBobotModal = false)}
-	on:reset={() => {
-		// always reset to server default (defined in +server.ts)
-		void resetBobotToDefault();
+	on:reset={(e) => {
+		void resetBobotToDefault(e.detail.rapor);
 	}}
 	on:save={saveBobot}
 />

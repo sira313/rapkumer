@@ -98,6 +98,9 @@ export const tableSekolah = sqliteTable('sekolah', {
 	sumatifBobotLingkup: int().default(60).notNull(),
 	sumatifBobotSts: int().default(20).notNull(),
 	sumatifBobotSas: int().default(20).notNull(),
+	// Rapor Tengah Semester weight distribution: lingkup 70%, STS 30%
+	sumatifBobotRtsLingkup: int().default(70).notNull(),
+	sumatifBobotRtsSts: int().default(30).notNull(),
 	// Rapor: kriteria intrakurikuler (batas atas untuk kategori Cukup / Baik)
 	raporKriteriaCukup: int().default(85).notNull(),
 	raporKriteriaBaik: int().default(95).notNull(),

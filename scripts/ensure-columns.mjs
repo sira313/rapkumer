@@ -400,6 +400,9 @@ async function main() {
 			{ table: 'sekolah', column: 'sumatif_bobot_lingkup', type: 'INTEGER DEFAULT 60' },
 			{ table: 'sekolah', column: 'sumatif_bobot_sts', type: 'INTEGER DEFAULT 20' },
 			{ table: 'sekolah', column: 'sumatif_bobot_sas', type: 'INTEGER DEFAULT 20' },
+			// Rapor Tengah Semester bobot: lingkup 70%, STS 30%
+			{ table: 'sekolah', column: 'sumatif_bobot_rts_lingkup', type: 'INTEGER DEFAULT 70' },
+			{ table: 'sekolah', column: 'sumatif_bobot_rts_sts', type: 'INTEGER DEFAULT 30' },
 			// Sekolah rapor kriteria columns
 			{ table: 'sekolah', column: 'rapor_kriteria_cukup', type: 'INTEGER DEFAULT 85' },
 			{ table: 'sekolah', column: 'rapor_kriteria_baik', type: 'INTEGER DEFAULT 95' },

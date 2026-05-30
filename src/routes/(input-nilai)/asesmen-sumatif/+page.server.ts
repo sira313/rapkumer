@@ -71,6 +71,26 @@ function formatScore(value: number | null | undefined) {
 	return Number.parseFloat(value.toFixed(2));
 }
 
+function computeNilaiAkhir(
+	naLingkup: number | null | undefined,
+	sts: number | null | undefined,
+	sas: number | null | undefined,
+	bobotLingkup: number,
+	bobotSts: number,
+	bobotSas: number
+) {
+	const eff = sts == null
+		? { lingkup: 70, sts: 0, sas: 30 }
+		: { lingkup: bobotLingkup, sts: bobotSts, sas: bobotSas };
+	let weighted = 0;
+	let totalW = 0;
+	if (naLingkup != null) { weighted += naLingkup * eff.lingkup; totalW += eff.lingkup; }
+	if (sts != null) { weighted += sts * eff.sts; totalW += eff.sts; }
+	if (sas != null) { weighted += sas * eff.sas; totalW += eff.sas; }
+	if (totalW === 0) return null;
+	return Math.round((weighted / totalW) * 100) / 100;
+}
+
 type MapelOption = { value: string; nama: string };
 
 type MuridRow = {
@@ -93,7 +113,7 @@ type PageState = {
 	perPage: number;
 };
 
-export async function load({ parent, url, depends }) {
+export async function load({ parent, url, depends, locals }) {
 	depends('app:asesmen-sumatif');
 	const { kelasAktif, user } = await parent();
 	const meta: PageMeta = { title: 'Asesmen Sumatif' };
@@ -630,11 +650,17 @@ export async function load({ parent, url, depends }) {
 			return targetMapelId === assignedLocalMapelId;
 		})();
 
+		const bobotLingkup = Number(locals.sekolah?.sumatifBobotLingkup ?? 60);
+		const bobotSts = Number(locals.sekolah?.sumatifBobotSts ?? 20);
+		const bobotSas = Number(locals.sekolah?.sumatifBobotSas ?? 20);
+
 		return {
 			id: murid.id,
 			no: offset + index + 1,
 			nama: murid.nama,
-			nilaiAkhir: formatScore(sumatif?.nilaiAkhir),
+			nilaiAkhir: formatScore(
+				computeNilaiAkhir(sumatif?.naLingkup, sumatif?.sts, sumatif?.sas, bobotLingkup, bobotSts, bobotSas)
+			),
 			naLingkup: formatScore(sumatif?.naLingkup),
 			sts: formatScore(sumatif?.sts),
 			sas: formatScore(sumatif?.sas),

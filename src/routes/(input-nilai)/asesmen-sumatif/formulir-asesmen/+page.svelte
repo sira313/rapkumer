@@ -181,17 +181,12 @@
 		// Determine effective weights using rules:
 		// - All present: base weights
 		// - STS missing only: lingkup 70 / sas 30
-		// - SAS missing only: lingkup 70 / sts 30
-		// - Both missing: lingkup 100
 		const base = {
 			lingkup: data.sumatifWeights?.lingkup ?? 60,
 			sts: data.sumatifWeights?.sts ?? 20,
 			sas: data.sumatifWeights?.sas ?? 20
 		};
-		let eff = base;
-		if (nilaiSts == null && nilaiSas == null) eff = { lingkup: 100, sts: 0, sas: 0 };
-		else if (nilaiSts == null) eff = { lingkup: 70, sts: 0, sas: 30 };
-		else if (nilaiSas == null) eff = { lingkup: 70, sts: 30, sas: 0 };
+		let eff = nilaiSts == null ? { lingkup: 70, sts: 0, sas: 30 } : base;
 		let weighted = 0;
 		let totalW = 0;
 		if (naSumatifLingkup != null) {
@@ -217,9 +212,7 @@
 			sts: data.sumatifWeights?.sts ?? 20,
 			sas: data.sumatifWeights?.sas ?? 20
 		};
-		if (nilaiSts == null && nilaiSas == null) return { lingkup: 100, sts: 0, sas: 0 };
 		if (nilaiSts == null) return { lingkup: 70, sts: 0, sas: 30 };
-		if (nilaiSas == null) return { lingkup: 70, sts: 30, sas: 0 };
 		return base;
 	});
 	const kkm = $derived.by(() => Math.max(0, data.mapel.kkm ?? 0));
