@@ -207,7 +207,7 @@ body {
 .grid-table {
 	border-collapse: collapse;
 	width: 100%;
-	margin-top: 6pt;
+	margin-top: 12pt;
 }
 
 .grid-table th,
@@ -247,7 +247,7 @@ body {
 .grid-table tr.group-header td {
 	border: 1px solid #000;
 	font-weight: bold;
-	font-size: 9pt;
+	font-size: 10pt;
 	text-align: left;
 	padding: 3pt 5pt;
 }
