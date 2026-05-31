@@ -130,7 +130,7 @@ ${sharedStyles()}
 	size: A4 portrait;
 	margin-left: 20mm;
 	margin-right: 15mm;
-	margin-top: 15mm;
+	margin-top: 8mm;
 	margin-bottom: 20mm;
 	@bottom-left {
 		content: "${data.rombel.nama} | ${data.murid.nama} | ${data.murid.nis}";
@@ -148,9 +148,9 @@ ${sharedStyles()}
 
 body {
 	font-family: Helvetica, Arial, sans-serif;
-	font-size: 9pt;
+	font-size: 10pt;
 	color: #000;
-	line-height: 1.4;
+	line-height: 1.3;
 	margin: 0;
 	padding: 0;
 }
@@ -159,22 +159,23 @@ body {
 .font-bold { font-weight: bold; }
 
 .header-title {
-	font-size: 13pt;
+	font-size: 12pt;
 	font-weight: bold;
 	text-align: center;
-	margin-bottom: 2pt;
+	margin-bottom: 1pt;
 }
 
 .header-subtitle {
 	font-size: 9pt;
 	font-weight: normal;
 	text-align: center;
-	margin-bottom: 14pt;
+	margin-bottom: 6pt;
 }
 
 .identity-table {
 	border-collapse: collapse;
 	width: 100%;
+	font-size: 9pt;
 }
 
 .identity-table td {
@@ -206,13 +207,13 @@ body {
 .grid-table {
 	border-collapse: collapse;
 	width: 100%;
-	margin-top: 12pt;
+	margin-top: 6pt;
 }
 
 .grid-table th,
 .grid-table td {
 	border: 1px solid #000;
-	padding: 4pt 6pt;
+	padding: 3pt 5pt;
 	vertical-align: top;
 	page-break-inside: auto;
 	break-inside: auto;
@@ -248,7 +249,7 @@ body {
 	font-weight: bold;
 	font-size: 9pt;
 	text-align: left;
-	padding: 5pt 6pt;
+	padding: 3pt 5pt;
 }
 
 thead { display: table-header-group; }
@@ -269,7 +270,7 @@ thead { display: table-header-group; }
 .single-section-table .section-header {
 	border: 1px solid #000;
 	font-weight: bold;
-	font-size: 9pt;
+	font-size: 10pt;
 	text-align: center;
 	padding: 6pt;
 	background: #f0f0f0;
@@ -322,7 +323,7 @@ thead { display: table-header-group; }
 	border: 1px solid #000;
 	padding: 6pt;
 	min-height: 70pt;
-	font-size: 9pt;
+	font-size: 10pt;
 }
 
 .tanggapan-table {
@@ -385,7 +386,7 @@ thead { display: table-header-group; }
 }
 
 .nip-text {
-	font-size: 9pt;
+	font-size: 10pt;
 	margin-top: 1pt;
 }
 
