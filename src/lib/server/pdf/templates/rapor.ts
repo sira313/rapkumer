@@ -148,7 +148,7 @@ ${sharedStyles()}
 
 body {
 	font-family: Helvetica, Arial, sans-serif;
-	font-size: 12pt;
+	font-size: 9pt;
 	color: #000;
 	line-height: 1.4;
 	margin: 0;
@@ -159,14 +159,14 @@ body {
 .font-bold { font-weight: bold; }
 
 .header-title {
-	font-size: 14pt;
+	font-size: 13pt;
 	font-weight: bold;
 	text-align: center;
 	margin-bottom: 2pt;
 }
 
 .header-subtitle {
-	font-size: 10pt;
+	font-size: 9pt;
 	font-weight: normal;
 	text-align: center;
 	margin-bottom: 14pt;
@@ -178,7 +178,7 @@ body {
 }
 
 .identity-table td {
-	padding: 0pt 4pt;
+	padding: 1.5pt 4pt;
 	vertical-align: top;
 }
 
@@ -215,12 +215,18 @@ body {
 	padding: 4pt 6pt;
 	vertical-align: top;
 	page-break-inside: auto;
+	break-inside: auto;
 	orphans: 1;
 	widows: 1;
 }
 
+.grid-table tbody {
+	page-break-inside: auto;
+	break-inside: auto;
+}
+
 .grid-table tr.first-data-row {
-	page-break-before: avoid;
+	page-break-before: auto;
 }
 
 .grid-table th {
@@ -233,14 +239,14 @@ body {
 .grid-table .col-no { width: 6%; }
 .grid-table .col-mata-pelajaran { width: 28%; }
 .grid-table .col-nilai { width: 12%; }
-.grid-table .col-capaian { width: 54%; white-space: pre-line; }
+.grid-table .col-capaian { width: 54%; }
 .grid-table .col-ekstra { width: 30%; }
 .grid-table .col-keterangan { width: 64%; }
 
 .grid-table tr.group-header td {
 	border: 1px solid #000;
 	font-weight: bold;
-	font-size: 11pt;
+	font-size: 9pt;
 	text-align: left;
 	padding: 5pt 6pt;
 }
@@ -263,7 +269,7 @@ thead { display: table-header-group; }
 .single-section-table .section-header {
 	border: 1px solid #000;
 	font-weight: bold;
-	font-size: 12pt;
+	font-size: 9pt;
 	text-align: center;
 	padding: 6pt;
 	background: #f0f0f0;
@@ -316,7 +322,7 @@ thead { display: table-header-group; }
 	border: 1px solid #000;
 	padding: 6pt;
 	min-height: 70pt;
-	font-size: 11pt;
+	font-size: 9pt;
 }
 
 .tanggapan-table {
@@ -379,7 +385,7 @@ thead { display: table-header-group; }
 }
 
 .nip-text {
-	font-size: 11pt;
+	font-size: 9pt;
 	margin-top: 1pt;
 }
 
@@ -440,7 +446,7 @@ ${group.items
 			<td class="col-no" style="text-align:center;">${i + 1}</td>
 			<td class="col-mata-pelajaran">${item.mataPelajaran}</td>
 			<td class="col-nilai" style="text-align:center;">${formatValue(item.nilaiAkhir)}</td>
-			<td class="col-capaian">${formatValue(item.deskripsi)}</td>
+			<td class="col-capaian">${formatValue(item.deskripsi).replace(/\n/g, '<br>')}</td>
 		</tr>`;
 	})
 	.join('\n')}`;
