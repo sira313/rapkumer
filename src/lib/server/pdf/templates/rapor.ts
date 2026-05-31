@@ -178,7 +178,7 @@ body {
 }
 
 .identity-table td {
-	padding: 3pt 4pt;
+	padding: 0pt 4pt;
 	vertical-align: top;
 }
 
