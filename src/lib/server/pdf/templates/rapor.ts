@@ -134,14 +134,14 @@ ${sharedStyles()}
 	margin-bottom: 15mm;
 	@bottom-left {
 		content: "${data.rombel.nama} | ${data.murid.nama} | ${data.murid.nis}";
-		font-size: 9pt;
+		font-size: 10pt;
 		font-family: Helvetica, Arial, sans-serif;
 		color: #555;
 		vertical-align: center;
 	}
 	@bottom-right {
 		content: "Halaman: " counter(page);
-		font-size: 9pt;
+		font-size: 10pt;
 		font-family: Helvetica, Arial, sans-serif;
 		color: #555;
 		vertical-align: center;
@@ -168,7 +168,7 @@ body {
 }
 
 .header-subtitle {
-	font-size: 9pt;
+	font-size: 10pt;
 	font-weight: normal;
 	text-align: center;
 	margin-bottom: 6pt;
@@ -177,7 +177,7 @@ body {
 .identity-table {
 	border-collapse: collapse;
 	width: 100%;
-	font-size: 9pt;
+	font-size: 10pt;
 }
 
 .identity-table td {
