@@ -130,19 +130,21 @@ ${sharedStyles()}
 	size: A4 portrait;
 	margin-left: 20mm;
 	margin-right: 15mm;
-	margin-top: 8mm;
-	margin-bottom: 20mm;
+	margin-top: 15mm;
+	margin-bottom: 15mm;
 	@bottom-left {
 		content: "${data.rombel.nama} | ${data.murid.nama} | ${data.murid.nis}";
 		font-size: 9pt;
 		font-family: Helvetica, Arial, sans-serif;
 		color: #555;
+		vertical-align: center;
 	}
 	@bottom-right {
 		content: "Halaman: " counter(page);
 		font-size: 9pt;
 		font-family: Helvetica, Arial, sans-serif;
 		color: #555;
+		vertical-align: center;
 	}
 }
 
