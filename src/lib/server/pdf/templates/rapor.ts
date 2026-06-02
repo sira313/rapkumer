@@ -311,7 +311,7 @@ ${data.ekstrakurikuler
 
 <!-- Ketidakhadiran & Catatan Wali Kelas -->
 <div class="no-break" style="margin-top:12pt;">
-	<div style="display:grid;grid-template-columns:35fr 65fr;gap:1rem;">
+	<div style="display:grid;grid-template-columns:42fr 58fr;gap:1rem;">
 		<table class="pdf-table">
 			<thead>
 				<tr>
@@ -354,7 +354,7 @@ ${
 		? `
 <!-- Tanggapan Orang Tua & Keputusan -->
 <div class="no-break" style="margin-top:12pt;">
-	<div style="display:grid;grid-template-columns:70fr 30fr;gap:1rem;">
+	<div style="display:grid;grid-template-columns:65fr 35fr;gap:1rem;">
 		<table class="pdf-table">
 			<thead>
 				<tr>
@@ -377,7 +377,8 @@ ${
 			<tbody>
 				<tr>
 					<td class="align-top">
-						<div style="display:flex;flex-direction:column;gap:0.5rem;">
+						Berdasarkan capaian seluruh kompetensi, ananda ${formatValue(data.murid.nama)} dinyatakan:
+						<div style="display:flex;flex-direction:column;gap:0.25rem;margin-top:0.5rem;">
 							<div style="display:flex;justify-content:space-between;">
 								<span>${isGraduating ? 'Lulus' : 'Naik Kelas'}</span>
 								<span>☐</span>
