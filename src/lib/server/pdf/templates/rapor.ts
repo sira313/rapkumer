@@ -183,6 +183,16 @@ body {
 	page-break-inside: avoid;
 }
 
+/* capaian sections */
+.capaian-tercapai,
+.capaian-bimbingan {
+	text-align: justify;
+}
+
+.capaian-bimbingan {
+	margin-top: 4pt;
+}
+
 /* utility passthrough */
 .align-top { vertical-align: top; }
 .underline { text-decoration: underline; }
@@ -252,7 +262,10 @@ ${group.items
 			<td class="align-top text-center">${i + 1}</td>
 			<td class="align-top">${item.mataPelajaran}</td>
 			<td class="align-top text-center">${formatValue(item.nilaiAkhir)}</td>
-			<td class="align-top">${formatValue(item.deskripsi).replace(/\n/g, '<br>')}</td>
+			<td class="align-top">${formatValue(item.deskripsi).split('\n').filter(Boolean).map(p => {
+				const cls = p.includes('masih perlu bimbingan') ? 'capaian-bimbingan' : 'capaian-tercapai';
+				return `<div class="${cls}">${p}</div>`;
+			}).join('')}</td>
 		</tr>`;
 	})
 	.join('\n')}`;
@@ -273,7 +286,7 @@ ${
 	</thead>
 	<tbody>
 		<tr>
-			<td class="align-top">${data.kokurikuler}</td>
+			<td class="align-top" style="text-align:justify">${data.kokurikuler}</td>
 		</tr>
 	</tbody>
 </table>
@@ -299,7 +312,7 @@ ${data.ekstrakurikuler
 		(e, i) => `		<tr>
 			<td class="align-top text-center">${i + 1}</td>
 			<td class="align-top">${e.nama}</td>
-			<td class="align-top">${formatValue(e.deskripsi)}</td>
+			<td class="align-top" style="text-align:justify">${formatValue(e.deskripsi)}</td>
 		</tr>`
 	)
 	.join('\n')}
