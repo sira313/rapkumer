@@ -14,5 +14,8 @@
 			"addWords": true,
 			"scope": "workspace"
 		}
+	},
+	"[html]": {
+		"editor.defaultFormatter": "vscode.html-language-features"
 	}
 }

@@ -10,36 +10,42 @@
 ## 1. Hipotesis yang Diuji
 
 ### H1: Row `page-break-inside:avoid` menyebabkan empty space
+
 - **Akar hipotesis:** `<tr style="page-break-inside:avoid;">` pada setiap baris tabel memaksa Paged.js memindahkan baris utuh ke halaman berikutnya, meninggalkan ruang kosong.
 - **Diuji pada state:** S1 (b0d732f) — SEMUA baris menggunakan `page-break-inside:avoid`.
 - **Bukti:** S1 menghasilkan 6× TR selectNode + 2× TABLE selectNode per siswa (8 element-level breaks), tetapi **0 empty space ≥1%** pada semua halaman.
 - **Verdict:** TERBANTAHKAN. Element-level break tidak menyebabkan empty space.
 
 ### H2: SelectNode(TR) menyebabkan empty space
+
 - **Akar hipotesis:** Callback `selectNode` pada elemen TR mengindikasikan Paged.js kesulitan menempatkan baris, sehingga halaman memiliki celah kosong.
 - **Diuji pada state:** S1 (b0d732f) — memicu TR selectNode 6× per siswa.
 - **Bukti:** Semua peristiwa selectNode TR terjadi tanpa empty space. Paged.js menangani element-level overflow dengan benar — memindahkan konten ke halaman berikutnya dan mengisi ruang yang tersisa.
 - **Verdict:** TERBANTAHKAN. SelectNode adalah mekanisme normal, bukan indikator bug.
 
 ### H3: Table selectNode menyebabkan empty space
+
 - **Akar hipotesis:** SelectNode pada elemen TABLE memotong tabel di tengah dan meninggalkan ruang kosong.
 - **Diuji pada state:** S1 (b0d732f) — memicu TABLE selectNode 2× per siswa.
 - **Bukti:** TABLE selectNode terjadi 2× per siswa, tetapi tidak ada empty space. Data sintetis (7 mapel, 2500 ch/mapel) juga memicu TABLE selectNode 3× tanpa empty space.
 - **Verdict:** TERBANTAHKAN.
 
 ### H4: Gap calculation `gap - leftMargin` menyebabkan over-estimasi ruang kosong
+
 - **Akar hipotesis:** Perhitungan `this.gap = gap - leftMargin` di Paged.js polyfill menghasilkan nilai negative atau terlalu besar, menyebabkan rendering salah.
 - **Diuji pada state:** S1–S4 — nilai `gap - leftMargin` konsisten `1056.701875` (gap ≈ 1132.28, leftMargin ≈ 75.58).
 - **Bukti:** Nilai gap konsisten dan positif di semua render. Tidak ada korelasi antara nilai gap dan empty space.
 - **Verdict:** TERBANTAHKAN. Gap calculation normal.
 
 ### H5: Concurrency (bulk rendering) menyebabkan race condition
+
 - **Akar hipotesis:** Render 4 siswa bersamaan menyebabkan interferensi Paged.js.
 - **Diuji:** 5 siswa dengan concurrency=4.
 - **Bukti:** Setiap siswa menghasilkan page count dan event pattern yang **identik** dengan render sequential (1 siswa). Tidak ada perbedaan.
 - **Verdict:** TERBANTAHKAN. Bulk rendering aman.
 
 ### H6: Perubahan CSS setelah S1 menghilangkan bug
+
 - **Akar hipotesis:** Bug asli sudah diperbaiki oleh layout fixes setelah migrasi Paged.js.
 - **Diuji:** Semua 4 state (b0d732f → ef97365 → b2708d0 → cb002ce) dengan 5 siswa paling kompleks + Abrillia (7 mapel).
 - **Bukti:** Semua state menghasilkan 0 empty space. Halaman konsisten 5 (new batch) atau 2 (old batch). Tidak ada state yang mereproduksi bug.
@@ -49,12 +55,12 @@
 
 ## 2. Commit yang Mengubah Perilaku Page Break
 
-| Commit | Perubahan | Efek pada Page Break |
-|--------|-----------|---------------------|
-| `b0d732f` | Migrasi ke Paged.js + WeasyPrint dihapus | **State S1.** Setiap `<tr>` punya `page-break-inside:avoid`. Tidak ada `orphans`/`widows` pada `<td>`. |
-| `ef97365` | Fix combined table (CSS `table-layout:fixed`, padding) | **State S2.** **Tidak ada efek** pada page break. S2 identik dengan S1. |
-| **`b2708d0`** | **Fix intrak table pagebreak** | **State S3.** Perubahan paling signifikan: (a) `page-break-inside:avoid` dihapus dari `<tr>`, (b) `orphans:2; widows:2` ditambahkan ke `<td>`, (c) `first-data-row { page-break-before: avoid }`, (d) inline width → CSS class. **Efek: element-level break → text-level break.** |
-| `cb002ce` | Avoid pagebreak inside | **State S4.** `page-break-inside:auto` + `orphans:1; widows:1` ditambahkan ke `<td>`. **Tidak ada efek** — orphans/widows di-override ke 2 oleh aturan S3. |
+| Commit        | Perubahan                                              | Efek pada Page Break                                                                                                                                                                                                                                                              |
+| ------------- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `b0d732f`     | Migrasi ke Paged.js + WeasyPrint dihapus               | **State S1.** Setiap `<tr>` punya `page-break-inside:avoid`. Tidak ada `orphans`/`widows` pada `<td>`.                                                                                                                                                                            |
+| `ef97365`     | Fix combined table (CSS `table-layout:fixed`, padding) | **State S2.** **Tidak ada efek** pada page break. S2 identik dengan S1.                                                                                                                                                                                                           |
+| **`b2708d0`** | **Fix intrak table pagebreak**                         | **State S3.** Perubahan paling signifikan: (a) `page-break-inside:avoid` dihapus dari `<tr>`, (b) `orphans:2; widows:2` ditambahkan ke `<td>`, (c) `first-data-row { page-break-before: avoid }`, (d) inline width → CSS class. **Efek: element-level break → text-level break.** |
+| `cb002ce`     | Avoid pagebreak inside                                 | **State S4.** `page-break-inside:auto` + `orphans:1; widows:1` ditambahkan ke `<td>`. **Tidak ada efek** — orphans/widows di-override ke 2 oleh aturan S3.                                                                                                                        |
 
 ### Ringkasan efek
 
@@ -100,6 +106,7 @@ Empty space:      0 0 0 0 (sama untuk semua state)
 ### Untuk investigasi masa depan
 
 Jika bug muncul kembali:
+
 1. Capture **full HTML** dan **screenshot** dari halaman yang bermasalah segera
 2. Catat **Chrome/Puppeteer/Paged.js version** saat itu
 3. Simpan **database backup** sebelum import data baru
