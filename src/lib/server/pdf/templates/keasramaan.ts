@@ -109,11 +109,18 @@ body {
 	background: #f0f0f0;
 }
 
+.main-table tbody,
+.main-table tr,
+.main-table th,
+.main-table td {
+	page-break-inside: auto;
+	break-inside: auto;
+}
+
 .main-table td {
 	border: 0.3mm solid #000;
 	padding: 1.4mm 2.8mm;
 	vertical-align: top;
-	page-break-inside: auto;
 	orphans: 1;
 	widows: 1;
 }
@@ -136,9 +143,6 @@ body {
 	text-align: left;
 	white-space: pre-line;
 }
-
-thead { display: table-header-group; }
-
 
 .main-table tr.category-header td {
 	font-weight: bold;
