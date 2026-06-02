@@ -425,7 +425,7 @@ ${
 			<tr>
 				<td></td>
 				<td></td>
-				<td style="text-align:center;">${data.ttd.tempat}, ${data.ttd.tanggal}</td>
+				<td style="text-align:center;padding-bottom:6pt;">${data.ttd.tempat}, ${data.ttd.tanggal}</td>
 			</tr>
 			<tr>
 				<td style="text-align:center;font-weight:bold;">Orang Tua / Wali Murid</td>
@@ -433,9 +433,9 @@ ${
 				<td style="text-align:center;font-weight:bold;">Wali Kelas</td>
 			</tr>
 			<tr>
-				<td style="height:6rem;"></td>
+				<td style="height:4rem;"></td>
 				<td></td>
-				<td style="height:6rem;"></td>
+				<td style="height:4rem;"></td>
 			</tr>
 			<tr>
 				<td style="text-align:center;">____________________</td>
@@ -448,12 +448,12 @@ ${
 			<tr>
 				<td></td>
 				<td></td>
-				<td style="text-align:center;">NIP. ${data.waliKelas.nip}</td>
+				<td style="text-align:center;">${data.waliKelas.nip}</td>
 			</tr>`
 					: ''
 			}
 			<tr>
-				<td style="height:2.5rem;"></td>
+				<td style="height:0.75rem;"></td>
 				<td></td>
 				<td></td>
 			</tr>
@@ -464,7 +464,7 @@ ${
 			</tr>
 			<tr>
 				<td></td>
-				<td style="height:6rem;"></td>
+				<td style="height:4rem;"></td>
 				<td></td>
 			</tr>
 			<tr>
@@ -477,7 +477,7 @@ ${
 					? `
 			<tr>
 				<td></td>
-				<td style="text-align:center;">NIP. ${data.kepalaSekolah.nip}</td>
+				<td style="text-align:center;">${data.kepalaSekolah.nip}</td>
 				<td></td>
 			</tr>`
 					: ''
