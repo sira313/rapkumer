@@ -112,9 +112,13 @@ ${sharedStyles()}
 	width: 100%;
 }
 
+body {
+	font-size: 10pt;
+}
+
 .identity-table td {
 	padding: 2px 4px;
-	font-size: 12pt;
+	font-size: 10pt;
 }
 
 .header-title {
@@ -142,7 +146,7 @@ ${sharedStyles()}
 	flex-direction: column;
 	justify-content: space-between;
 	text-align: center;
-	font-size: 11pt;
+	font-size: 10pt;
 }
 
 .photo-box {
