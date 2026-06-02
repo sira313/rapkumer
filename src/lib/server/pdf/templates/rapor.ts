@@ -108,7 +108,7 @@ ${sharedStyles()}
 		vertical-align: center;
 	}
 	@bottom-right {
-		content: "Halaman: " counter(page);
+		content: "Halaman: " counter(page) " / " counter(pages);
 		font-size: 10pt;
 		font-family: Helvetica, Arial, sans-serif;
 		color: #555;
