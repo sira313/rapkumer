@@ -170,6 +170,8 @@ async function importKelasDanMuridFromExcel(
 	const idxWaliJob = findColumnIndex('Pekerjaan Wali', 'Pekerjaan Wali Murid');
 	const idxWaliKontak = findColumnIndex('Kontak Wali', 'No HP Wali', 'No Hp Wali', 'Telepon Wali');
 	const idxWaliBase = findColumnIndex('Data Wali');
+	const idxWaliAsuhNama = findColumnIndex('Nama Wali Asuh');
+	const idxWaliAsuhNip = findColumnIndex('NIP Wali Asuh', 'NIP');
 
 	const ayahNameIdx =
 		idxAyahNama ?? (idxAyahBase !== undefined && idxAyahBase >= 0 ? idxAyahBase : undefined);
@@ -217,6 +219,8 @@ async function importKelasDanMuridFromExcel(
 		ayah: WaliPayload | null;
 		ibu: WaliPayload | null;
 		wali: WaliPayload | null;
+		waliAsuhNama: string;
+		waliAsuhNip: string;
 	};
 
 	const chooseKontak = (row: (string | number)[]): string => {
@@ -320,7 +324,11 @@ async function importKelasDanMuridFromExcel(
 					waliJobIdx,
 					kontakWali || kontakOrangTua,
 					alamatUntukWali ?? undefined
-				)
+				),
+				waliAsuhNama:
+					normalize(idxWaliAsuhNama !== undefined ? row[idxWaliAsuhNama] : '') || '',
+				waliAsuhNip:
+					normalize(idxWaliAsuhNip !== undefined ? row[idxWaliAsuhNip] : '') || ''
 			} satisfies StudentPayload;
 		})
 		.filter(Boolean) as StudentPayload[];
@@ -447,6 +455,8 @@ async function importKelasDanMuridFromExcel(
 						waliId,
 						kelasId,
 						semesterId: opts.semesterId,
+						waliAsuhNama: student.waliAsuhNama || null,
+						waliAsuhNip: student.waliAsuhNip || null,
 						updatedAt: timestamp
 					})
 					.where(eq(tableMurid.id, existing.id));
@@ -487,6 +497,8 @@ async function importKelasDanMuridFromExcel(
 				ayahId,
 				ibuId,
 				waliId,
+				waliAsuhNama: student.waliAsuhNama || null,
+				waliAsuhNip: student.waliAsuhNip || null,
 				updatedAt: timestamp
 			});
 			insertedMurid += 1;
