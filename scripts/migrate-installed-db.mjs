@@ -29,12 +29,10 @@ function run(cmd, args, opts = {}) {
 	const res = spawnSync(cmd, args || [], { stdio: 'inherit', shell: useShell, ...opts });
 	if (res.error) {
 		console.error('Failed to run:', res.error);
-		process.exitCode = 1;
 		throw res.error;
 	}
 	if (res.status !== 0) {
 		console.error(`Process exited with code ${res.status}`);
-		process.exitCode = res.status;
 		throw new Error(`Command failed: ${cmd} ${args ? args.join(' ') : ''}`);
 	}
 }
