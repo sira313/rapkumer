@@ -213,25 +213,46 @@ export function renderKeasramaanHTML(data: KeasramaanPrintData): string {
 	const kepalaSekolahTitle =
 		data.kepalaSekolah?.statusKepalaSekolah === 'plt' ? 'Plt. Kepala Sekolah' : 'Kepala Sekolah';
 
-	const tableBody = data.keasramaanRows
-		.map((row) => {
-			if (row.kategoriHeader) {
-				return `<tr class="category-header">
-					<td colspan="4">${row.kategoriHeader}</td>
-				</tr>`;
-			}
-			return `<tr>
-				<td class="text-center" style="vertical-align:top;">${row.no}</td>
-				<td style="vertical-align:top;">${formatValue(row.indikator)}</td>
-				<td class="text-center" style="vertical-align:top;">${row.deskripsi ? predikatToHuruf(row.predikat) : FALLBACK}</td>
-				<td style="vertical-align:top;">${formatValue(row.deskripsi)
-					.split('\n')
-					.filter(Boolean)
-					.map((p) => `<div class="text-justify">${p}</div>`)
-					.join('\n')}</td>
+	function renderRow(row: (typeof data.keasramaanRows)[0]): string {
+		return `<tr>
+			<td class="text-center" style="vertical-align:top;">${row.no}</td>
+			<td style="vertical-align:top;">${formatValue(row.indikator)}</td>
+			<td class="text-center" style="vertical-align:top;">${row.deskripsi ? predikatToHuruf(row.predikat) : FALLBACK}</td>
+			<td style="vertical-align:top;">${formatValue(row.deskripsi)
+				.split('\n')
+				.filter(Boolean)
+				.map((p) => `<div class="text-justify">${p}</div>`)
+				.join('\n')}</td>
+		</tr>`;
+	}
+
+	const rows = data.keasramaanRows;
+	let tableBody = '';
+	let i = 0;
+	while (i < rows.length) {
+		if (rows[i].kategoriHeader) {
+			const headerRow = `<tr class="category-header">
+				<td colspan="4">${rows[i].kategoriHeader}</td>
 			</tr>`;
-		})
-		.join('\n');
+			i++;
+			const dataRows: string[] = [];
+			while (i < rows.length && !rows[i].kategoriHeader) {
+				dataRows.push(renderRow(rows[i]));
+				i++;
+			}
+			if (dataRows.length > 0) {
+				tableBody += `<tbody style="page-break-inside: avoid;">${headerRow}\n${dataRows[0]}</tbody>`;
+				if (dataRows.length > 1) {
+					tableBody += `\n<tbody>\n${dataRows.slice(1).join('\n')}</tbody>`;
+				}
+			} else {
+				tableBody += `<tbody>\n${headerRow}\n</tbody>`;
+			}
+		} else {
+			tableBody += `<tbody>\n${renderRow(rows[i])}\n</tbody>`;
+			i++;
+		}
+	}
 
 	const tableHeader = `
 		<tr>
@@ -361,9 +382,7 @@ ${logoUrl ? `<img src="${logoUrl}" alt="Watermark" class="watermark">` : ''}
 	<thead>
 		${tableHeader}
 	</thead>
-	<tbody>
 ${tableBody}
-	</tbody>
 </table>
 
 ${kehadiranSection}
