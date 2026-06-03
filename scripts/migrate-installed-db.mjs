@@ -347,7 +347,7 @@ async function main() {
 			}
 
 			// Now run drizzle push (capture stderr/stdout so we can parse CLI errors)
-			runCapture(drizzleCmd, ['push'], { env: childEnv, cwd: projectRoot });
+			runCapture(drizzleCmd, ['push', '--force'], { env: childEnv, cwd: projectRoot });
 		} catch (err) {
 			const msg = String(err?.message || err || '');
 			if (
@@ -378,7 +378,7 @@ async function main() {
 							if (typeof dropClient.close === 'function') await dropClient.close();
 						}
 						// Retry drizzle push once after dropping the specific index
-						run(drizzleCmd, ['push'], { env: childEnv, cwd: projectRoot });
+						run(drizzleCmd, ['push', '--force'], { env: childEnv, cwd: projectRoot });
 						console.info('[migrate-installed-db] Retry after dropping specific index succeeded');
 						// continue normal flow
 					} catch (err2) {
@@ -396,7 +396,7 @@ async function main() {
 									cwd: projectRoot
 								}
 							);
-							run(drizzleCmd, ['push'], { env: childEnv, cwd: projectRoot });
+							run(drizzleCmd, ['push', '--force'], { env: childEnv, cwd: projectRoot });
 						} catch (err3) {
 							console.error(
 								'[migrate-installed-db] retry after fix-drizzle-indexes failed:',
@@ -415,7 +415,7 @@ async function main() {
 							env: childEnv,
 							cwd: projectRoot
 						});
-						run(drizzleCmd, ['push'], { env: childEnv, cwd: projectRoot });
+						run(drizzleCmd, ['push', '--force'], { env: childEnv, cwd: projectRoot });
 					} catch (err2) {
 						console.error(
 							'[migrate-installed-db] retry after fix-drizzle-indexes failed:',

@@ -2,6 +2,7 @@ import '$lib/server/load-env';
 import { applySessionCookie, ensureDefaultAdmin, resolveSession } from '$lib/server/auth';
 import db from '$lib/server/db';
 import { tableSekolah } from '$lib/server/db/schema';
+import { ensureCoreSchema } from '$lib/server/db/ensure-core-schema';
 import { isSecureRequest, resolveRequestProtocol } from '$lib/server/http';
 import { cookieNames } from '$lib/utils';
 import { error, redirect, type Handle } from '@sveltejs/kit';
@@ -119,6 +120,7 @@ function resolveRedirectTarget(value: string | null) {
 
 const authGuard: Handle = async ({ event, resolve }) => {
 	if (!ensureDefaultAdminResolved) {
+		await ensureCoreSchema();
 		await ensureDefaultAdmin();
 		ensureDefaultAdminResolved = true;
 	}
