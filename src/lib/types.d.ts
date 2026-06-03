@@ -4,6 +4,7 @@ interface MenuItem {
 	icon?: IconName;
 	tags?: string[];
 	subMenu?: MenuItem[];
+	condition?: 'genap' | 'ganjil';
 }
 
 interface PageMeta {

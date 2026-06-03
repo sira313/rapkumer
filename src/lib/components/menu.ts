@@ -92,6 +92,12 @@ export const appMenuItems: MenuItem[] = [
 			{
 				title: 'Rekap Nilai',
 				path: '/nilai-akhir'
+			},
+			{
+				title: 'Keputusan',
+				path: '/keputusan',
+				tags: ['kenaikan', 'kelas', 'lulus', 'naik'],
+				condition: 'genap'
 			}
 		]
 	},

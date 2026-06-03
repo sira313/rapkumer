@@ -325,10 +325,8 @@ async function importKelasDanMuridFromExcel(
 					kontakWali || kontakOrangTua,
 					alamatUntukWali ?? undefined
 				),
-				waliAsuhNama:
-					normalize(idxWaliAsuhNama !== undefined ? row[idxWaliAsuhNama] : '') || '',
-				waliAsuhNip:
-					normalize(idxWaliAsuhNip !== undefined ? row[idxWaliAsuhNip] : '') || ''
+				waliAsuhNama: normalize(idxWaliAsuhNama !== undefined ? row[idxWaliAsuhNama] : '') || '',
+				waliAsuhNip: normalize(idxWaliAsuhNip !== undefined ? row[idxWaliAsuhNip] : '') || ''
 			} satisfies StudentPayload;
 		})
 		.filter(Boolean) as StudentPayload[];

@@ -9,12 +9,25 @@
 	const expanded = new StorageState<boolean>('menu-expanded');
 
 	let search = $state('');
-	let menuItems = $derived(search ? filterMenu(appMenuItems, search) : appMenuItems);
+	const activeSemesterTipe = $derived(
+		(page.data as { activeSemesterTipe?: string | null } | null)?.activeSemesterTipe ?? null
+	);
+
+	function filterByCondition(item: MenuItem, semesterTipe: string | null): boolean {
+		if (item.condition && item.condition !== semesterTipe) return false;
+		if (item.subMenu) {
+			const hasVisibleChild = item.subMenu.some((child) => filterByCondition(child, semesterTipe));
+			if (!hasVisibleChild) return false;
+		}
+		return true;
+	}
 
 	function filterMenu(menu: MenuItem[], search: string): MenuItem[] {
 		const lowerSearch = search.toLowerCase();
 		return menu
 			.map((item) => {
+				if (!filterByCondition(item, activeSemesterTipe)) return null;
+
 				const isMatch =
 					item.title.toLowerCase().includes(lowerSearch) ||
 					item.tags?.some((t) => t.toLocaleLowerCase().includes(lowerSearch));
@@ -35,6 +48,12 @@
 			})
 			.filter((item) => item !== null);
 	}
+
+	let menuItems = $derived(
+		search
+			? filterMenu(appMenuItems, search)
+			: appMenuItems.filter((item) => filterByCondition(item, activeSemesterTipe))
+	);
 
 	function isMenuActive(currentPath: string, menuPath?: string) {
 		if (!menuPath) return false;

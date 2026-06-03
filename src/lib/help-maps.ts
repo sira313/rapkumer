@@ -38,7 +38,8 @@ export const helpMaps: HelpMapEntry[] = [
 	{ matcher: '/asesmen-keasramaan/form-asesmen', file: 'form-keasramaan' },
 	{ matcher: '/keasramaan/mata-evaluasi', file: 'matev-keasramaan' },
 	{ matcher: '/keasramaan/tp', file: 'tp-keasramaan' },
-	{ matcher: '/cetak', file: 'cetak' }
+	{ matcher: '/cetak', file: 'cetak' },
+	{ matcher: '/keputusan', file: 'absen' }
 ];
 
 /**
