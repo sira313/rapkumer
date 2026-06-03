@@ -262,10 +262,16 @@ ${group.items
 			<td class="align-top text-center">${i + 1}</td>
 			<td class="align-top">${item.mataPelajaran}</td>
 			<td class="align-top text-center">${formatValue(item.nilaiAkhir)}</td>
-			<td class="align-top">${formatValue(item.deskripsi).split('\n').filter(Boolean).map(p => {
-				const cls = p.includes('masih perlu bimbingan') ? 'capaian-bimbingan' : 'capaian-tercapai';
-				return `<div class="${cls}">${p}</div>`;
-			}).join('')}</td>
+			<td class="align-top">${formatValue(item.deskripsi)
+				.split('\n')
+				.filter(Boolean)
+				.map((p) => {
+					const cls = p.includes('masih perlu bimbingan')
+						? 'capaian-bimbingan'
+						: 'capaian-tercapai';
+					return `<div class="${cls}">${p}</div>`;
+				})
+				.join('')}</td>
 		</tr>`;
 	})
 	.join('\n')}`;
