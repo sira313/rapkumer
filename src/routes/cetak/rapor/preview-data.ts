@@ -159,7 +159,12 @@ export async function getRaporPreviewPayload({ locals, url }: RaporContext) {
 			},
 			semester: true,
 			kehadiran: true,
-			catatanWali: true
+			catatanWali: true,
+			keputusan: {
+				columns: {
+					naik: true
+				}
+			}
 		}
 	});
 
@@ -591,6 +596,7 @@ export async function getRaporPreviewPayload({ locals, url }: RaporContext) {
 		},
 		catatanWali: murid.catatanWali?.catatan?.trim() ?? '',
 		tanggapanOrangTua: '',
+		naik: murid.keputusan?.naik ?? true,
 		ttd: {
 			tempat: fallbackTempat(sekolah),
 			tanggal: ttdTanggal

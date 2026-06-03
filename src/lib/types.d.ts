@@ -146,6 +146,7 @@ interface RaporPrintData {
 	};
 	catatanWali: string;
 	tanggapanOrangTua: string;
+	naik: boolean;
 	ttd: {
 		tempat: string;
 		tanggal: string;

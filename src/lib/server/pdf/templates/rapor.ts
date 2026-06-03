@@ -50,6 +50,7 @@ export interface RaporPrintData {
 	};
 	catatanWali: string;
 	tanggapanOrangTua: string;
+	naik: boolean;
 	ttd: {
 		tempat: string;
 		tanggal: string;
@@ -203,6 +204,15 @@ body {
 .grid-2col.ratio-70-30 {
 	grid-template-columns: 70fr 30fr;
 }
+.grid-2col.ratio-60-40 {
+	grid-template-columns: 60fr 40fr;
+}
+.grid-2col.ratio-40-60 {
+	grid-template-columns: 40fr 60fr;
+}
+.grid-2col.ratio-45-55 {
+	grid-template-columns: 45fr 55fr;
+}
 
 /* ── Full-height table helper ── */
 .full-height {
@@ -216,7 +226,9 @@ body {
 }
 
 /* ── Spacer heights — mirrors DaisyUI h-24, h-25, h-10 ── */
+.spacer-1 { height: 1rem; }
 .spacer-4 { height: 4rem; }
+.spacer-5 { height: 5rem; }
 .spacer-6 { height: 6rem; }
 .spacer-2-5 { height: 2.5rem; }
 .spacer-6-25 { height: 6.25rem; }
@@ -225,6 +237,11 @@ body {
 .check-row {
 	display: flex;
 	justify-content: space-between;
+	align-items: center;
+}
+.check-mark {
+	font-size: 16pt;
+	line-height: 1;
 }
 .check-group {
 	display: flex;
@@ -377,7 +394,7 @@ ${data.ekstrakurikuler
 
 <!-- Ketidakhadiran & Catatan Wali Kelas -->
 <div class="no-break" style="margin-top:12pt;">
-	<div class="grid-2col ratio-35-65">
+	<div class="grid-2col ratio-45-55">
 		<table class="pdf-table">
 			<thead>
 				<tr>
@@ -407,7 +424,7 @@ ${data.ekstrakurikuler
 			</thead>
 			<tbody>
 				<tr>
-					<td class="align-top spacer-6-25">${formatValue(data.catatanWali)}</td>
+					<td class="align-top spacer-6-25 text-justify">${formatValue(data.catatanWali)}</td>
 				</tr>
 			</tbody>
 		</table>
@@ -419,7 +436,7 @@ ${
 		? `
 <!-- Tanggapan Orang Tua & Keputusan -->
 <div class="no-break" style="margin-top:12pt;">
-	<div class="grid-2col ratio-70-30">
+	<div class="grid-2col ratio-60-40">
 		<table class="pdf-table">
 			<thead>
 				<tr>
@@ -441,15 +458,15 @@ ${
 			<tbody>
 				<tr>
 					<td class="align-top">
-						<div class="text-justify">Berdasarkan capaian seluruh kompetensi, ananda ${formatValue(data.murid.nama)} dinyatakan:</div>
+						<div class="text-left">Berdasarkan capaian seluruh kompetensi, ananda ${formatValue(data.murid.nama)} dinyatakan:</div>
 						<div class="check-group">
 							<div class="check-row">
 								<span>${isGraduating ? 'Lulus' : 'Naik Kelas'}</span>
-								<span>☐</span>
+								<span class="check-mark">${data.naik ? '☑' : '☐'}</span>
 							</div>
 							<div class="check-row">
 								<span>${isGraduating ? 'Tidak Lulus' : 'Tidak Naik Kelas'}</span>
-								<span>☐</span>
+								<span class="check-mark">${data.naik ? '☐' : '☑'}</span>
 							</div>
 						</div>
 					</td>
@@ -496,9 +513,9 @@ ${
 				<td class="text-center font-bold">Wali Kelas</td>
 			</tr>
 			<tr>
-				<td class="spacer-6"></td>
+				<td class="spacer-5"></td>
 				<td></td>
-				<td class="spacer-6"></td>
+				<td class="spacer-5"></td>
 			</tr>
 			<tr>
 				<td class="text-center">____________________</td>
@@ -516,7 +533,7 @@ ${
 					: ''
 			}
 			<tr>
-				<td class="spacer-2-5"></td>
+				<td class="spacer-1"></td>
 				<td></td>
 				<td></td>
 			</tr>
@@ -527,7 +544,7 @@ ${
 			</tr>
 			<tr>
 				<td></td>
-				<td class="spacer-6"></td>
+				<td class="spacer-5"></td>
 				<td></td>
 			</tr>
 			<tr>
