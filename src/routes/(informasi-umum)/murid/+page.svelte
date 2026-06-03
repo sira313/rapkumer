@@ -338,25 +338,25 @@
 							type="button"
 							tabindex="0"
 							class="btn btn-soft rounded-l-none shadow-none"
-							class:btn-disabled={!canEdit}
-							disabled={!canEdit}
-							title={!canEdit ? 'Anda tidak memiliki izin' : ''}
 						>
 							<Icon name="down" />
 						</button>
-						{#if canEdit}
-							<ul
-								tabindex="-1"
-								class="dropdown-content menu bg-base-100 rounded-box border-base-300 z-1 mt-2 w-50 border p-2 shadow-lg"
-							>
-								<li><a href="/murid/photos">Lihat Semua Foto</a></li>
+						<ul
+							tabindex="-1"
+							class="dropdown-content menu bg-base-100 rounded-box border-base-300 z-1 mt-2 w-50 border p-2 shadow-lg"
+						>
+							<li><a href="/murid/photos">Lihat Semua Foto</a></li>
+							{#if canEdit}
 								<li>
 									<button type="button" onclick={openBulkPhotoUploadModal} class="text-left">
 										Upload Semua Foto
 									</button>
 								</li>
-							</ul>
-						{/if}
+							{/if}
+							<li>
+								<a href="/api/murid/download-excel" class="text-left"> Download Murid </a>
+							</li>
+						</ul>
 					</div>
 				</div>
 			{/if}

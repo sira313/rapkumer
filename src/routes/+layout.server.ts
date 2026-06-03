@@ -239,5 +239,12 @@ export async function load({ url, locals, cookies }) {
 		cookies.delete(cookieNames.ACTIVE_KELAS_ID, { path: '/', secure });
 	}
 
-	return { sekolah, meta, daftarKelas, kelasAktif, user: userForClient };
+	return {
+		sekolah,
+		meta,
+		daftarKelas,
+		kelasAktif,
+		user: userForClient,
+		activeSemesterTipe: academicContext?.activeSemesterTipe ?? null
+	};
 }

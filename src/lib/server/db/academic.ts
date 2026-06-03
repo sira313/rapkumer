@@ -8,6 +8,7 @@ export type AcademicContext = {
 	})[];
 	activeTahunAjaranId: number | null;
 	activeSemesterId: number | null;
+	activeSemesterTipe: 'ganjil' | 'genap' | null;
 	tanggalBagiRaport: {
 		ganjilId?: number;
 		ganjil?: string | null;
@@ -27,6 +28,7 @@ export async function resolveSekolahAcademicContext(sekolahId: number): Promise<
 
 	let activeTahunAjaranId: number | null = null;
 	let activeSemesterId: number | null = null;
+	let activeSemesterTipe: AcademicContext['activeSemesterTipe'] = null;
 	let tanggalBagiRaport: AcademicContext['tanggalBagiRaport'] = {};
 
 	const activeTahunAjaran =
@@ -39,6 +41,7 @@ export async function resolveSekolahAcademicContext(sekolahId: number): Promise<
 			activeTahunAjaran.semester.at(0) ??
 			null;
 		activeSemesterId = activeSemester?.id ?? null;
+		activeSemesterTipe = activeSemester?.tipe ?? null;
 
 		const ganjil = activeTahunAjaran.semester.find((item) => item.tipe === 'ganjil');
 		const genap = activeTahunAjaran.semester.find((item) => item.tipe === 'genap');
@@ -50,5 +53,11 @@ export async function resolveSekolahAcademicContext(sekolahId: number): Promise<
 		};
 	}
 
-	return { tahunAjaranList, activeTahunAjaranId, activeSemesterId, tanggalBagiRaport };
+	return {
+		tahunAjaranList,
+		activeTahunAjaranId,
+		activeSemesterId,
+		activeSemesterTipe,
+		tanggalBagiRaport
+	};
 }

@@ -4,6 +4,7 @@ interface MenuItem {
 	icon?: IconName;
 	tags?: string[];
 	subMenu?: MenuItem[];
+	condition?: 'genap' | 'ganjil';
 }
 
 interface PageMeta {
@@ -145,6 +146,7 @@ interface RaporPrintData {
 	};
 	catatanWali: string;
 	tanggapanOrangTua: string;
+	naik: boolean;
 	ttd: {
 		tempat: string;
 		tanggal: string;

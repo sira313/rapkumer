@@ -67,9 +67,7 @@ function createClientInstance(): Client {
 	console.info(
 		`[db] creating libsql client; DB_URL=${url ? url : '(none)'}${authToken ? ' (auth token present)' : ''}`
 	);
-	const client = createClient({ url, authToken });
-	enableWAL(client);
-	return client;
+	return createClient({ url, authToken });
 }
 
 // create or reuse a client stored on globalThis so hot-reloads keep using same connection
@@ -80,28 +78,37 @@ function initClient(): Client {
 
 	const client = createClientInstance();
 	store[clientKey] = client;
+	enableWAL(client);
 	return client;
 }
 
 let currentClient: Client = initClient();
 let currentDb = drizzle(currentClient, { casing: 'snake_case', schema });
 
-export async function reloadDbClient() {
-	try {
-		const store = globalThis as unknown as Record<string, Client | undefined>;
-		const existing = store[clientKey];
-		if (existing) {
-			const maybeClose = (existing as unknown as { close?: () => Promise<void> | void }).close;
-			if (typeof maybeClose === 'function') {
-				try {
-					await maybeClose.call(existing);
-				} catch (e) {
-					console.warn('[db] error closing existing client:', e);
-				}
+export async function closeDbClient() {
+	const store = globalThis as unknown as Record<string, Client | undefined>;
+	const existing = store[clientKey];
+	if (existing) {
+		const maybeClose = (existing as unknown as { close?: () => Promise<void> | void }).close;
+		if (typeof maybeClose === 'function') {
+			try {
+				await maybeClose.call(existing);
+			} catch (e) {
+				console.warn('[db] error closing existing client:', e);
 			}
 		}
-		delete store[clientKey];
-		currentClient = initClient();
+	}
+	delete store[clientKey];
+}
+
+export async function reloadDbClient() {
+	try {
+		await closeDbClient();
+		const client = createClientInstance();
+		const store = globalThis as unknown as Record<string, Client | undefined>;
+		store[clientKey] = client;
+		await enableWAL(client);
+		currentClient = client;
 		currentDb = drizzle(currentClient, { casing: 'snake_case', schema });
 		console.info('[db] reloaded libsql client and drizzle instance');
 	} catch (e) {

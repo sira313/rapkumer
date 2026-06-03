@@ -178,10 +178,14 @@ function coverStyles(): string {
 	margin: 0 auto;
 }
 
+body {
+	font-size: 11pt;
+}
+
 .biodata-table td {
 	padding: 2mm 2mm;
 	vertical-align: top;
-	font-size: 12pt;
+	font-size: 11pt;
 }
 
 .biodata-table td.colon {

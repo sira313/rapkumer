@@ -38,116 +38,91 @@ function predikatToHuruf(predikat: string): string {
 function keasramaanStyles(): string {
 	return `
 body {
+	margin: 0;
 	padding: 0;
 }
 
+/* Header */
 .header-title {
-	font-size: 14pt;
+	font-size: 12pt;
 	font-weight: bold;
 	text-align: center;
-	margin-bottom: 1mm;
+	margin-bottom: 2pt;
 }
 
 .header-subtitle {
 	font-size: 10pt;
 	text-align: center;
-	margin-bottom: 5mm;
+	margin-bottom: 8pt;
 }
 
-.identity-table {
-	width: 100%;
-	border-collapse: collapse;
-	margin-bottom: 8.5mm;
-}
-
-.identity-table td {
-	padding: 1mm 0;
+/* Identity grid — matches example grid-cols-[8rem_auto_1fr_8rem_auto_auto] gap-x-3 gap-y-2 */
+.identity-grid {
+	display: grid;
+	grid-template-columns: 8rem auto 1fr 8rem auto auto;
+	gap: 0.5rem 0.75rem;
 	font-size: 10pt;
-	vertical-align: top;
+	margin-bottom: 12pt;
+	line-height: 1.4;
 }
 
-.identity-table .label {
-	width: 28mm;
+.identity-grid .label {
+	font-weight: bold;
 	white-space: nowrap;
 }
 
-.identity-table .colon {
-	width: 3mm;
-}
-
-.identity-table .value-left {
-	width: 70mm;
-	font-weight: bold;
-}
-
-.identity-table .label-right {
-	width: 35mm;
-	white-space: nowrap;
-	padding-left: 5mm;
-}
-
-.identity-table .colon-right {
-	width: 3mm;
-}
-
-.identity-table .value-right {
-	font-weight: bold;
-}
-
+/* ---- Main table — matches example table.table.border.rounded-none.border-base-content ---- */
 .main-table {
 	width: 100%;
 	border-collapse: collapse;
 	font-size: 10pt;
-	margin-bottom: 4.2mm;
+	margin-bottom: 12pt;
+}
+
+.main-table thead {
+	display: table-header-group;
+}
+
+.main-table th,
+.main-table td {
+	border: 1px solid #000;
+	padding: 4pt 6pt;
 }
 
 .main-table th {
-	border: 0.3mm solid #000;
-	padding: 2.8mm 4.2mm;
 	font-weight: bold;
 	text-align: center;
 	background: #f0f0f0;
 }
 
 .main-table td {
-	border: 0.3mm solid #000;
-	padding: 1.4mm 2.8mm;
 	vertical-align: top;
-	page-break-inside: auto;
-	orphans: 1;
-	widows: 1;
-}
-
-.main-table .col-no {
-	width: 15mm;
-	text-align: center;
-}
-
-.main-table .col-indikator {
-	width: 57mm;
-}
-
-.main-table .col-predikat {
-	width: 25mm;
-	text-align: center;
-}
-
-.main-table .col-deskripsi {
 	text-align: left;
-	white-space: pre-line;
 }
 
-thead { display: table-header-group; }
+.main-table td.text-center {
+	text-align: center;
+}
 
+/* Every paragraph inside description breaks independently */
+.main-table .deskripsi-paragraf {
+	page-break-inside: avoid;
+	text-align: justify;
+}
 
+.main-table .deskripsi-paragraf + .deskripsi-paragraf {
+	margin-top: 4pt;
+}
+
+/* Category header row */
 .main-table tr.category-header td {
-	font-weight: bold;
-	padding: 2.8mm 4.2mm;
-	text-align: left;
+	font-weight: 600;
 }
 
-.main-table tr.first-data-row {
-	page-break-before: avoid;
+/* ---- Kehadiran table — matches example table.table.border.border-base-content.rounded-none ---- */
+.kehadiran-wrapper {
+	page-break-inside: avoid;
+	margin-bottom: 12pt;
 }
 
 .kehadiran-table {
@@ -156,41 +131,25 @@ thead { display: table-header-group; }
 	font-size: 10pt;
 }
 
+.kehadiran-table th,
+.kehadiran-table td {
+	border: 1px solid #000;
+	padding: 4pt 8pt;
+}
+
 .kehadiran-table th {
-	border: 0.3mm solid #000;
-	padding: 2.8mm 4.2mm;
 	font-weight: bold;
 	text-align: center;
-	background: #fff;
+	background: #f0f0f0;
 }
 
-.kehadiran-table td {
-	border: 0.3mm solid #000;
-	padding: 2.8mm 4.2mm;
-	vertical-align: top;
-}
-
-.kehadiran-table .col-no {
-	width: 17mm;
+.kehadiran-table td.text-center {
 	text-align: center;
 }
 
-.kehadiran-table .col-alasan {
-	text-align: left;
-}
-
-.kehadiran-table .col-jumlah {
-	width: 22.6mm;
-	text-align: center;
-}
-
+/* ---- Signature section — matches example table.w-full ---- */
 .signature-section {
 	margin-top: 12pt;
-	width: 100%;
-}
-
-.signature-section tr {
-	page-break-inside: avoid;
 }
 
 .signature-table {
@@ -200,40 +159,32 @@ thead { display: table-header-group; }
 }
 
 .signature-table td {
-	padding: 0 4pt;
+	padding: 1pt 4pt;
 	vertical-align: top;
 	text-align: center;
-	width: 50%;
 }
 
-.signature-date {
+.signature-table .text-center {
 	text-align: center;
-	padding-bottom: 6pt;
 }
 
-.signature-table .sig-title {
-	font-size: 10pt;
-}
-
-.signature-table .sig-name {
+.signature-table .font-bold {
 	font-weight: bold;
-	font-size: 11pt;
-	padding-top: 22.6mm;
+}
+
+.signature-table .underline {
 	text-decoration: underline;
 }
 
-.signature-table .sig-nip {
-	font-size: 10pt;
-	padding-top: 1pt;
+.signature-table .h-24 {
+	height: 6rem;
 }
 
-.signature-table .dashed-line {
-	border-bottom: 0.15mm dashed #000;
-	display: block;
-	width: 52%;
-	margin: 28mm auto 3mm;
+.signature-table .h-4 {
+	height: 1rem;
 }
 
+/* ---- Watermark ---- */
 .watermark {
 	position: fixed;
 	top: 50%;
@@ -260,87 +211,101 @@ export function renderKeasramaanHTML(data: KeasramaanPrintData): string {
 	const kepalaSekolahTitle =
 		data.kepalaSekolah?.statusKepalaSekolah === 'plt' ? 'Plt. Kepala Sekolah' : 'Kepala Sekolah';
 
-	const tableBody = data.keasramaanRows
-		.map((row, i, arr) => {
-			if (row.kategoriHeader) {
-				return `<tr class="category-header">
-				<td colspan="4">${row.kategoriHeader}</td>
-			</tr>`;
-			}
-			const prev = arr[i - 1];
-			const cls = prev?.kategoriHeader ? 'first-data-row' : '';
-			return `<tr${cls ? ` class="${cls}"` : ''}>
-			<td class="col-no">${row.no}</td>
-			<td class="col-indikator">${formatValue(row.indikator)}</td>
-			<td class="col-predikat">${predikatToHuruf(row.predikat)}</td>
-			<td class="col-deskripsi">${formatValue(row.deskripsi)}</td>
+	function renderRow(row: (typeof data.keasramaanRows)[0]): string {
+		const hasDeskripsi = !!row.deskripsi;
+		const deskripsiHtml = hasDeskripsi
+			? row.deskripsi
+					.split('\n')
+					.filter(Boolean)
+					.map((p) => `<div class="deskripsi-paragraf">${formatValue(p)}</div>`)
+					.join('\n')
+			: FALLBACK;
+
+		return `<tr>
+			<td class="text-center">${row.no}</td>
+			<td>${formatValue(row.indikator)}</td>
+			<td class="text-center">${hasDeskripsi ? predikatToHuruf(row.predikat) : FALLBACK}</td>
+			<td>${deskripsiHtml}</td>
 		</tr>`;
-		})
-		.join('\n');
+	}
+
+	const rows = data.keasramaanRows;
+	let tableBody = '';
+	let i = 0;
+	while (i < rows.length) {
+		if (rows[i].kategoriHeader) {
+			const headerRow = `<tr class="category-header">
+				<td colspan="4">${rows[i].kategoriHeader}</td>
+			</tr>`;
+			i++;
+			if (i < rows.length && !rows[i].kategoriHeader) {
+				tableBody += `<tbody style="page-break-inside: avoid;">${headerRow}\n${renderRow(rows[i])}</tbody>`;
+				i++;
+				while (i < rows.length && !rows[i].kategoriHeader) {
+					tableBody += `<tbody>${renderRow(rows[i])}</tbody>`;
+					i++;
+				}
+			} else {
+				tableBody += `<tbody>${headerRow}</tbody>`;
+			}
+		} else {
+			tableBody += `<tbody>${renderRow(rows[i])}</tbody>`;
+			i++;
+		}
+	}
+
+	const tableHeader = `
+		<tr>
+			<th style="width:6%;">No</th>
+			<th style="width:28%;">Indikator</th>
+			<th style="width:12%;">Predikat</th>
+			<th style="width:54%;">Deskripsi</th>
+		</tr>`;
 
 	const kehadiranSection = data.kehadiran
 		? `
+<div class="kehadiran-wrapper">
 <table class="kehadiran-table">
 	<thead>
 		<tr>
-			<th colspan="3">KETIDAKHADIRAN</th>
-		</tr>
-		<tr>
-			<th class="col-no">No</th>
-			<th class="col-alasan">Alasan Ketidakhadiran</th>
-			<th class="col-jumlah">Jumlah</th>
+			<th colspan="2">Ketidakhadiran</th>
 		</tr>
 	</thead>
 	<tbody>
 		<tr>
-			<td class="col-no">1</td>
 			<td>Sakit</td>
-			<td class="col-jumlah">${data.kehadiran.sakit}</td>
+			<td class="text-center">${data.kehadiran.sakit} Hari</td>
 		</tr>
 		<tr>
-			<td class="col-no">2</td>
 			<td>Izin</td>
-			<td class="col-jumlah">${data.kehadiran.izin}</td>
+			<td class="text-center">${data.kehadiran.izin} Hari</td>
 		</tr>
 		<tr>
-			<td class="col-no">3</td>
 			<td>Tanpa Keterangan</td>
-			<td class="col-jumlah">${data.kehadiran.alfa}</td>
+			<td class="text-center">${data.kehadiran.alfa} Hari</td>
 		</tr>
 	</tbody>
-</table>`
+</table>
+</div>`
 		: '';
 
 	const ttdText = data.ttd
 		? `${formatValue(data.ttd.tempat)}, ${formatValue(data.ttd.tanggal)}`
 		: '';
 
-	const waliAsramaSection = data.waliAsrama
-		? `
-			<td style="padding-bottom:12pt;">
-				<div class="sig-title">Wali Asrama</div>
-				<div class="sig-name">${formatValue(data.waliAsrama.nama)}</div>
-				<div class="sig-nip">${formatValue(data.waliAsrama.nip)}</div>
-			</td>`
-		: '<td></td>';
+	const waliAsramaLabel = 'Wali Asrama';
+	const waliAsramaName = data.waliAsrama ? formatValue(data.waliAsrama.nama) : FALLBACK;
+	const waliAsramaNip = data.waliAsrama?.nip ? `${formatValue(data.waliAsrama.nip)}` : '';
 
-	const waliAsuhSection = data.waliAsuh
-		? `
-			<td style="padding-bottom:12pt;">
-				<div class="sig-title">Wali Asuh</div>
-				<div class="sig-name">${formatValue(data.waliAsuh.nama)}</div>
-				<div class="sig-nip">${formatValue(data.waliAsuh.nip)}</div>
-			</td>`
-		: '<td></td>';
+	const waliAsuhLabel = 'Wali Asuh';
+	const waliAsuhName = data.waliAsuh ? formatValue(data.waliAsuh.nama) : FALLBACK;
+	const waliAsuhNip = data.waliAsuh?.nip ? `${formatValue(data.waliAsuh.nip)}` : '';
 
-	const kepalaSekolahSection = data.kepalaSekolah
-		? `
-			<td>
-				<div class="sig-title">${kepalaSekolahTitle}</div>
-				<div class="sig-name">${formatValue(data.kepalaSekolah.nama)}</div>
-				<div class="sig-nip">${formatValue(data.kepalaSekolah.nip)}</div>
-			</td>`
-		: '<td></td>';
+	const kepalaSekolahLabel = data.kepalaSekolah ? kepalaSekolahTitle : '';
+	const kepalaSekolahNama = data.kepalaSekolah ? formatValue(data.kepalaSekolah.nama) : '';
+	const kepalaSekolahNip = data.kepalaSekolah?.nip
+		? `${formatValue(data.kepalaSekolah.nip)}`
+		: '';
 
 	return `<!DOCTYPE html>
 <html lang="id">
@@ -354,18 +319,20 @@ ${sharedStyles()}
 	margin-left: 20mm;
 	margin-right: 15mm;
 	margin-top: 15mm;
-	margin-bottom: 20mm;
+	margin-bottom: 15mm;
 	@bottom-left {
 		content: "${data.rombel.nama} | ${data.murid.nama} | ${data.murid.nis}";
-		font-size: 9pt;
+		font-size: 10pt;
 		font-family: Helvetica, Arial, sans-serif;
 		color: #555;
+		vertical-align: center;
 	}
 	@bottom-right {
-		content: "Halaman: " counter(page);
-		font-size: 9pt;
+		content: "Halaman: " counter(page) " / " counter(pages);
+		font-size: 10pt;
 		font-family: Helvetica, Arial, sans-serif;
 		color: #555;
+		vertical-align: center;
 	}
 }
 
@@ -379,76 +346,95 @@ ${logoUrl ? `<img src="${logoUrl}" alt="Watermark" class="watermark">` : ''}
 <div class="header-title">LAPORAN KEGIATAN KEASRAMAAN</div>
 <div class="header-subtitle">(RAPOR)</div>
 
-<table class="identity-table">
-	<tr>
-		<td class="label">Nama Murid</td>
-		<td class="colon">:</td>
-		<td class="value-left uppercase">${formatUpper(data.murid.nama)}</td>
-		<td class="label-right">Kelas</td>
-		<td class="colon-right">:</td>
-		<td class="value-right">${formatValue(data.rombel.nama)}</td>
-	</tr>
-	<tr>
-		<td class="label">NISN / NIS</td>
-		<td class="colon">:</td>
-		<td class="value-left">${formatValue(data.murid.nisn)} / ${formatValue(data.murid.nis)}</td>
-		<td class="label-right">Fase</td>
-		<td class="colon-right">:</td>
-		<td class="value-right">${faseLabel}</td>
-	</tr>
-	<tr>
-		<td class="label">Sekolah</td>
-		<td class="colon">:</td>
-		<td class="value-left uppercase">${formatUpper(data.sekolah.nama)}</td>
-		<td class="label-right">Semester</td>
-		<td class="colon-right">:</td>
-		<td class="value-right">${formatValue(semesterLabel)}</td>
-	</tr>
-	<tr>
-		<td class="label">Alamat</td>
-		<td class="colon">:</td>
-		<td class="value-left">${formatValue(data.sekolah.alamat)}</td>
-		<td class="label-right">Tahun Ajaran</td>
-		<td class="colon-right">:</td>
-		<td class="value-right">${data.periode.tahunAjaran}</td>
-	</tr>
-</table>
+<div class="identity-grid">
+	<div class="label">Nama Murid</div>
+	<div>:</div>
+	<div class="uppercase">${formatUpper(data.murid.nama)}</div>
+	<div class="label">Kelas</div>
+	<div>:</div>
+	<div>${formatValue(data.rombel.nama)}</div>
+
+	<div class="label">NIS / NISN</div>
+	<div>:</div>
+	<div>${formatValue(data.murid.nisn)} / ${formatValue(data.murid.nis)}</div>
+	<div class="label">Fase</div>
+	<div>:</div>
+	<div>${faseLabel}</div>
+
+	<div class="label">Sekolah</div>
+	<div>:</div>
+	<div class="uppercase">${formatUpper(data.sekolah.nama)}</div>
+	<div class="label">Semester</div>
+	<div>:</div>
+	<div>${formatValue(semesterLabel)}</div>
+
+	<div class="label">Alamat</div>
+	<div>:</div>
+	<div>${formatValue(data.sekolah.alamat)}</div>
+	<div class="label">Tahun Ajaran</div>
+	<div>:</div>
+	<div>${data.periode.tahunAjaran}</div>
+</div>
 
 <table class="main-table">
 	<thead>
-		<tr>
-			<th class="col-no">No</th>
-			<th class="col-indikator">Indikator</th>
-			<th class="col-predikat">Predikat</th>
-			<th class="col-deskripsi">Deskripsi</th>
-		</tr>
+		${tableHeader}
 	</thead>
-	<tbody>
 ${tableBody}
-	</tbody>
 </table>
 
 ${kehadiranSection}
 
 <div class="signature-section">
 <table class="signature-table">
+	<colgroup>
+		<col style="width:50%">
+		<col style="width:50%">
+	</colgroup>
 	<tbody style="page-break-inside: avoid;">
-	<tr>
-		<td></td>
-		<td class="signature-date">${ttdText}</td>
-	</tr>
-	<tr>
-		${waliAsramaSection}
-		${waliAsuhSection}
-	</tr>
+		<tr>
+			<td></td>
+			<td class="text-center">${ttdText}</td>
+		</tr>
+		<tr>
+			<td class="font-bold">${waliAsramaLabel}</td>
+			<td class="font-bold">${waliAsuhLabel}</td>
+		</tr>
+		<tr>
+			<td class="h-24"></td>
+			<td></td>
+		</tr>
+		<tr>
+			<td class="font-bold underline">${waliAsramaName}</td>
+			<td class="font-bold underline">${waliAsuhName}</td>
+		</tr>
+		<tr>
+			<td class="text-center">${waliAsramaNip}</td>
+			<td class="text-center">${waliAsuhNip}</td>
+		</tr>
+		<tr>
+			<td class="h-4"></td>
+			<td></td>
+		</tr>
 	</tbody>
-	<tr>
-		<td>
-			<div class="sig-title">Orang Tua/Wali Murid</div>
-			<span class="dashed-line"></span>
-		</td>
-		${kepalaSekolahSection}
-	</tr>
+	<tbody style="page-break-inside: avoid;">
+		<tr>
+			<td class="font-bold">Orang Tua / Wali Murid</td>
+			<td class="font-bold">${kepalaSekolahLabel}</td>
+		</tr>
+		<tr>
+			<td class="h-24"></td>
+			<td></td>
+		</tr>
+		<tr>
+			<td class="text-center">____________________</td>
+			<td class="font-bold underline">${kepalaSekolahNama}</td>
+		</tr>
+		<tr>
+			<td></td>
+			<td class="text-center">${kepalaSekolahNip}</td>
+		</tr>
+	</tbody>
 </table>
 </div>
 

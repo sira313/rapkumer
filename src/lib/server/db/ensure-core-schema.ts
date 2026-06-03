@@ -1,0 +1,169 @@
+import { ensureSchema } from './ensure-helper';
+
+const CORE = 'core';
+
+export async function ensureCoreSchema() {
+	await ensureSchema(CORE, [
+		`CREATE TABLE IF NOT EXISTS alamat (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			jalan TEXT NOT NULL,
+			desa TEXT NOT NULL,
+			kecamatan TEXT NOT NULL,
+			kabupaten TEXT NOT NULL,
+			provinsi TEXT,
+			kode_pos TEXT,
+			created_at TEXT NOT NULL,
+			updated_at TEXT
+		)`,
+		`CREATE TABLE IF NOT EXISTS pegawai (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			nama TEXT NOT NULL,
+			nip TEXT NOT NULL,
+			created_at TEXT NOT NULL,
+			updated_at TEXT
+		)`,
+		`CREATE TABLE IF NOT EXISTS auth_user (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			username TEXT NOT NULL,
+			username_normalized TEXT NOT NULL,
+			password_hash TEXT NOT NULL,
+			password_salt TEXT NOT NULL,
+			password_updated_at TEXT,
+			permissions TEXT NOT NULL DEFAULT '[]',
+			type TEXT NOT NULL DEFAULT 'admin',
+			sekolah_id INTEGER REFERENCES sekolah(id),
+			pegawai_id INTEGER REFERENCES pegawai(id),
+			kelas_id INTEGER REFERENCES kelas(id),
+			mata_pelajaran_id INTEGER REFERENCES mata_pelajaran(id),
+			created_at TEXT NOT NULL,
+			updated_at TEXT,
+			UNIQUE(username_normalized)
+		)`,
+		`CREATE TABLE IF NOT EXISTS auth_session (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id INTEGER NOT NULL REFERENCES auth_user(id) ON DELETE CASCADE,
+			token_hash TEXT NOT NULL,
+			user_agent TEXT,
+			ip_address TEXT,
+			expires_at TEXT NOT NULL,
+			created_at TEXT NOT NULL,
+			updated_at TEXT,
+			UNIQUE(token_hash)
+		)`,
+		`CREATE INDEX IF NOT EXISTS auth_session_user_id_idx ON auth_session(user_id)`,
+		`CREATE TABLE IF NOT EXISTS sekolah (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			jenjang_pendidikan TEXT NOT NULL,
+			jenjang_variant TEXT,
+			nama TEXT NOT NULL,
+			npsn TEXT NOT NULL,
+			alamat_id INTEGER NOT NULL REFERENCES alamat(id),
+			logo BLOB,
+			logo_type TEXT,
+			logo_dinas BLOB,
+			logo_dinas_type TEXT,
+			website TEXT,
+			email TEXT NOT NULL,
+			kepala_sekolah_id INTEGER NOT NULL REFERENCES pegawai(id),
+			lokasi_tanda_tangan TEXT,
+			naungan TEXT NOT NULL DEFAULT 'kemendikbud',
+			sumatif_bobot_lingkup INTEGER NOT NULL DEFAULT 60,
+			sumatif_bobot_sts INTEGER NOT NULL DEFAULT 20,
+			sumatif_bobot_sas INTEGER NOT NULL DEFAULT 20,
+			sumatif_bobot_rts_lingkup INTEGER NOT NULL DEFAULT 70,
+			sumatif_bobot_rts_sts INTEGER NOT NULL DEFAULT 30,
+			rapor_kriteria_cukup INTEGER NOT NULL DEFAULT 85,
+			rapor_kriteria_baik INTEGER NOT NULL DEFAULT 95,
+			status_kepala_sekolah TEXT NOT NULL DEFAULT 'definitif',
+			created_at TEXT NOT NULL,
+			updated_at TEXT
+		)`,
+		`CREATE TABLE IF NOT EXISTS feature_unlock (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			sekolah_id INTEGER NOT NULL REFERENCES sekolah(id) ON DELETE CASCADE,
+			feature_key TEXT NOT NULL,
+			unlocked_at TEXT NOT NULL,
+			created_at TEXT NOT NULL,
+			updated_at TEXT,
+			UNIQUE(sekolah_id, feature_key)
+		)`,
+		`CREATE TABLE IF NOT EXISTS tahun_ajaran (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			sekolah_id INTEGER NOT NULL REFERENCES sekolah(id),
+			nama TEXT NOT NULL,
+			tanggal_mulai TEXT,
+			tanggal_selesai TEXT,
+			is_aktif INTEGER NOT NULL DEFAULT 0,
+			created_at TEXT NOT NULL,
+			updated_at TEXT,
+			UNIQUE(sekolah_id, nama)
+		)`,
+		`CREATE TABLE IF NOT EXISTS semester (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			tahun_ajaran_id INTEGER NOT NULL REFERENCES tahun_ajaran(id) ON DELETE CASCADE,
+			tipe TEXT NOT NULL,
+			nama TEXT NOT NULL,
+			tanggal_mulai TEXT,
+			tanggal_selesai TEXT,
+			tanggal_bagi_raport TEXT,
+			is_aktif INTEGER NOT NULL DEFAULT 0,
+			created_at TEXT NOT NULL,
+			updated_at TEXT,
+			UNIQUE(tahun_ajaran_id, tipe)
+		)`,
+		`CREATE TABLE IF NOT EXISTS kelas (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			sekolah_id INTEGER NOT NULL REFERENCES sekolah(id) ON DELETE CASCADE,
+			tahun_ajaran_id INTEGER NOT NULL REFERENCES tahun_ajaran(id) ON DELETE CASCADE,
+			semester_id INTEGER NOT NULL REFERENCES semester(id) ON DELETE CASCADE,
+			nama TEXT NOT NULL,
+			fase TEXT,
+			wali_kelas_id INTEGER REFERENCES pegawai(id) ON DELETE SET NULL,
+			wali_asrama_id INTEGER REFERENCES pegawai(id) ON DELETE SET NULL,
+			wali_asuh_id INTEGER REFERENCES pegawai(id) ON DELETE SET NULL,
+			created_at TEXT NOT NULL,
+			updated_at TEXT,
+			UNIQUE(sekolah_id, semester_id, nama)
+		)`,
+		`CREATE TABLE IF NOT EXISTS mata_pelajaran (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			kelas_id INTEGER NOT NULL REFERENCES kelas(id),
+			nama TEXT NOT NULL,
+			kode TEXT,
+			kkm INTEGER NOT NULL DEFAULT 0,
+			jenis TEXT NOT NULL,
+			created_at TEXT NOT NULL,
+			updated_at TEXT,
+			UNIQUE(kelas_id, nama)
+		)`,
+		`CREATE TABLE IF NOT EXISTS auth_user_mata_pelajaran (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			auth_user_id INTEGER NOT NULL REFERENCES auth_user(id) ON DELETE CASCADE,
+			mata_pelajaran_id INTEGER NOT NULL REFERENCES mata_pelajaran(id) ON DELETE CASCADE,
+			created_at TEXT NOT NULL,
+			updated_at TEXT,
+			UNIQUE(auth_user_id, mata_pelajaran_id)
+		)`,
+		`CREATE INDEX IF NOT EXISTS auth_user_mata_pelajaran_user_idx ON auth_user_mata_pelajaran(auth_user_id)`,
+		`CREATE INDEX IF NOT EXISTS auth_user_mata_pelajaran_mapel_idx ON auth_user_mata_pelajaran(mata_pelajaran_id)`,
+		`CREATE TABLE IF NOT EXISTS auth_user_kelas (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			auth_user_id INTEGER NOT NULL REFERENCES auth_user(id) ON DELETE CASCADE,
+			kelas_id INTEGER NOT NULL REFERENCES kelas(id) ON DELETE CASCADE,
+			created_at TEXT NOT NULL,
+			updated_at TEXT,
+			UNIQUE(auth_user_id, kelas_id)
+		)`,
+		`CREATE INDEX IF NOT EXISTS auth_user_kelas_user_idx ON auth_user_kelas(auth_user_id)`,
+		`CREATE INDEX IF NOT EXISTS auth_user_kelas_kelas_idx ON auth_user_kelas(kelas_id)`,
+		`CREATE TABLE IF NOT EXISTS tasks (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			sekolah_id INTEGER NOT NULL REFERENCES sekolah(id) ON DELETE CASCADE,
+			kelas_id INTEGER REFERENCES kelas(id) ON DELETE CASCADE,
+			title TEXT NOT NULL,
+			status TEXT NOT NULL DEFAULT 'active',
+			created_at TEXT NOT NULL,
+			updated_at TEXT
+		)`
+	]);
+}

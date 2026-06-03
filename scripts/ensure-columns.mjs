@@ -197,6 +197,30 @@ async function main() {
 			sql: `CREATE INDEX IF NOT EXISTS "asesmen_keasramaan_keasramaan_idx" ON "asesmen_keasramaan" ("keasramaan_id")`
 		});
 
+		// Ensure keputusan_murid table exists
+		await ensureTableExists(
+			client,
+			'keputusan_murid',
+			`
+			CREATE TABLE IF NOT EXISTS "keputusan_murid" (
+				"id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+				"murid_id" integer NOT NULL,
+				"naik" integer DEFAULT 1 NOT NULL,
+				"created_at" text NOT NULL,
+				"updated_at" text,
+				CONSTRAINT "keputusan_murid_murid_id_murid_id_fk" FOREIGN KEY ("murid_id") REFERENCES "murid" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
+			)
+		`
+		);
+
+		await client.execute({
+			sql: `CREATE UNIQUE INDEX IF NOT EXISTS "keputusan_murid_murid_id_unique" ON "keputusan_murid" ("murid_id")`
+		});
+
+		await client.execute({
+			sql: `CREATE INDEX IF NOT EXISTS "keputusan_murid_murid_idx" ON "keputusan_murid" ("murid_id")`
+		});
+
 		// Ensure murid_ekstrakurikuler table exists (from migration 0030)
 		await ensureTableExists(
 			client,

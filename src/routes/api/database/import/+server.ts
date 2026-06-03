@@ -1,12 +1,11 @@
 import { env } from '$env/dynamic/private';
 import { error, json } from '@sveltejs/kit';
-import { copyFile, mkdir, stat, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, stat, writeFile, unlink } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
-import { reloadDbClient } from '$lib/server/db';
+import { closeDbClient, reloadDbClient } from '$lib/server/db';
 import { execFile } from 'node:child_process';
 import { cookieNames } from '$lib/utils';
 import { resolveSession } from '$lib/server/auth';
-import { createClient } from '@libsql/client';
 
 const DEFAULT_DB_URL = 'file:./data/database.sqlite3';
 
@@ -17,18 +16,6 @@ function resolveDatabasePath(url: string) {
 	}
 
 	throw error(500, 'Database URL tidak didukung untuk import');
-}
-
-async function checkpointWAL(dbUrl: string) {
-	try {
-		const client = createClient({ url: dbUrl });
-		// Force checkpoint to flush all WAL changes to main database file before backup
-		await client.execute({ sql: 'PRAGMA wal_checkpoint(FULL)' });
-		if (typeof client.close === 'function') await client.close();
-	} catch (err) {
-		console.warn('[import] WAL checkpoint warning:', err);
-		// Continue with backup even if checkpoint fails
-	}
 }
 
 export async function POST({ request, cookies }) {
@@ -69,58 +56,85 @@ export async function POST({ request, cookies }) {
 	const dbUrl = env.DB_URL ?? DEFAULT_DB_URL;
 	const dbPath = resolveDatabasePath(dbUrl);
 	const dbDir = dirname(dbPath);
-	const uploadedBuffer = Buffer.from(await file.arrayBuffer());
 
 	await mkdir(dbDir, { recursive: true });
+
+	// Read uploaded file into buffer
+	const uploadedBuffer = Buffer.from(await file.arrayBuffer());
+
+	// Verify buffer length matches expected file size
+	if (uploadedBuffer.length !== file.size) {
+		console.error(
+			'[database-import] ukuran buffer tidak sesuai:',
+			uploadedBuffer.length,
+			'(expected:',
+			file.size,
+			')'
+		);
+		throw error(500, 'Berkas database tidak lengkap');
+	}
+
+	if (uploadedBuffer.length < 100) {
+		console.error('[database-import] buffer terlalu kecil, bukan database SQLite yang valid');
+		throw error(500, 'Berkas database tidak valid');
+	}
+
+	// Write to a temp file first, then atomically replace the target.
+	// This prevents partial writes if the server crashes mid-import.
+	const tempPath = join(dbDir, `database-import-temp-${Date.now()}.sqlite3`);
+	try {
+		await writeFile(tempPath, uploadedBuffer);
+		const writtenStat = await stat(tempPath);
+		if (writtenStat.size !== uploadedBuffer.length) {
+			throw error(500, 'Gagal menulis berkas database: ukuran tidak sesuai');
+		}
+	} catch (cause) {
+		await unlink(tempPath).catch(() => {});
+		throw error(500, 'Gagal menyimpan berkas database');
+	}
 
 	const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
 	const backupPath = join(dbDir, `database-backup-before-import-${timestamp}.sqlite3`);
 
-	// Checkpoint WAL before backup to ensure all changes are in main database file
-	await checkpointWAL(dbUrl);
+	// Close the current DB client so no process holds a WAL lock
+	await closeDbClient();
 
+	// Backup current database (if exists)
 	try {
 		await copyFile(dbPath, backupPath);
 	} catch (cause) {
 		const errorCode = (cause as NodeJS.ErrnoException | undefined)?.code;
 		if (errorCode && errorCode !== 'ENOENT') {
-			console.error('[database-import] gagal membuat backup database sebelum import', cause);
-			throw error(500, 'Gagal membuat backup database sebelum import');
+			console.error('[database-import] gagal membuat backup database', cause);
+			throw error(500, 'Gagal membuat backup database');
 		}
 	}
 
+	// Atomically replace the database file
 	try {
-		await writeFile(dbPath, uploadedBuffer);
+		await unlink(dbPath).catch(() => {});
+		await copyFile(tempPath, dbPath);
 	} catch (cause) {
-		console.error('[database-import] gagal menulis berkas database', cause);
+		console.error('[database-import] gagal mengganti berkas database', cause);
 		throw error(500, 'Gagal menyimpan berkas database');
+	} finally {
+		await unlink(tempPath).catch(() => {});
 	}
 
-	try {
-		await stat(dbPath);
-	} catch (cause) {
-		console.error('[database-import] database hasil import tidak ditemukan', cause);
-		throw error(500, 'Import database gagal, berkas tidak ditemukan setelah penulisan');
+	// Delete stale WAL and SHM companion files
+	for (const ext of ['-wal', '-shm']) {
+		try {
+			await unlink(dbPath + ext);
+		} catch {
+			/* ignore if not present */
+		}
 	}
 
 	console.log('[database-import] import selesai. Backup disimpan di', backupPath);
 
-	// After writing the new DB file, reload the server's DB client so the running
-	// process uses the newly-imported file instead of any previously-opened handle.
-	try {
-		await reloadDbClient();
-		console.info('[database-import] reloaded server DB client to use imported file');
-	} catch (e) {
-		console.warn('[database-import] failed to reload DB client (non-fatal):', e);
-	}
-
-	// After an import we require the client to re-authenticate. Clear any
-	// existing auth session cookie so the user is logged out and must sign in
-	// against the newly-imported database. The client will be informed via the
-	// JSON response (logout: true) and should redirect to the login page.
+	// Clear auth session cookie so user must re-login against the imported DB
 	try {
 		const secure = process.env.NODE_ENV === 'production';
-		// Expire the session cookie immediately.
 		cookies.set(cookieNames.AUTH_SESSION, '', {
 			path: '/',
 			httpOnly: true,
@@ -128,49 +142,46 @@ export async function POST({ request, cookies }) {
 			secure,
 			expires: new Date(0)
 		});
-		console.info('[database-import] cleared auth session cookie to require re-login after import');
+		console.info('[database-import] cleared auth session cookie');
 	} catch (e) {
 		console.warn('[database-import] failed to clear auth session cookie (non-fatal):', e);
 	}
 
-	// attempt to normalize indexes automatically after import so older DB dumps
-	// don't leave behind incompatible index names that later cause insert failures.
-	(async () => {
+	// Run essential post-import scripts (seed admin + grant permissions).
+	for (const script of ['seed-default-admin.mjs', 'grant-admin-permissions.mjs']) {
 		try {
-			// Run the full migrate-installed-db wrapper so the imported DB is normalized,
-			// ensured for missing columns, and any necessary drizzle migrations are applied.
-			const script = resolve(process.cwd(), 'scripts', 'migrate-installed-db.mjs');
-			console.info('[database-import] running migrate-installed-db script:', script);
+			const scriptPath = resolve(process.cwd(), 'scripts', script);
+			console.info('[database-import] running', script);
 			await new Promise((resolvePromise, rejectPromise) => {
 				const child = execFile(
 					process.execPath,
-					[script],
+					[scriptPath],
 					{ windowsHide: true },
 					(err, stdout, stderr) => {
 						if (stdout && String(stdout).trim())
-							console.info('[migrate-installed-db stdout]', String(stdout).trim());
+							console.info('[' + script + ' stdout]', String(stdout).trim());
 						if (stderr && String(stderr).trim())
-							console.warn('[migrate-installed-db stderr]', String(stderr).trim());
+							console.warn('[' + script + ' stderr]', String(stderr).trim());
 						if (err) return rejectPromise(err);
 						resolvePromise(null);
 					}
 				);
 				child.on('error', (e) => rejectPromise(e));
 			});
-			console.info('[database-import] migrate-installed-db completed');
-			try {
-				await reloadDbClient();
-				console.info('[database-import] reloaded DB client after migrate-installed-db');
-			} catch (e) {
-				console.warn(
-					'[database-import] failed to reload DB client after migrate-installed-db (non-fatal):',
-					e
-				);
-			}
+			console.info('[database-import]', script, 'completed');
 		} catch (e) {
-			console.warn('[database-import] migrate-installed-db failed (non-fatal):', e);
+			console.warn('[database-import]', script, 'failed (non-fatal):', e);
 		}
-	})();
+	}
+
+	// Reload DB client so the server picks up the imported database.
+	try {
+		await reloadDbClient();
+		console.info('[database-import] reloaded DB client');
+	} catch (e) {
+		console.warn('[database-import] failed to reload DB client (non-fatal):', e);
+	}
+
 	return json({
 		message: 'Database berhasil diimport. Silakan login ulang.',
 		logout: true,

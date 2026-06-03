@@ -2,7 +2,7 @@ import { env } from '$env/dynamic/private';
 import { error } from '@sveltejs/kit';
 import { readFile, stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { createClient } from '@libsql/client';
+import db from '$lib/server/db';
 
 const DEFAULT_DB_URL = 'file:./data/database.sqlite3';
 
@@ -13,18 +13,6 @@ function resolveDatabasePath(url: string) {
 	}
 
 	throw error(500, 'Database URL tidak didukung untuk backup');
-}
-
-async function checkpointWAL(dbUrl: string) {
-	try {
-		const client = createClient({ url: dbUrl });
-		// Force checkpoint to flush all WAL changes to main database file
-		await client.execute({ sql: 'PRAGMA wal_checkpoint(FULL)' });
-		if (typeof client.close === 'function') await client.close();
-	} catch (err) {
-		console.warn('[backup] WAL checkpoint warning:', err);
-		// Continue with backup even if checkpoint fails
-	}
 }
 
 export async function GET() {
@@ -38,8 +26,14 @@ export async function GET() {
 		throw error(404, 'Berkas database tidak ditemukan');
 	}
 
-	// Checkpoint WAL to ensure all changes are in the main database file
-	await checkpointWAL(dbUrl);
+	// Checkpoint WAL on the main server client to flush all changes to the main DB file
+	try {
+		await (db.$client as { execute: (sql: { sql: string }) => Promise<unknown> }).execute({
+			sql: 'PRAGMA wal_checkpoint(FULL)'
+		});
+	} catch (err) {
+		console.warn('[backup] WAL checkpoint warning:', err);
+	}
 
 	const fileBuffer = await readFile(dbPath);
 	const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
