@@ -51,17 +51,17 @@ body {
 .header-subtitle {
 	font-size: 10pt;
 	text-align: center;
-	margin-bottom: 5mm;
+	margin-bottom: 4mm;
 }
 
 .identity-table {
 	width: 100%;
 	border-collapse: collapse;
-	margin-bottom: 8.5mm;
+	margin-bottom: 4mm;
 }
 
 .identity-table td {
-	padding: 1mm 0;
+	padding: 0.65mm 0;
 	font-size: 10pt;
 	vertical-align: top;
 }
@@ -69,6 +69,7 @@ body {
 .identity-table .label {
 	width: 28mm;
 	white-space: nowrap;
+	font-weight: bold;
 }
 
 .identity-table .colon {
@@ -77,28 +78,34 @@ body {
 
 .identity-table .value-left {
 	width: 70mm;
-	font-weight: bold;
 }
 
 .identity-table .label-right {
 	width: 35mm;
 	white-space: nowrap;
 	padding-left: 5mm;
+	font-weight: bold;
 }
 
 .identity-table .colon-right {
 	width: 3mm;
 }
 
-.identity-table .value-right {
-	font-weight: bold;
-}
-
 .main-table {
 	width: 100%;
 	border-collapse: collapse;
 	font-size: 10pt;
-	margin-bottom: 4.2mm;
+	margin-bottom: 4mm;
+	page-break-inside: auto;
+}
+
+.main-table thead,
+.main-table tfoot {
+	display: table-header-group;
+}
+
+.main-table tfoot {
+	display: table-footer-group;
 }
 
 .main-table th {
@@ -109,6 +116,8 @@ body {
 	background: #f0f0f0;
 }
 
+.main-table thead,
+.main-table tfoot,
 .main-table tbody,
 .main-table tr,
 .main-table th,
@@ -121,8 +130,6 @@ body {
 	border: 0.3mm solid #000;
 	padding: 1.4mm 2.8mm;
 	vertical-align: top;
-	orphans: 1;
-	widows: 1;
 }
 
 .main-table .col-no {
@@ -139,9 +146,17 @@ body {
 	text-align: center;
 }
 
-.main-table .col-deskripsi {
-	text-align: left;
-	white-space: pre-line;
+.main-table .col-deskripsi div {
+	text-align: justify;
+	margin-bottom: 0.5mm;
+}
+
+.main-table .col-deskripsi div:last-child {
+	margin-bottom: 0;
+}
+
+.main-table th.col-deskripsi {
+	text-align: center;
 }
 
 .main-table tr.category-header td {
@@ -151,7 +166,12 @@ body {
 }
 
 .main-table tr.first-data-row {
-	page-break-before: avoid;
+	page-break-before: auto;
+}
+
+.kehadiran-wrapper {
+	page-break-inside: avoid;
+	margin-bottom: 4mm;
 }
 
 .kehadiran-table {
@@ -174,27 +194,13 @@ body {
 	vertical-align: top;
 }
 
-.kehadiran-table .col-no {
-	width: 17mm;
-	text-align: center;
-}
-
-.kehadiran-table .col-alasan {
-	text-align: left;
-}
-
 .kehadiran-table .col-jumlah {
 	width: 22.6mm;
 	text-align: center;
 }
 
 .signature-section {
-	margin-top: 12pt;
 	width: 100%;
-}
-
-.signature-section tr {
-	page-break-inside: avoid;
 }
 
 .signature-table {
@@ -204,10 +210,9 @@ body {
 }
 
 .signature-table td {
-	padding: 0 4pt;
+	padding: 1pt 4pt;
 	vertical-align: top;
 	text-align: center;
-	width: 50%;
 }
 
 .signature-date {
@@ -215,27 +220,25 @@ body {
 	padding-bottom: 6pt;
 }
 
-.signature-table .sig-title {
-	font-size: 10pt;
+.sig-title {
+	font-weight: bold;
 }
 
-.signature-table .sig-name {
+.sig-space {
+	height: 24mm;
+}
+
+.sig-name {
 	font-weight: bold;
-	font-size: 11pt;
-	padding-top: 22.6mm;
 	text-decoration: underline;
 }
 
-.signature-table .sig-nip {
-	font-size: 10pt;
-	padding-top: 1pt;
+.sig-nip {
+	padding-top: 2pt;
 }
 
-.signature-table .dashed-line {
-	border-bottom: 0.15mm dashed #000;
-	display: block;
-	width: 52%;
-	margin: 28mm auto 3mm;
+.sig-spacer {
+	height: 4mm;
 }
 
 .watermark {
@@ -276,75 +279,64 @@ export function renderKeasramaanHTML(data: KeasramaanPrintData): string {
 			return `<tr${cls ? ` class="${cls}"` : ''}>
 			<td class="col-no">${row.no}</td>
 			<td class="col-indikator">${formatValue(row.indikator)}</td>
-			<td class="col-predikat">${predikatToHuruf(row.predikat)}</td>
-			<td class="col-deskripsi">${formatValue(row.deskripsi)}</td>
+			<td class="col-predikat">${row.deskripsi ? predikatToHuruf(row.predikat) : FALLBACK}</td>
+			<td class="col-deskripsi">${formatValue(row.deskripsi).split('\n').filter(Boolean).map(p => `<div>${p}</div>`).join('\n')}</td>
 		</tr>`;
 		})
 		.join('\n');
 
+	const tableHeader = `
+		<tr>
+			<th class="col-no">No</th>
+			<th class="col-indikator">Indikator</th>
+			<th class="col-predikat">Predikat</th>
+			<th class="col-deskripsi">Deskripsi</th>
+		</tr>`;
+
 	const kehadiranSection = data.kehadiran
 		? `
+<div class="kehadiran-wrapper">
 <table class="kehadiran-table">
 	<thead>
 		<tr>
-			<th colspan="3">KETIDAKHADIRAN</th>
-		</tr>
-		<tr>
-			<th class="col-no">No</th>
-			<th class="col-alasan">Alasan Ketidakhadiran</th>
-			<th class="col-jumlah">Jumlah</th>
+			<th colspan="2">KETIDAKHADIRAN</th>
 		</tr>
 	</thead>
 	<tbody>
 		<tr>
-			<td class="col-no">1</td>
 			<td>Sakit</td>
-			<td class="col-jumlah">${data.kehadiran.sakit}</td>
+			<td class="col-jumlah">${data.kehadiran.sakit} Hari</td>
 		</tr>
 		<tr>
-			<td class="col-no">2</td>
 			<td>Izin</td>
-			<td class="col-jumlah">${data.kehadiran.izin}</td>
+			<td class="col-jumlah">${data.kehadiran.izin} Hari</td>
 		</tr>
 		<tr>
-			<td class="col-no">3</td>
 			<td>Tanpa Keterangan</td>
-			<td class="col-jumlah">${data.kehadiran.alfa}</td>
+			<td class="col-jumlah">${data.kehadiran.alfa} Hari</td>
 		</tr>
 	</tbody>
-</table>`
+</table>
+</div>`
 		: '';
 
 	const ttdText = data.ttd
 		? `${formatValue(data.ttd.tempat)}, ${formatValue(data.ttd.tanggal)}`
 		: '';
 
-	const waliAsramaSection = data.waliAsrama
-		? `
-			<td style="padding-bottom:12pt;">
-				<div class="sig-title">Wali Asrama</div>
-				<div class="sig-name">${formatValue(data.waliAsrama.nama)}</div>
-				<div class="sig-nip">${formatValue(data.waliAsrama.nip)}</div>
-			</td>`
-		: '<td></td>';
+	const waliAsramaLabel = 'Wali Asrama';
+	const waliAsramaName = data.waliAsrama ? formatValue(data.waliAsrama.nama) : FALLBACK;
+	const waliAsramaNip = data.waliAsrama?.nip ? `${formatValue(data.waliAsrama.nip)}` : '';
 
-	const waliAsuhSection = data.waliAsuh
-		? `
-			<td style="padding-bottom:12pt;">
-				<div class="sig-title">Wali Asuh</div>
-				<div class="sig-name">${formatValue(data.waliAsuh.nama)}</div>
-				<div class="sig-nip">${formatValue(data.waliAsuh.nip)}</div>
-			</td>`
-		: '<td></td>';
+	const waliAsuhLabel = 'Wali Asuh';
+	const waliAsuhName = data.waliAsuh ? formatValue(data.waliAsuh.nama) : FALLBACK;
+	const waliAsuhNip = data.waliAsuh?.nip ? `${formatValue(data.waliAsuh.nip)}` : '';
 
-	const kepalaSekolahSection = data.kepalaSekolah
-		? `
-			<td>
-				<div class="sig-title">${kepalaSekolahTitle}</div>
-				<div class="sig-name">${formatValue(data.kepalaSekolah.nama)}</div>
-				<div class="sig-nip">${formatValue(data.kepalaSekolah.nip)}</div>
-			</td>`
-		: '<td></td>';
+	const kepalaSekolahLabel = data.kepalaSekolah ? kepalaSekolahTitle : '';
+	const kepalaSekolahNama = data.kepalaSekolah ? formatValue(data.kepalaSekolah.nama) : '';
+	const kepalaSekolahNip = data.kepalaSekolah?.nip
+		? `${formatValue(data.kepalaSekolah.nip)}`
+		: '';
 
 	return `<!DOCTYPE html>
 <html lang="id">
@@ -358,7 +350,7 @@ ${sharedStyles()}
 	margin-left: 20mm;
 	margin-right: 15mm;
 	margin-top: 15mm;
-	margin-bottom: 20mm;
+	margin-bottom: 15mm;
 	@bottom-left {
 		content: "${data.rombel.nama} | ${data.murid.nama} | ${data.murid.nis}";
 		font-size: 9pt;
@@ -366,7 +358,7 @@ ${sharedStyles()}
 		color: #555;
 	}
 	@bottom-right {
-		content: "Halaman: " counter(page);
+		content: "Halaman: " counter(page) "/" counter(pages);
 		font-size: 9pt;
 		font-family: Helvetica, Arial, sans-serif;
 		color: #555;
@@ -420,39 +412,68 @@ ${logoUrl ? `<img src="${logoUrl}" alt="Watermark" class="watermark">` : ''}
 
 <table class="main-table">
 	<thead>
-		<tr>
-			<th class="col-no">No</th>
-			<th class="col-indikator">Indikator</th>
-			<th class="col-predikat">Predikat</th>
-			<th class="col-deskripsi">Deskripsi</th>
-		</tr>
+		${tableHeader}
 	</thead>
 	<tbody>
 ${tableBody}
 	</tbody>
+	<tfoot>
+		${tableHeader}
+	</tfoot>
 </table>
 
 ${kehadiranSection}
 
 <div class="signature-section">
 <table class="signature-table">
+	<colgroup>
+		<col style="width:50%">
+		<col style="width:50%">
+	</colgroup>
 	<tbody style="page-break-inside: avoid;">
-	<tr>
-		<td></td>
-		<td class="signature-date">${ttdText}</td>
-	</tr>
-	<tr>
-		${waliAsramaSection}
-		${waliAsuhSection}
-	</tr>
+		<tr>
+			<td></td>
+			<td class="signature-date">${ttdText}</td>
+		</tr>
+		<tr>
+			<td class="sig-title">${waliAsramaLabel}</td>
+			<td class="sig-title">${waliAsuhLabel}</td>
+		</tr>
+		<tr>
+			<td class="sig-space"></td>
+			<td class="sig-space"></td>
+		</tr>
+		<tr>
+			<td class="sig-name">${waliAsramaName}</td>
+			<td class="sig-name">${waliAsuhName}</td>
+		</tr>
+		<tr>
+			<td class="sig-nip">${waliAsramaNip}</td>
+			<td class="sig-nip">${waliAsuhNip}</td>
+		</tr>
+		<tr>
+			<td class="sig-spacer"></td>
+			<td></td>
+		</tr>
 	</tbody>
-	<tr>
-		<td>
-			<div class="sig-title">Orang Tua/Wali Murid</div>
-			<span class="dashed-line"></span>
-		</td>
-		${kepalaSekolahSection}
-	</tr>
+	<tbody style="page-break-inside: avoid;">
+		<tr>
+			<td class="sig-title">Orang Tua / Wali Murid</td>
+			<td class="sig-title">${kepalaSekolahLabel}</td>
+		</tr>
+		<tr>
+			<td class="sig-space"></td>
+			<td class="sig-space"></td>
+		</tr>
+		<tr>
+			<td>____________________</td>
+			<td class="sig-name">${kepalaSekolahNama}</td>
+		</tr>
+		<tr>
+			<td></td>
+			<td class="sig-nip">${kepalaSekolahNip}</td>
+		</tr>
+	</tbody>
 </table>
 </div>
 
