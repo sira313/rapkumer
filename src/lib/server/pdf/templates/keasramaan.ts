@@ -42,27 +42,28 @@ body {
 	padding: 0;
 }
 
-/* Title — mirrors sample h2.text-xl.font-bold + h3 */
+/* Header */
 .header-title {
 	font-size: 12pt;
 	font-weight: bold;
 	text-align: center;
-	margin-bottom: 1pt;
+	margin-bottom: 2pt;
 }
 
 .header-subtitle {
 	font-size: 10pt;
 	text-align: center;
-	margin-bottom: 6pt;
+	margin-bottom: 8pt;
 }
 
-/* Identity grid — mirrors sample grid-cols-[8rem_auto_1fr_8rem_auto_auto] gap-x-3 gap-y-2 text-sm */
+/* Identity grid — matches example grid-cols-[8rem_auto_1fr_8rem_auto_auto] gap-x-3 gap-y-2 */
 .identity-grid {
 	display: grid;
 	grid-template-columns: 8rem auto 1fr 8rem auto auto;
-	gap: 0.375rem 0.75rem;
+	gap: 0.5rem 0.75rem;
 	font-size: 10pt;
 	margin-bottom: 12pt;
+	line-height: 1.4;
 }
 
 .identity-grid .label {
@@ -70,7 +71,7 @@ body {
 	white-space: nowrap;
 }
 
-/* Main table — mirrors sample .table.border.rounded-none.border-base-content */
+/* ---- Main table — matches example table.table.border.rounded-none.border-base-content ---- */
 .main-table {
 	width: 100%;
 	border-collapse: collapse;
@@ -82,14 +83,10 @@ body {
 	display: table-header-group;
 }
 
-.main-table tbody {
-	page-break-inside: auto;
-}
-
 .main-table th,
 .main-table td {
 	border: 1px solid #000;
-	padding: 4pt 8pt;
+	padding: 4pt 6pt;
 }
 
 .main-table th {
@@ -100,28 +97,29 @@ body {
 
 .main-table td {
 	vertical-align: top;
+	text-align: left;
 }
 
 .main-table td.text-center {
 	text-align: center;
 }
 
-.main-table td .text-justify {
-	text-align: justify;
+/* Every paragraph inside description breaks independently */
+.main-table .deskripsi-paragraf {
 	page-break-inside: avoid;
-	break-inside: avoid;
+	text-align: justify;
 }
 
-.main-table td .text-justify + .text-justify {
+.main-table .deskripsi-paragraf + .deskripsi-paragraf {
 	margin-top: 4pt;
 }
 
+/* Category header row */
 .main-table tr.category-header td {
 	font-weight: 600;
-	text-align: left;
 }
 
-/* Kehadiran table — mirrors sample .table.border.border-base-content.rounded-none */
+/* ---- Kehadiran table — matches example table.table.border.border-base-content.rounded-none ---- */
 .kehadiran-wrapper {
 	page-break-inside: avoid;
 	margin-bottom: 12pt;
@@ -149,7 +147,7 @@ body {
 	text-align: center;
 }
 
-/* Signature section — mirrors sample table.w-full */
+/* ---- Signature section — matches example table.w-full ---- */
 .signature-section {
 	margin-top: 12pt;
 }
@@ -186,7 +184,7 @@ body {
 	height: 1rem;
 }
 
-/* Watermark */
+/* ---- Watermark ---- */
 .watermark {
 	position: fixed;
 	top: 50%;
@@ -214,15 +212,20 @@ export function renderKeasramaanHTML(data: KeasramaanPrintData): string {
 		data.kepalaSekolah?.statusKepalaSekolah === 'plt' ? 'Plt. Kepala Sekolah' : 'Kepala Sekolah';
 
 	function renderRow(row: (typeof data.keasramaanRows)[0]): string {
+		const hasDeskripsi = !!row.deskripsi;
+		const deskripsiHtml = hasDeskripsi
+			? row.deskripsi
+					.split('\n')
+					.filter(Boolean)
+					.map((p) => `<div class="deskripsi-paragraf">${formatValue(p)}</div>`)
+					.join('\n')
+			: FALLBACK;
+
 		return `<tr>
-			<td class="text-center" style="vertical-align:top;">${row.no}</td>
-			<td style="vertical-align:top;">${formatValue(row.indikator)}</td>
-			<td class="text-center" style="vertical-align:top;">${row.deskripsi ? predikatToHuruf(row.predikat) : FALLBACK}</td>
-			<td style="vertical-align:top;">${formatValue(row.deskripsi)
-				.split('\n')
-				.filter(Boolean)
-				.map((p) => `<div class="text-justify">${p}</div>`)
-				.join('\n')}</td>
+			<td class="text-center">${row.no}</td>
+			<td>${formatValue(row.indikator)}</td>
+			<td class="text-center">${hasDeskripsi ? predikatToHuruf(row.predikat) : FALLBACK}</td>
+			<td>${deskripsiHtml}</td>
 		</tr>`;
 	}
 
@@ -235,21 +238,18 @@ export function renderKeasramaanHTML(data: KeasramaanPrintData): string {
 				<td colspan="4">${rows[i].kategoriHeader}</td>
 			</tr>`;
 			i++;
-			const dataRows: string[] = [];
-			while (i < rows.length && !rows[i].kategoriHeader) {
-				dataRows.push(renderRow(rows[i]));
+			if (i < rows.length && !rows[i].kategoriHeader) {
+				tableBody += `<tbody style="page-break-inside: avoid;">${headerRow}\n${renderRow(rows[i])}</tbody>`;
 				i++;
-			}
-			if (dataRows.length > 0) {
-				tableBody += `<tbody style="page-break-inside: avoid;">${headerRow}\n${dataRows[0]}</tbody>`;
-				if (dataRows.length > 1) {
-					tableBody += `\n<tbody>\n${dataRows.slice(1).join('\n')}</tbody>`;
+				while (i < rows.length && !rows[i].kategoriHeader) {
+					tableBody += `<tbody>${renderRow(rows[i])}</tbody>`;
+					i++;
 				}
 			} else {
-				tableBody += `<tbody>\n${headerRow}\n</tbody>`;
+				tableBody += `<tbody>${headerRow}</tbody>`;
 			}
 		} else {
-			tableBody += `<tbody>\n${renderRow(rows[i])}\n</tbody>`;
+			tableBody += `<tbody>${renderRow(rows[i])}</tbody>`;
 			i++;
 		}
 	}
@@ -295,16 +295,16 @@ export function renderKeasramaanHTML(data: KeasramaanPrintData): string {
 
 	const waliAsramaLabel = 'Wali Asrama';
 	const waliAsramaName = data.waliAsrama ? formatValue(data.waliAsrama.nama) : FALLBACK;
-	const waliAsramaNip = data.waliAsrama?.nip ? `NIP. ${formatValue(data.waliAsrama.nip)}` : '';
+	const waliAsramaNip = data.waliAsrama?.nip ? `${formatValue(data.waliAsrama.nip)}` : '';
 
 	const waliAsuhLabel = 'Wali Asuh';
 	const waliAsuhName = data.waliAsuh ? formatValue(data.waliAsuh.nama) : FALLBACK;
-	const waliAsuhNip = data.waliAsuh?.nip ? `NIP. ${formatValue(data.waliAsuh.nip)}` : '';
+	const waliAsuhNip = data.waliAsuh?.nip ? `${formatValue(data.waliAsuh.nip)}` : '';
 
 	const kepalaSekolahLabel = data.kepalaSekolah ? kepalaSekolahTitle : '';
 	const kepalaSekolahNama = data.kepalaSekolah ? formatValue(data.kepalaSekolah.nama) : '';
 	const kepalaSekolahNip = data.kepalaSekolah?.nip
-		? `NIP. ${formatValue(data.kepalaSekolah.nip)}`
+		? `${formatValue(data.kepalaSekolah.nip)}`
 		: '';
 
 	return `<!DOCTYPE html>
@@ -346,7 +346,6 @@ ${logoUrl ? `<img src="${logoUrl}" alt="Watermark" class="watermark">` : ''}
 <div class="header-title">LAPORAN KEGIATAN KEASRAMAAN</div>
 <div class="header-subtitle">(RAPOR)</div>
 
-<!-- Identity grid — mirrors sample grid-cols-[8rem_auto_1fr_8rem_auto_auto] -->
 <div class="identity-grid">
 	<div class="label">Nama Murid</div>
 	<div>:</div>
@@ -377,7 +376,6 @@ ${logoUrl ? `<img src="${logoUrl}" alt="Watermark" class="watermark">` : ''}
 	<div>${data.periode.tahunAjaran}</div>
 </div>
 
-<!-- Main table — mirrors sample table.border.rounded-none.border-base-content -->
 <table class="main-table">
 	<thead>
 		${tableHeader}
@@ -387,7 +385,6 @@ ${tableBody}
 
 ${kehadiranSection}
 
-<!-- Signature — mirrors sample table.w-full -->
 <div class="signature-section">
 <table class="signature-table">
 	<colgroup>
@@ -405,7 +402,7 @@ ${kehadiranSection}
 		</tr>
 		<tr>
 			<td class="h-24"></td>
-			<td class="h-24"></td>
+			<td></td>
 		</tr>
 		<tr>
 			<td class="font-bold underline">${waliAsramaName}</td>
@@ -427,7 +424,7 @@ ${kehadiranSection}
 		</tr>
 		<tr>
 			<td class="h-24"></td>
-			<td class="h-24"></td>
+			<td></td>
 		</tr>
 		<tr>
 			<td class="text-center">____________________</td>
