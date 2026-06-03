@@ -87,6 +87,16 @@ export function renderRaporHTML(data: RaporPrintData): string {
 	const kepalaStatus =
 		data.kepalaSekolah.statusKepalaSekolah === 'plt' ? 'Plt. Kepala Sekolah' : 'Kepala Sekolah';
 
+	const hasKeputusan = isGenap && data.raporPeriode !== 'rts';
+
+	function renderDeskripsi(deskripsi: string): string {
+		return formatValue(deskripsi)
+			.split('\n')
+			.filter(Boolean)
+			.map((p) => `<div class="text-justify">${p}</div>`)
+			.join('');
+	}
+
 	return `<!DOCTYPE html>
 <html lang="id">
 <head>
@@ -125,13 +135,13 @@ body {
 	padding: 0;
 }
 
+/* ── Title ── */
 .header-title {
 	font-size: 12pt;
 	font-weight: bold;
 	text-align: center;
 	margin-bottom: 1pt;
 }
-
 .header-subtitle {
 	font-size: 10pt;
 	font-weight: normal;
@@ -139,105 +149,155 @@ body {
 	margin-bottom: 6pt;
 }
 
-/* PDF table — mirrors DaisyUI .table.border.rounded-none.border-base-content */
+/* ── Identity grid — mirrors DaisyUI grid-cols-[8rem_auto_1fr_8rem_auto_auto] ── */
+.identity-grid {
+	display: grid;
+	grid-template-columns: 8rem auto 1fr 8rem auto auto;
+	column-gap: 0.75rem;
+	row-gap: 0.5rem;
+	font-size: 10pt;
+}
+
+/* ── PDF table — mirrors DaisyUI .table.border.rounded-none.border-base-content ── */
 .pdf-table {
 	border-collapse: collapse;
 	width: 100%;
 	font-size: 10pt;
-	page-break-inside: auto;
 }
-
 .pdf-table th,
 .pdf-table td {
 	border: 1px solid #000;
 	padding: 4pt 8pt;
 }
-
 .pdf-table th {
 	font-weight: bold;
 	text-align: center;
 	background: #f0f0f0;
 }
+.pdf-table .group-header td {
+	font-weight: 600;
+	text-align: left;
+}
 
-.pdf-table tbody,
-.pdf-table tr,
-.pdf-table th,
-.pdf-table td {
+/* Allow page breaks inside table rows — used for intra/koko/ekstra */
+.pdf-table.breakable tbody,
+.pdf-table.breakable tr,
+.pdf-table.breakable td {
 	page-break-inside: auto;
 	break-inside: auto;
 }
 
-.pdf-table .first-data-row {
-	page-break-before: auto;
-}
-
-.pdf-table .font-semibold {
-	font-weight: 600;
-}
-
-.pdf-table td.align-top {
-	vertical-align: top;
-}
-
+/* ── Non-breakable section ── */
 .no-break {
 	page-break-inside: avoid;
 }
 
-/* capaian sections */
-.capaian-tercapai,
-.capaian-bimbingan {
-	text-align: justify;
+/* ── Grid helpers — mirrors DaisyUI grid-cols-{ratio} ── */
+.grid-2col {
+	display: grid;
+	gap: 1rem;
+}
+.grid-2col.ratio-35-65 {
+	grid-template-columns: 35fr 65fr;
+}
+.grid-2col.ratio-70-30 {
+	grid-template-columns: 70fr 30fr;
 }
 
-.capaian-bimbingan {
-	margin-top: 4pt;
+/* ── Full-height table helper ── */
+.full-height {
+	height: 100%;
 }
 
-/* utility passthrough */
+/* ── Signature table ── */
+.ttd-table {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+/* ── Spacer heights — mirrors DaisyUI h-24, h-25, h-10 ── */
+.spacer-4 { height: 4rem; }
+.spacer-6 { height: 6rem; }
+.spacer-2-5 { height: 2.5rem; }
+.spacer-6-25 { height: 6.25rem; }
+
+/* ── Checkbox row — mirrors DaisyUI space-y-2 + flex justify-between ── */
+.check-row {
+	display: flex;
+	justify-content: space-between;
+}
+.check-group {
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+	margin-top: 0.5rem;
+}
+
+/* ── Watermark ── */
+.watermark {
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	opacity: 0.12;
+	width: 45%;
+	pointer-events: none;
+	z-index: -1;
+}
+@media print {
+	.watermark { position: fixed; }
+}
+
+/* ── Text utilities — mirrors DaisyUI text-center, text-justify, etc. ── */
+.text-center { text-align: center; }
+.text-left { text-align: left; }
+.text-justify { text-align: justify; }
 .align-top { vertical-align: top; }
+.font-bold { font-weight: bold; }
 .underline { text-decoration: underline; }
-
 </style>
 </head>
 <body>
 
 ${bgLogoSrc ? `<img src="${bgLogoSrc}" alt="" class="watermark">` : ''}
 
+<!-- Title -->
 <div class="header-title">LAPORAN HASIL BELAJAR${data.raporPeriode === 'rts' ? '<br>TENGAH SEMESTER' : ''}</div>
 <div class="header-subtitle">(RAPOR)</div>
 
-<div style="display:grid;grid-template-columns:8rem auto 1fr 8rem auto auto;gap:0.375rem 0.75rem;font-size:10pt;">
-	<div style="font-weight:bold;white-space:nowrap;">Nama Murid</div>
+<!-- Identity -->
+<div class="identity-grid">
+	<div class="font-bold">Nama Murid</div>
 	<div>:</div>
 	<div>${formatUpper(data.murid.nama)}</div>
-	<div style="font-weight:bold;white-space:nowrap;">Kelas</div>
+	<div class="font-bold">Kelas</div>
 	<div>:</div>
 	<div>${data.rombel.nama}</div>
 
-	<div style="font-weight:bold;white-space:nowrap;">NIS / NISN</div>
+	<div class="font-bold">NIS / NISN</div>
 	<div>:</div>
 	<div>${formatValue(data.murid.nisn)} / ${formatValue(data.murid.nis)}</div>
-	<div style="font-weight:bold;white-space:nowrap;">Fase</div>
+	<div class="font-bold">Fase</div>
 	<div>:</div>
 	<div>${data.rombel.fase}</div>
 
-	<div style="font-weight:bold;white-space:nowrap;">Sekolah</div>
+	<div class="font-bold">Sekolah</div>
 	<div>:</div>
 	<div>${formatUpper(data.sekolah.nama)}</div>
-	<div style="font-weight:bold;white-space:nowrap;">Semester</div>
+	<div class="font-bold">Semester</div>
 	<div>:</div>
 	<div>${data.periode.semester}</div>
 
-	<div style="font-weight:bold;white-space:nowrap;">Alamat</div>
+	<div class="font-bold">Alamat</div>
 	<div>:</div>
 	<div>${data.sekolah.alamat}</div>
-	<div style="font-weight:bold;white-space:nowrap;">Tahun Ajaran</div>
+	<div class="font-bold">Tahun Ajaran</div>
 	<div>:</div>
 	<div>${data.periode.tahunPelajaran}</div>
 </div>
 
 <!-- Intrakurikuler -->
-<table class="pdf-table" style="margin-top:12pt;">
+<table class="pdf-table breakable" data-ref="intrakurikuler" style="margin-top:12pt;">
 	<thead>
 		<tr>
 			<th style="width:6%;">No</th>
@@ -251,29 +311,18 @@ ${jenisOrder
 	.filter((j) => kelompokMap[j]?.items.length)
 	.map((jenis) => {
 		const group = kelompokMap[jenis];
-		return `
-		<tr>
-			<td colspan="4" class="font-semibold" style="text-align:left;">${jenisLabels[jenis]}</td>
+		return `		<tr class="group-header">
+			<td colspan="4">${jenisLabels[jenis]}</td>
 		</tr>
 ${group.items
-	.map((item, i) => {
-		const cls = i === 0 ? ' class="first-data-row"' : '';
-		return `		<tr${cls}>
-			<td class="align-top text-center">${i + 1}</td>
+	.map(
+		(item, i) => `		<tr>
+			<td class="text-center align-top">${i + 1}</td>
 			<td class="align-top">${item.mataPelajaran}</td>
-			<td class="align-top text-center">${formatValue(item.nilaiAkhir)}</td>
-			<td class="align-top">${formatValue(item.deskripsi)
-				.split('\n')
-				.filter(Boolean)
-				.map((p) => {
-					const cls = p.includes('masih perlu bimbingan')
-						? 'capaian-bimbingan'
-						: 'capaian-tercapai';
-					return `<div class="${cls}">${p}</div>`;
-				})
-				.join('')}</td>
-		</tr>`;
-	})
+			<td class="text-center align-top">${formatValue(item.nilaiAkhir)}</td>
+			<td class="align-top">${renderDeskripsi(item.deskripsi)}</td>
+		</tr>`
+	)
 	.join('\n')}`;
 	})
 	.join('\n')}
@@ -284,7 +333,7 @@ ${
 	data.hasKokurikuler && data.kokurikuler
 		? `
 <!-- Kokurikuler -->
-<table class="pdf-table" style="margin-top:12pt;">
+<table class="pdf-table breakable" data-ref="kokurikuler" style="margin-top:12pt;">
 	<thead>
 		<tr>
 			<th>Kokurikuler</th>
@@ -292,11 +341,10 @@ ${
 	</thead>
 	<tbody>
 		<tr>
-			<td class="align-top" style="text-align:justify">${data.kokurikuler}</td>
+			<td class="align-top text-justify">${renderDeskripsi(data.kokurikuler)}</td>
 		</tr>
 	</tbody>
-</table>
-`
+</table>`
 		: ''
 }
 
@@ -304,7 +352,7 @@ ${
 	data.ekstrakurikuler?.length
 		? `
 <!-- Ekstrakurikuler -->
-<table class="pdf-table" style="margin-top:12pt;">
+<table class="pdf-table breakable" data-ref="ekstrakurikuler" style="margin-top:12pt;">
 	<thead>
 		<tr>
 			<th style="width:6%;">No</th>
@@ -316,21 +364,20 @@ ${
 ${data.ekstrakurikuler
 	.map(
 		(e, i) => `		<tr>
-			<td class="align-top text-center">${i + 1}</td>
+			<td class="text-center align-top">${i + 1}</td>
 			<td class="align-top">${e.nama}</td>
-			<td class="align-top" style="text-align:justify">${formatValue(e.deskripsi)}</td>
+			<td class="align-top text-justify">${renderDeskripsi(e.deskripsi)}</td>
 		</tr>`
 	)
 	.join('\n')}
 	</tbody>
-</table>
-`
+</table>`
 		: ''
 }
 
 <!-- Ketidakhadiran & Catatan Wali Kelas -->
 <div class="no-break" style="margin-top:12pt;">
-	<div style="display:grid;grid-template-columns:42fr 58fr;gap:1rem;">
+	<div class="grid-2col ratio-35-65">
 		<table class="pdf-table">
 			<thead>
 				<tr>
@@ -352,8 +399,7 @@ ${data.ekstrakurikuler
 				</tr>
 			</tbody>
 		</table>
-
-		<table class="pdf-table" style="height:100%;">
+		<table class="pdf-table full-height">
 			<thead>
 				<tr>
 					<th>Catatan Wali Kelas</th>
@@ -361,7 +407,7 @@ ${data.ekstrakurikuler
 			</thead>
 			<tbody>
 				<tr>
-					<td class="align-top" style="height:5.5rem;">${formatValue(data.catatanWali)}</td>
+					<td class="align-top spacer-6-25">${formatValue(data.catatanWali)}</td>
 				</tr>
 			</tbody>
 		</table>
@@ -369,11 +415,11 @@ ${data.ekstrakurikuler
 </div>
 
 ${
-	isGenap && data.raporPeriode !== 'rts'
+	hasKeputusan
 		? `
 <!-- Tanggapan Orang Tua & Keputusan -->
 <div class="no-break" style="margin-top:12pt;">
-	<div style="display:grid;grid-template-columns:65fr 35fr;gap:1rem;">
+	<div class="grid-2col ratio-70-30">
 		<table class="pdf-table">
 			<thead>
 				<tr>
@@ -382,11 +428,10 @@ ${
 			</thead>
 			<tbody>
 				<tr>
-					<td class="align-top" style="height:6.25rem;">${data.tanggapanOrangTua || ''}</td>
+					<td class="align-top spacer-6-25">${data.tanggapanOrangTua || ''}</td>
 				</tr>
 			</tbody>
 		</table>
-
 		<table class="pdf-table">
 			<thead>
 				<tr>
@@ -396,13 +441,13 @@ ${
 			<tbody>
 				<tr>
 					<td class="align-top">
-						Berdasarkan capaian seluruh kompetensi, ananda ${formatValue(data.murid.nama)} dinyatakan:
-						<div style="display:flex;flex-direction:column;gap:0.25rem;margin-top:0.5rem;">
-							<div style="display:flex;justify-content:space-between;">
+						<div class="text-justify">Berdasarkan capaian seluruh kompetensi, ananda ${formatValue(data.murid.nama)} dinyatakan:</div>
+						<div class="check-group">
+							<div class="check-row">
 								<span>${isGraduating ? 'Lulus' : 'Naik Kelas'}</span>
 								<span>☐</span>
 							</div>
-							<div style="display:flex;justify-content:space-between;">
+							<div class="check-row">
 								<span>${isGraduating ? 'Tidak Lulus' : 'Tidak Naik Kelas'}</span>
 								<span>☐</span>
 							</div>
@@ -412,8 +457,7 @@ ${
 			</tbody>
 		</table>
 	</div>
-</div>
-`
+</div>`
 		: `
 <!-- Tanggapan Orang Tua -->
 <div class="no-break" style="margin-top:12pt;">
@@ -425,17 +469,16 @@ ${
 		</thead>
 		<tbody>
 			<tr>
-				<td class="align-top" style="height:6.25rem;">${data.tanggapanOrangTua || ''}</td>
+				<td class="align-top spacer-6-25">${data.tanggapanOrangTua || ''}</td>
 			</tr>
 		</tbody>
 	</table>
-</div>
-`
+</div>`
 }
 
 <!-- Tanda Tangan -->
 <div class="no-break" style="margin-top:12pt;">
-	<table style="width:100%;border-collapse:collapse;">
+	<table class="ttd-table">
 		<colgroup>
 			<col style="width:35%;">
 			<col style="width:30%;">
@@ -445,22 +488,22 @@ ${
 			<tr>
 				<td></td>
 				<td></td>
-				<td style="text-align:center;padding-bottom:6pt;">${data.ttd.tempat}, ${data.ttd.tanggal}</td>
+				<td class="text-center" style="padding-bottom:6pt;">${data.ttd.tempat}, ${data.ttd.tanggal}</td>
 			</tr>
 			<tr>
-				<td style="text-align:center;font-weight:bold;">Orang Tua / Wali Murid</td>
+				<td class="text-center font-bold">Orang Tua / Wali Murid</td>
 				<td></td>
-				<td style="text-align:center;font-weight:bold;">Wali Kelas</td>
+				<td class="text-center font-bold">Wali Kelas</td>
 			</tr>
 			<tr>
-				<td style="height:4rem;"></td>
+				<td class="spacer-6"></td>
 				<td></td>
-				<td style="height:4rem;"></td>
+				<td class="spacer-6"></td>
 			</tr>
 			<tr>
-				<td style="text-align:center;">____________________</td>
+				<td class="text-center">____________________</td>
 				<td></td>
-				<td style="text-align:center;font-weight:bold;text-decoration:underline;">${data.waliKelas.nama}</td>
+				<td class="text-center font-bold underline">${data.waliKelas.nama}</td>
 			</tr>
 			${
 				data.waliKelas.nip
@@ -468,28 +511,28 @@ ${
 			<tr>
 				<td></td>
 				<td></td>
-				<td style="text-align:center;">${data.waliKelas.nip}</td>
+				<td class="text-center">${data.waliKelas.nip}</td>
 			</tr>`
 					: ''
 			}
 			<tr>
-				<td style="height:0.75rem;"></td>
+				<td class="spacer-2-5"></td>
 				<td></td>
 				<td></td>
 			</tr>
 			<tr>
 				<td></td>
-				<td style="text-align:center;font-weight:bold;">${kepalaStatus}</td>
+				<td class="text-center font-bold">${kepalaStatus}</td>
 				<td></td>
 			</tr>
 			<tr>
 				<td></td>
-				<td style="height:4rem;"></td>
+				<td class="spacer-6"></td>
 				<td></td>
 			</tr>
 			<tr>
 				<td></td>
-				<td style="text-align:center;font-weight:bold;text-decoration:underline;">${data.kepalaSekolah.nama}</td>
+				<td class="text-center font-bold underline">${data.kepalaSekolah.nama}</td>
 				<td></td>
 			</tr>
 			${
@@ -497,7 +540,7 @@ ${
 					? `
 			<tr>
 				<td></td>
-				<td style="text-align:center;">${data.kepalaSekolah.nip}</td>
+				<td class="text-center">${data.kepalaSekolah.nip}</td>
 				<td></td>
 			</tr>`
 					: ''
