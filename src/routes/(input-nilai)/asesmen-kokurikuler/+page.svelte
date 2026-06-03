@@ -7,6 +7,11 @@
 	import { onDestroy } from 'svelte';
 	import type { DimensiProfilLulusanKey } from '$lib/statics';
 	import type { NilaiKategori } from '$lib/kokurikuler';
+	import { toast } from '$lib/components/toast.svelte';
+	import { showModal } from '$lib/components/global-modal.svelte';
+	import ActionButtons from '$lib/components/asesmen-kokurikuler/action-buttons.svelte';
+	import ImportModalBody from '$lib/components/asesmen-kokurikuler/import-modal-body.svelte';
+	import { downloadTemplate, importNilai } from '$lib/components/asesmen-kokurikuler/api';
 
 	type DimensiDetail = {
 		key: DimensiProfilLulusanKey;
@@ -56,6 +61,9 @@
 	const selectedKokurikulerLabel = $derived.by(() =>
 		selectedKokurikuler ? capitalizeSentence(selectedKokurikuler.tujuan) : null
 	);
+	const selectedKokurikulerHasDimensi = $derived.by(() =>
+		selectedKokurikuler ? selectedKokurikuler.dimensi.length > 0 : false
+	);
 	const kelasAktif = $derived(page.data.kelasAktif ?? null);
 	const kelasAktifLabel = $derived.by(() => {
 		if (!kelasAktif) return null;
@@ -78,6 +86,8 @@
 
 	let modalOpen = $state(false);
 	let activeMurid = $state<MuridRow | null>(null);
+	let isDownloadingTemplate = $state(false);
+	let isImportingFile = $state(false);
 
 	$effect(() => {
 		selectedKokurikulerValue = data.selectedKokurikulerId ? String(data.selectedKokurikulerId) : '';
@@ -175,6 +185,82 @@
 		await invalidate('app:asesmen-kokurikuler');
 	}
 
+	async function handleDownloadTemplate() {
+		if (!selectedKokurikulerValue || !selectedKokurikulerHasDimensi || !kelasAktif?.id) {
+			toast('Pilih kokurikuler terlebih dahulu', 'error');
+			return;
+		}
+
+		isDownloadingTemplate = true;
+		try {
+			const success = await downloadTemplate(selectedKokurikulerValue, kelasAktif.id);
+			if (success) {
+				toast('Template berhasil diunduh', 'success');
+			} else {
+				toast('Gagal mengunduh template', 'error');
+			}
+		} catch (err) {
+			console.error(err);
+			toast('Terjadi kesalahan saat mengunduh template', 'error');
+		} finally {
+			isDownloadingTemplate = false;
+		}
+	}
+
+	function openImportModal() {
+		if (!selectedKokurikulerValue || !selectedKokurikulerHasDimensi || !kelasAktif?.id) {
+			toast('Pilih kokurikuler terlebih dahulu', 'error');
+			return;
+		}
+
+		let uploader: () => File | null = () => null;
+
+		showModal({
+			title: 'Import Nilai dari Excel',
+			body: ImportModalBody,
+			bodyProps: {
+				setUploader: (fn: () => File | null) => (uploader = fn)
+			},
+			onPositive: {
+				label: 'Import',
+				icon: 'import',
+				action: async ({ close }: { close: () => void }) => {
+					const file = uploader();
+					if (!file) {
+						toast('Pilih file terlebih dahulu.', 'error');
+						return;
+					}
+
+					isImportingFile = true;
+
+					try {
+						const result = await importNilai(file, selectedKokurikulerValue, kelasAktif?.id ?? 0);
+
+						if (result.success) {
+							toast(result.message || 'Nilai berhasil diimport', 'success');
+							close();
+							await invalidate('app:asesmen-kokurikuler');
+							/* eslint-disable-next-line svelte/no-navigation-without-resolve */
+							await goto(`?kokurikuler_id=${selectedKokurikulerValue}`);
+						} else {
+							toast(result.message || 'Gagal import nilai', 'error');
+						}
+					} catch (err) {
+						console.error(err);
+						toast(
+							'Terjadi kesalahan saat import: ' + String((err as Error)?.message ?? err),
+							'error'
+						);
+					} finally {
+						isImportingFile = false;
+					}
+				}
+			},
+			onNegative: { label: 'Batal', icon: 'close' },
+			dismissible: true
+		});
+	}
+
 	function gotoPage(pageNumber: number) {
 		const sanitized = pageNumber < 1 ? 1 : pageNumber;
 		void applyNavigation((params) => {
@@ -214,6 +300,14 @@
 			{/if}
 		</div>
 	</div>
+
+	<ActionButtons
+		isDownloading={isDownloadingTemplate}
+		isImporting={isImportingFile}
+		disabled={!selectedKokurikulerHasDimensi || !canEdit}
+		onDownload={handleDownloadTemplate}
+		onImport={openImportModal}
+	/>
 
 	<div class="flex flex-col items-center gap-2 sm:flex-row">
 		<label class="w-full md:max-w-80">
