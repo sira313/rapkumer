@@ -1,6 +1,6 @@
 allowBuilds:
   core-js: true
   es5-ext: true
-  esbuild: set this to true or false
+  esbuild: true
   puppeteer: true
 storeDir: /home/aris/.local/share/pnpm/store/v10

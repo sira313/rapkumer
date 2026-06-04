@@ -57,14 +57,6 @@
 		"vite-plugin-devtools-json": "^1.0.0",
 		"yaml": "^2.9.0"
 	},
-	"pnpm": {
-		"onlyBuiltDependencies": [
-			"esbuild"
-		],
-		"ignoredBuiltDependencies": [
-			"@tailwindcss/oxide"
-		]
-	},
 	"dependencies": {
 		"@libsql/client": "^0.15.15",
 		"drizzle-orm": "^0.44.7",
