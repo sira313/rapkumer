@@ -43,14 +43,14 @@
 			</div>
 		</div>
 
-		<div class="mt-4 overflow-x-auto rounded-md shadow-md">
+		<div class="bg-base-100 dark:bg-base-200 mt-4 overflow-x-auto rounded-md shadow-md dark:shadow-none">
 			<table class="border-base-200 table border dark:border-none">
 				<thead>
 					<tr class="bg-base-200 dark:bg-base-300 text-base-content text-left font-bold">
 						<th style="width: 50px; min-width: 40px;">No</th>
 						<th class="w-full" style="min-width: 200px;">Ekstrakurikuler</th>
 						<th style="min-width: 120px;">Nilai Akhir</th>
-						<th style="min-width: 140px;">Kriteria</th>
+						<th style="min-width: 200px;">Kriteria</th>
 					</tr>
 				</thead>
 				<tbody>

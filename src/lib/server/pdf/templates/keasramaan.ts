@@ -303,9 +303,7 @@ export function renderKeasramaanHTML(data: KeasramaanPrintData): string {
 
 	const kepalaSekolahLabel = data.kepalaSekolah ? kepalaSekolahTitle : '';
 	const kepalaSekolahNama = data.kepalaSekolah ? formatValue(data.kepalaSekolah.nama) : '';
-	const kepalaSekolahNip = data.kepalaSekolah?.nip
-		? `${formatValue(data.kepalaSekolah.nip)}`
-		: '';
+	const kepalaSekolahNip = data.kepalaSekolah?.nip ? `${formatValue(data.kepalaSekolah.nip)}` : '';
 
 	return `<!DOCTYPE html>
 <html lang="id">

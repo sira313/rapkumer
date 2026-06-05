@@ -7,7 +7,8 @@ import {
 	tableEkstrakurikuler,
 	tableKokurikuler,
 	tableAsesmenKokurikuler,
-	tableAsesmenEkstrakurikuler
+	tableAsesmenEkstrakurikuler,
+	tableAuthUserMataPelajaran
 } from '$lib/server/db/schema';
 import { sanitizeDimensionList } from '$lib/kokurikuler';
 import { redirect } from '@sveltejs/kit';
@@ -178,6 +179,9 @@ export const load: PageServerLoad = async ({ parent, locals, url, depends }) => 
 		columns: { id: true, nama: true },
 		where: eq(tableMataPelajaran.kelasId, kelasAktif.id)
 	});
+
+	// Guru mapel can see all subjects on this page (read-only view)
+
 	const mapelIds = rawMapelRecords.map((mapel) => mapel.id);
 
 	await ensureAsesmenSumatifSchema();

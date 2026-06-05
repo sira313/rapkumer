@@ -1,15 +1,9 @@
 import db from '$lib/server/db';
-import {
-	tableKeasramaan,
-	tableKeasramaanIndikator,
-	tableKeasramaanTujuan,
-	tableAuthUserKelas
-} from '$lib/server/db/schema';
+import { tableKeasramaan, tableKeasramaanIndikator, tableKeasramaanTujuan } from '$lib/server/db/schema';
 import { redirect, fail } from '@sveltejs/kit';
 import { and, asc, eq } from 'drizzle-orm';
 import { readBufferToAoA } from '$lib/utils/excel.js';
 import { cookieNames } from '$lib/utils';
-import { authority } from '../../pengguna/utils.server';
 
 interface KeasramaanWithIndikator {
 	id: number;
@@ -49,38 +43,6 @@ export async function load({ depends, parent }) {
 		throw redirect(303, `/forbidden?required=kelas_id`);
 	}
 
-	// Permission check: Admin, wali_kelas (for their own class), wali_asuh (for their own class),
-	// and users with rapor_manage permission can access
-	const userType = (user as { type?: string; id?: number; kelasId?: number } | null)?.type;
-
-	// Allow admin, wali_kelas, and wali_asuh without further checks
-	// (wali_kelas/wali_asuh already validated by hooks.server.ts to access only their own kelas)
-	if (userType !== 'admin' && userType !== 'wali_kelas' && userType !== 'wali_asuh') {
-		// For 'user' type (guru), check rapor_manage permission OR kelas assignment
-		if (userType === 'user' && user?.id) {
-			const userPermissions = (user as { permissions?: string[] })?.permissions ?? [];
-			const hasRaporManage = userPermissions.includes('rapor_manage');
-
-			if (!hasRaporManage) {
-				// Check if user has access to this kelas via join table
-				const hasKelasAccess = await db.query.tableAuthUserKelas.findFirst({
-					columns: { id: true },
-					where: and(
-						eq(tableAuthUserKelas.authUserId, user.id),
-						eq(tableAuthUserKelas.kelasId, kelasAktif.id)
-					)
-				});
-
-				if (!hasKelasAccess) {
-					throw redirect(303, `/forbidden?required=rapor_manage`);
-				}
-			}
-		} else {
-			// Other user types need rapor_manage permission
-			authority('rapor_manage');
-		}
-	}
-
 	let keasramaanRaw: KeasramaanWithIndikator[] = [];
 	let tableReady = true;
 
@@ -106,8 +68,17 @@ export async function load({ depends, parent }) {
 	};
 }
 
+function canManageKeasramaan(user: unknown): boolean {
+	if (!user || typeof user !== 'object') return false;
+	const u = user as { type?: string };
+	return u.type === 'admin' || u.type === 'wali_kelas';
+}
+
 export const actions = {
 	async import_matev({ request, cookies, locals }) {
+		if (!canManageKeasramaan(locals.user)) {
+			return fail(403, { fail: 'Anda tidak memiliki izin' });
+		}
 		const kelasIdCookie = cookies.get(cookieNames.ACTIVE_KELAS_ID) || null;
 		const kelasId = kelasIdCookie ? Number(kelasIdCookie) : null;
 		if (!kelasId || !Number.isFinite(kelasId)) {

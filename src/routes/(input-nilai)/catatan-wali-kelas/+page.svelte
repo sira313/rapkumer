@@ -362,7 +362,7 @@
 		{#each pages as pageNumber (pageNumber)}
 			<button
 				type="button"
-				class="join-item btn"
+				class="join-item btn pointer-events-auto"
 				class:btn-active={pageNumber === currentPage}
 				onclick={() => handlePageClick(pageNumber)}
 				aria-current={pageNumber === currentPage ? 'page' : undefined}

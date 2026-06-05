@@ -47,10 +47,10 @@
 	const anySelected = $derived.by(() => selectedIds.length > 0);
 	const allSelected = $derived.by(() => totalData > 0 && selectedIds.length === totalData);
 	const canManage = $derived.by(() => data.tableReady && !!data.kelasId);
-	// Restrict editing for wali_asuh
+	// Restrict editing for wali_asuh and user (guru mapel)
 	const canEdit = $derived.by(() => {
 		const u = page.data.user as { type?: string } | null | undefined;
-		return u?.type !== 'wali_asuh';
+		return u?.type !== 'wali_asuh' && u?.type !== 'user';
 	});
 	const addSaveDisabled = $derived.by(
 		() => addSubmitting || !addNamaInput.trim() || !data.kelasId || !data.tableReady

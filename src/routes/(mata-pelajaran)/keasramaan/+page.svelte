@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import Icon from '$lib/components/icon.svelte';
 	import { showModal } from '$lib/components/global-modal.svelte';
 	import ImportMatevDialog from '$lib/components/keasramaan/import-matev-dialog.svelte';
@@ -30,10 +31,19 @@
 			: '-'
 	);
 
+	const canEdit = $derived.by(() => {
+		const u = page.data.user as { type?: string } | null | undefined;
+		return u?.type !== 'wali_asuh' && u?.type !== 'user';
+	});
+
 	// eslint-disable-next-line svelte/no-navigation-without-resolve
-	const navigateToMatEval = () => goto('/keasramaan/mata-evaluasi');
+	const navigateToMatEval = () => {
+		if (!canEdit) return;
+		goto('/keasramaan/mata-evaluasi');
+	};
 
 	const handleExport = async () => {
+		if (!canEdit) return;
 		try {
 			const response = await fetch('/api/keasramaan/export', {
 				method: 'POST'
@@ -93,6 +103,7 @@
 				type="button"
 				class="btn btn-soft rounded-r-none shadow-none"
 				title="Kelola mata evaluasi keasramaan"
+				disabled={!canEdit}
 				onclick={navigateToMatEval}
 			>
 				<Icon name="edit" />
@@ -104,7 +115,8 @@
 					type="button"
 					tabindex="0"
 					class="btn btn-soft rounded-l-none shadow-none"
-					aria-disabled="false"
+					disabled={!canEdit}
+					aria-disabled={!canEdit}
 				>
 					<Icon name="down" />
 				</button>
@@ -116,7 +128,8 @@
 						<button
 							type="button"
 							class="w-full text-left"
-							aria-disabled="false"
+							disabled={!canEdit}
+							aria-disabled={!canEdit}
 							onclick={() =>
 								showModal({
 									title: 'Impor Matev',
@@ -132,7 +145,8 @@
 						<button
 							type="button"
 							class="w-full text-left"
-							aria-disabled="false"
+							disabled={!canEdit}
+							aria-disabled={!canEdit}
 							onclick={handleExport}
 						>
 							<Icon name="export" />
@@ -154,5 +168,5 @@
 	{/if}
 
 	<!-- Daftar Mata Evaluasi dengan Tabel Individual -->
-	<MataEvaluasiDisplay {mataEvaluasi} {tableReady} />
+	<MataEvaluasiDisplay {mataEvaluasi} {tableReady} {canEdit} />
 </div>
