@@ -8,6 +8,7 @@
 		"seed:walis": "node scripts/seed-wali-users.mjs",
 		"db:studio": "drizzle-kit studio",
 		"db:cleanup": "node scripts/cleanup-orphans.mjs",
+		"db:copy-ganjil-genap": "node scripts/copy-ganjil-to-genap.mjs",
 		"dev": "node scripts/dev.js",
 		"build": "vite build",
 		"preview": "vite preview",

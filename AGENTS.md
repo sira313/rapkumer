@@ -9,6 +9,7 @@ pnpm start                   # run built app (scripts/start-build.mjs)
 pnpm db:push                 # custom migration script, not raw drizzle-kit push
 pnpm db:studio               # drizzle-kit studio
 pnpm db:cleanup              # cleanup orphan records
+pnpm db:copy-ganjil-genap    # copy all academic data from ganjil to genap semester
 pnpm seed:walis              # seed wali asuh users
 pnpm package:win             # stage windows installer artifacts
 pnpm check                   # svelte-kit sync + svelte-check (scripts/svelte-check-wrapper.mjs)
