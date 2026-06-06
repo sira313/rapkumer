@@ -33,7 +33,7 @@
 
 	const canEdit = $derived.by(() => {
 		const u = page.data.user as { type?: string } | null | undefined;
-		return u?.type !== 'wali_asuh' && u?.type !== 'user';
+		return u?.type !== 'user';
 	});
 
 	// eslint-disable-next-line svelte/no-navigation-without-resolve

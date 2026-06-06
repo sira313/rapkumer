@@ -1,5 +1,5 @@
 import db from '$lib/server/db';
-import { tableAsesmenKeasramaan, tableKeasramaan, tableMurid } from '$lib/server/db/schema';
+import { tableAsesmenKeasramaan, tableKeasramaan, tableMurid, tablePegawai } from '$lib/server/db/schema';
 import {
 	ekstrakurikulerNilaiLabelByValue,
 	buildKeasramaanDeskripsi,
@@ -52,7 +52,7 @@ function mapNilaiRecords(records: NilaiRecord[]) {
 
 export async function load({ parent, url, depends }) {
 	depends('app:asesmen-keasramaan');
-	const { kelasAktif } = await parent();
+	const { kelasAktif, user } = await parent();
 	const meta: PageMeta = { title: 'Asesmen Keasramaan' };
 
 	if (!kelasAktif?.id) {
@@ -93,11 +93,26 @@ export async function load({ parent, url, depends }) {
 		selectedKeasramaanId = keasramaanList[0].id;
 	}
 
+	const userWithType = user as { type?: string; pegawaiId?: number } | null;
+	let waliAsuhNama: string | null = null;
+	if (userWithType?.type === 'wali_asuh' && userWithType.pegawaiId) {
+		const peg = await db.query.tablePegawai.findFirst({
+			columns: { nama: true },
+			where: eq(tablePegawai.id, userWithType.pegawaiId)
+		});
+		waliAsuhNama = peg?.nama?.trim().toLowerCase() ?? null;
+	}
+
 	const muridRecords = await db.query.tableMurid.findMany({
-		columns: { id: true, nama: true },
+		columns: { id: true, nama: true, waliAsuhNama: true },
 		where: eq(tableMurid.kelasId, kelasAktif.id),
 		orderBy: asc(tableMurid.nama)
 	});
+
+	function isAsuhanku(murid: { waliAsuhNama: string | null }): boolean {
+		if (waliAsuhNama === null) return true;
+		return (murid.waliAsuhNama?.trim().toLowerCase() ?? '') === waliAsuhNama;
+	}
 
 	const rawSearch = url.searchParams.get('q')?.trim() ?? '';
 	const searchTerm = rawSearch || null;
@@ -137,7 +152,8 @@ export async function load({ parent, url, depends }) {
 				deskripsi: null,
 				hasNilai: false,
 				nilai: [],
-				lastUpdated: null
+				lastUpdated: null,
+				isAsuhanku: isAsuhanku(murid)
 			})),
 			search: searchTerm,
 			totalMurid,
@@ -268,7 +284,8 @@ export async function load({ parent, url, depends }) {
 			nilai,
 			deskripsi,
 			hasNilai: Boolean(deskripsi),
-			lastUpdated
+			lastUpdated,
+			isAsuhanku: isAsuhanku(murid)
 		};
 	});
 
@@ -309,6 +326,7 @@ function emptyPayload(meta: PageMeta) {
 			deskripsi: string | null;
 			hasNilai: boolean;
 			lastUpdated: string | null;
+			isAsuhanku: boolean;
 		}>,
 		search: null as string | null,
 		totalMurid: 0,

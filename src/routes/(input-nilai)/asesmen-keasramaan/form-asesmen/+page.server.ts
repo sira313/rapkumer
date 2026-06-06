@@ -3,7 +3,8 @@ import {
 	tableAsesmenKeasramaan,
 	tableKeasramaan,
 	tableKeasramaanIndikator,
-	tableMurid
+	tableMurid,
+	tablePegawai
 } from '$lib/server/db/schema';
 import {
 	ekstrakurikulerNilaiLabelByValue,
@@ -32,7 +33,7 @@ function sanitizeRedirect(value: string | null | undefined) {
 	return decoded || '/asesmen-keasramaan';
 }
 
-export async function load({ parent, url, depends }) {
+export async function load({ parent, url, depends, locals }) {
 	depends('app:asesmen-keasramaan:form');
 	const { kelasAktif } = await parent();
 	const meta: PageMeta = { title: 'Form Asesmen Keasramaan' };
@@ -54,7 +55,7 @@ export async function load({ parent, url, depends }) {
 	}
 
 	const murid = await db.query.tableMurid.findFirst({
-		columns: { id: true, nama: true, kelasId: true },
+		columns: { id: true, nama: true, kelasId: true, waliAsuhNama: true },
 		where: eq(tableMurid.id, muridId)
 	});
 	if (!murid) {
@@ -75,6 +76,20 @@ export async function load({ parent, url, depends }) {
 
 	if (kelasAktif?.id && kelasAktif.id !== murid.kelasId) {
 		throw error(403, 'Murid tidak termasuk dalam kelas aktif');
+	}
+
+	// Wali_asuh: only allow assessing their own students
+	const userWithType = locals.user as { type?: string; pegawaiId?: number } | null;
+	if (userWithType?.type === 'wali_asuh' && userWithType.pegawaiId) {
+		const peg = await db.query.tablePegawai.findFirst({
+			columns: { nama: true },
+			where: eq(tablePegawai.id, userWithType.pegawaiId)
+		});
+		const pegNama = peg?.nama?.trim().toLowerCase();
+		const muridWali = (murid as { waliAsuhNama?: string | null }).waliAsuhNama;
+		if (!pegNama || (muridWali?.trim().toLowerCase() ?? '') !== pegNama) {
+			throw error(403, 'Anda hanya dapat menilai murid asuhan sendiri');
+		}
 	}
 
 	// Get tujuan from all indikators in this keasramaan
@@ -142,7 +157,7 @@ export async function load({ parent, url, depends }) {
 }
 
 export const actions = {
-	save: async ({ request }) => {
+	save: async ({ request, locals }) => {
 		const formData = await request.formData();
 		const muridIdRaw = formData.get('muridId');
 		const keasramaanIdRaw = formData.get('keasramaanId');
@@ -161,7 +176,7 @@ export const actions = {
 		}
 
 		const muridRecord = await db.query.tableMurid.findFirst({
-			columns: { id: true, kelasId: true },
+			columns: { id: true, kelasId: true, waliAsuhNama: true },
 			where: eq(tableMurid.id, muridId)
 		});
 		if (!muridRecord) {
@@ -178,6 +193,20 @@ export const actions = {
 
 		if (muridRecord.kelasId !== keasramaanRecord.kelasId) {
 			return fail(400, { fail: 'Murid dan Matev tidak berada pada kelas yang sama' });
+		}
+
+		// Wali_asuh: only allow assessing their own students
+		const userWithType = locals.user as { type?: string; pegawaiId?: number } | null;
+		if (userWithType?.type === 'wali_asuh' && userWithType.pegawaiId) {
+			const peg = await db.query.tablePegawai.findFirst({
+				columns: { nama: true },
+				where: eq(tablePegawai.id, userWithType.pegawaiId)
+			});
+			const pegNama = peg?.nama?.trim().toLowerCase();
+			const muridWali = muridRecord.waliAsuhNama;
+			if (!pegNama || (muridWali?.trim().toLowerCase() ?? '') !== pegNama) {
+				return fail(403, { fail: 'Anda hanya dapat menilai murid asuhan sendiri' });
+			}
 		}
 
 		// Get all tujuan IDs for this keasramaan

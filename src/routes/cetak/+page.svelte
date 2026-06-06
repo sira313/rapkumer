@@ -18,13 +18,21 @@
 	import { DEFAULT_RAPOR_CRITERIA, type RaporPeriode } from '$lib/rapor-params';
 	let { data } = $props();
 
-	const documentOptions: Array<{ value: DocumentType; label: string }> = [
-		{ value: 'cover', label: 'Cover' },
-		{ value: 'biodata', label: 'Biodata' },
-		{ value: 'rapor', label: 'Rapor' },
-		{ value: 'piagam', label: 'Piagam' },
-		{ value: 'keasramaan', label: 'Rapor Keasramaan' }
-	];
+	const userType = $derived((page.data.user as { type?: string } | null)?.type);
+
+	const documentOptions = $derived.by<Array<{ value: DocumentType; label: string }>>(() => {
+		const all: Array<{ value: DocumentType; label: string }> = [
+			{ value: 'cover', label: 'Cover' },
+			{ value: 'biodata', label: 'Biodata' },
+			{ value: 'rapor', label: 'Rapor' },
+			{ value: 'piagam', label: 'Piagam' },
+			{ value: 'keasramaan', label: 'Rapor Keasramaan' }
+		];
+		if (userType === 'wali_asuh') {
+			return all.filter((o) => o.value === 'keasramaan');
+		}
+		return all;
+	});
 
 	let selectedDocument = $state<DocumentType | ''>('');
 	let selectedRaporPeriode = $state<RaporPeriode | ''>('');
@@ -509,6 +517,7 @@
 		bind:selectedMuridId
 		{daftarMurid}
 		{piagamRankingOptions}
+		{documentOptions}
 		onDownload={handleDownloadSingle}
 		onBulkDownload={handleDownloadBulk}
 		{downloadDisabled}

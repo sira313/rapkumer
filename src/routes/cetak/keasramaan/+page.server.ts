@@ -1,5 +1,8 @@
+import db from '$lib/server/db';
 import { getKeasramaanPreviewPayload } from './preview-data';
 import { buildKelasContext, fetchMuridList, getKelasContextForUser } from '$lib/server/route-utils';
+import { tablePegawai } from '$lib/server/db/schema';
+import { eq } from 'drizzle-orm';
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
@@ -28,7 +31,22 @@ export const load = (async (event) => {
 		event.url
 	);
 
-	const daftarMurid = await fetchMuridList(sekolahId, kelasId, kelasIds);
+	let daftarMurid = await fetchMuridList(sekolahId, kelasId, kelasIds);
+
+	// Wali_asuh: only show their own students
+	const userWithType = event.locals.user as { type?: string; pegawaiId?: number } | null;
+	if (userWithType?.type === 'wali_asuh' && userWithType.pegawaiId) {
+		const peg = await db.query.tablePegawai.findFirst({
+			columns: { nama: true },
+			where: eq(tablePegawai.id, userWithType.pegawaiId)
+		});
+		const pegNama = peg?.nama?.trim().toLowerCase();
+		if (pegNama) {
+			daftarMurid = daftarMurid.filter((m) => (m.waliAsuhNama?.trim().toLowerCase() ?? '') === pegNama);
+		} else {
+			daftarMurid = [];
+		}
+	}
 
 	const muridIdParam = event.url.searchParams.get('murid_id');
 	const initialPreviewPayload = muridIdParam

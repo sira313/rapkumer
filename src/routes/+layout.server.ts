@@ -1,9 +1,9 @@
 import db from '$lib/server/db';
 import { resolveSekolahAcademicContext } from '$lib/server/db/academic';
-import { tableKelas, tablePegawai, tableAuthUserKelas } from '$lib/server/db/schema';
+import { tableKelas, tableMurid, tablePegawai, tableAuthUserKelas } from '$lib/server/db/schema';
 import { cookieNames, findTitleByPath } from '$lib/utils.js';
 import { redirect } from '@sveltejs/kit';
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 
 export async function load({ url, locals, cookies }) {
 	const meta: PageMeta = {
@@ -43,21 +43,31 @@ export async function load({ url, locals, cookies }) {
 				orderBy: asc(tableKelas.nama)
 			});
 		} else if (userWithType?.type === 'wali_asuh' && userWithType.pegawaiId) {
-			daftarKelas = await db.query.tableKelas.findMany({
-				columns: { id: true, nama: true, fase: true },
-				with: { waliKelas: { columns: { id: true, nama: true } } },
-				where: academicContext?.activeSemesterId
-					? and(
-							eq(tableKelas.sekolahId, sekolah.id),
-							eq(tableKelas.waliAsuhId, userWithType.pegawaiId),
-							eq(tableKelas.semesterId, academicContext.activeSemesterId)
-						)
-					: and(
-							eq(tableKelas.sekolahId, sekolah.id),
-							eq(tableKelas.waliAsuhId, userWithType.pegawaiId)
-						),
-				orderBy: asc(tableKelas.nama)
+			// Wali_asuh: only show classes that have their assigned students
+			const peg = await db.query.tablePegawai.findFirst({
+				columns: { nama: true },
+				where: eq(tablePegawai.id, userWithType.pegawaiId)
 			});
+			if (peg?.nama) {
+				const pegNamaLower = peg.nama.trim().toLowerCase();
+				// Find distinct kelasIds from murid where waliAsuhNama matches
+				const rows = await db
+					.selectDistinct({ kelasId: tableMurid.kelasId })
+					.from(tableMurid)
+					.where(sql`LOWER(trim(${tableMurid.waliAsuhNama})) = ${pegNamaLower} AND ${tableMurid.kelasId} IS NOT NULL`);
+
+				const kelasIds = rows.map((r) => r.kelasId).filter((id): id is number => id != null);
+				if (kelasIds.length > 0) {
+					daftarKelas = await db.query.tableKelas.findMany({
+						columns: { id: true, nama: true, fase: true },
+						with: { waliKelas: { columns: { id: true, nama: true } } },
+						where: academicContext?.activeSemesterId
+							? and(inArray(tableKelas.id, kelasIds), eq(tableKelas.semesterId, academicContext.activeSemesterId))
+							: inArray(tableKelas.id, kelasIds),
+						orderBy: asc(tableKelas.nama)
+					});
+				}
+			}
 		} else if (userWithType?.type === 'user' && userWithType.id) {
 			const allowedKelasRecords = await db.query.tableAuthUserKelas.findMany({
 				columns: { kelasId: true },
@@ -177,13 +187,10 @@ export async function load({ url, locals, cookies }) {
 		}
 	}
 
-	// 2) If no explicit param, and the user is a wali_kelas or wali_asuh, prefer their assigned kelas
+	// 2) If no explicit param, and the user is a wali_kelas, prefer their assigned kelas
 	if (!kelasAktif && user) {
 		const userWithType = user as { type?: string; kelasId?: number };
-		if (
-			(userWithType.type === 'wali_kelas' || userWithType.type === 'wali_asuh') &&
-			userWithType.kelasId
-		) {
+		if (userWithType.type === 'wali_kelas' && userWithType.kelasId) {
 			const waliKelasId = Number(userWithType.kelasId);
 			if (Number.isInteger(waliKelasId)) {
 				// prefer kelas from daftarKelas (active semester), otherwise find same-named class

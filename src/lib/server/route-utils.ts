@@ -1,6 +1,6 @@
 import db from '$lib/server/db';
 import { resolveSekolahAcademicContext, type AcademicContext } from '$lib/server/db/academic';
-import { tableMurid, tableAuthUserKelas, tableKelas } from '$lib/server/db/schema';
+import { tableMurid, tablePegawai, tableAuthUserKelas, tableKelas } from '$lib/server/db/schema';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 
 export interface KelasContext {
@@ -34,6 +34,7 @@ type MuridColumn = {
 	nama: true;
 	nis: true;
 	nisn: true;
+	waliAsuhNama: true;
 };
 
 /**
@@ -52,7 +53,7 @@ export async function getKelasContextForUser(
 	if (!Number.isInteger(muridId)) return { hasAccess: false };
 
 	const student = await db.query.tableMurid.findFirst({
-		columns: { id: true, kelasId: true },
+		columns: { id: true, kelasId: true, waliAsuhNama: true },
 		where: and(eq(tableMurid.id, muridId), eq(tableMurid.sekolahId, sekolahId))
 	});
 	if (!student) return { hasAccess: false };
@@ -74,11 +75,13 @@ export async function getKelasContextForUser(
 		if (kelasRow?.waliKelasId === user.pegawaiId) return { hasAccess: true };
 	}
 	if (user.type === 'wali_asuh' && user.pegawaiId) {
-		const kelasRow = await db.query.tableKelas.findFirst({
-			columns: { id: true, waliAsuhId: true },
-			where: eq(tableKelas.id, kelasId)
+		const peg = await db.query.tablePegawai.findFirst({
+			columns: { nama: true },
+			where: eq(tablePegawai.id, user.pegawaiId)
 		});
-		if (kelasRow?.waliAsuhId === user.pegawaiId) return { hasAccess: true };
+		if (peg?.nama && student.waliAsuhNama && student.waliAsuhNama.toLowerCase() === peg.nama.toLowerCase()) {
+			return { hasAccess: true };
+		}
 	}
 	if (user.type === 'user' && user.id) {
 		const directAccess = await db.query.tableAuthUserKelas.findFirst({
@@ -121,14 +124,17 @@ export async function fetchMuridList(
 			nama: string;
 			nis: string | null;
 			nisn: string | null;
+			waliAsuhNama: string | null;
 		}>;
 	const filter = and(
 		eq(tableMurid.sekolahId, sekolahId),
 		kelasId ? eq(tableMurid.kelasId, Number(kelasId)) : inArray(tableMurid.kelasId, kelasIds)
 	);
 	return db.query.tableMurid.findMany({
-		columns: { id: true, nama: true, nis: true, nisn: true } satisfies MuridColumn,
+		columns: { id: true, nama: true, nis: true, nisn: true, waliAsuhNama: true } satisfies MuridColumn,
 		where: filter,
 		orderBy: asc(tableMurid.nama)
-	}) as Promise<Array<{ id: number; nama: string; nis: string | null; nisn: string | null }>>;
+	}) as Promise<
+		Array<{ id: number; nama: string; nis: string | null; nisn: string | null; waliAsuhNama: string | null }>
+	>;
 }

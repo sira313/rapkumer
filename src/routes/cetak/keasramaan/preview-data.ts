@@ -6,7 +6,8 @@ import {
 	tableKeasramaan,
 	tableKeasramaanIndikator,
 	tableKeasramaanTujuan,
-	tableMurid
+	tableMurid,
+	tablePegawai
 } from '$lib/server/db/schema';
 import {
 	kategoriToRubrikValue,
@@ -242,6 +243,20 @@ export async function getKeasramaanPreviewPayload({ locals, url }: KeasramaanCon
 
 	if (!murid) {
 		throw error(404, 'Data murid tidak ditemukan.');
+	}
+
+	// Wali_asuh: only allow viewing their own students
+	const userWithType = locals.user as { type?: string; pegawaiId?: number } | null;
+	if (userWithType?.type === 'wali_asuh' && userWithType.pegawaiId) {
+		const peg = await db.query.tablePegawai.findFirst({
+			columns: { nama: true },
+			where: eq(tablePegawai.id, userWithType.pegawaiId)
+		});
+		const pegNama = peg?.nama?.trim().toLowerCase();
+		const muridWali = murid.waliAsuhNama;
+		if (!pegNama || (muridWali?.trim().toLowerCase() ?? '') !== pegNama) {
+			throw error(403, 'Anda hanya dapat mencetak rapor keasramaan murid asuhan sendiri');
+		}
 	}
 
 	if (kelasId && murid.kelasId !== kelasId) {
