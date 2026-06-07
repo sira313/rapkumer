@@ -226,7 +226,6 @@ body {
 }
 
 /* ── Spacer heights — mirrors DaisyUI h-24, h-25, h-10 ── */
-.spacer-1 { height: 1rem; }
 .spacer-4 { height: 4rem; }
 .spacer-5 { height: 5rem; }
 .spacer-6 { height: 6rem; }
@@ -497,29 +496,24 @@ ${
 <div class="no-break" style="margin-top:12pt;">
 	<table class="ttd-table">
 		<colgroup>
-			<col style="width:35%;">
-			<col style="width:30%;">
-			<col style="width:35%;">
+			<col style="width:40%;">
+			<col style="width:60%;">
 		</colgroup>
 		<tbody>
 			<tr>
-				<td></td>
 				<td></td>
 				<td class="text-center" style="padding-bottom:6pt;">${data.ttd.tempat}, ${data.ttd.tanggal}</td>
 			</tr>
 			<tr>
 				<td class="text-center font-bold">Orang Tua / Wali Murid</td>
-				<td></td>
 				<td class="text-center font-bold">Wali Kelas</td>
 			</tr>
 			<tr>
 				<td class="spacer-5"></td>
-				<td></td>
 				<td class="spacer-5"></td>
 			</tr>
 			<tr>
 				<td class="text-center">____________________</td>
-				<td></td>
 				<td class="text-center font-bold underline">${data.waliKelas.nama}</td>
 			</tr>
 			${
@@ -527,38 +521,26 @@ ${
 					? `
 			<tr>
 				<td></td>
-				<td></td>
 				<td class="text-center">${data.waliKelas.nip}</td>
 			</tr>`
 					: ''
 			}
+		</tbody>
+		<tbody>
 			<tr>
-				<td class="spacer-1"></td>
-				<td></td>
-				<td></td>
+				<td colspan="2" class="text-center font-bold" style="padding-top:8pt;">${kepalaStatus}</td>
 			</tr>
 			<tr>
-				<td></td>
-				<td class="text-center font-bold">${kepalaStatus}</td>
-				<td></td>
+				<td colspan="2" class="spacer-5"></td>
 			</tr>
 			<tr>
-				<td></td>
-				<td class="spacer-5"></td>
-				<td></td>
-			</tr>
-			<tr>
-				<td></td>
-				<td class="text-center font-bold underline">${data.kepalaSekolah.nama}</td>
-				<td></td>
+				<td colspan="2" class="text-center font-bold underline">${data.kepalaSekolah.nama}</td>
 			</tr>
 			${
 				data.kepalaSekolah.nip
 					? `
 			<tr>
-				<td></td>
-				<td class="text-center">${data.kepalaSekolah.nip}</td>
-				<td></td>
+				<td colspan="2" class="text-center">${data.kepalaSekolah.nip}</td>
 			</tr>`
 					: ''
 			}

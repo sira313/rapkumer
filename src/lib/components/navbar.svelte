@@ -20,7 +20,7 @@
 		pegawaiName?: string;
 		username?: string;
 		permissions?: string[];
-		type?: 'admin' | 'user';
+		type?: 'admin' | 'user' | 'wali_asuh';
 	};
 
 	let {
@@ -68,6 +68,7 @@
 	}
 
 	function hasPindahPermission() {
+		if (user?.type === 'wali_asuh') return true;
 		const perms = user?.permissions ?? [];
 		return perms.includes('kelas_pindah');
 	}

@@ -38,7 +38,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		const arrayBuffer = await file.arrayBuffer();
 		const exceljsMod = await import('exceljs');
-		const ExcelJSImport = (exceljsMod.default ?? exceljsMod) as unknown as { Workbook: { new (): unknown } };
+		const ExcelJSImport = (exceljsMod.default ?? exceljsMod) as unknown as {
+			Workbook: { new (): unknown };
+		};
 		const workbook = new ExcelJSImport.Workbook() as {
 			xlsx: { load: (buf: Buffer) => Promise<void> };
 			worksheets: unknown[];

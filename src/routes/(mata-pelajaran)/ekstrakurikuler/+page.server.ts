@@ -1,5 +1,5 @@
 import db from '$lib/server/db';
-import { tableEkstrakurikuler, tableEkstrakurikulerTujuan } from '$lib/server/db/schema';
+import { tableEkstrakurikuler, tableEkstrakurikulerTujuan, tableKelas } from '$lib/server/db/schema';
 import { fail, redirect } from '@sveltejs/kit';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import { readBufferToAoA } from '$lib/utils/excel.js';
@@ -73,12 +73,24 @@ export const actions = {
 
 		// Server-side permission: wali_kelas may only add for their own kelas
 		if (locals?.user && (locals.user as unknown as { type?: string }).type === 'wali_kelas') {
-			const u = locals.user as { kelasId?: number; permissions?: string[] };
-			const allowed = Number(u.kelasId);
+			const u = locals.user as { kelasId?: number; permissions?: string[]; pegawaiId?: number };
 			const hasAccessOther = Array.isArray(u.permissions)
 				? u.permissions.includes('kelas_pindah')
 				: false;
-			if (Number.isInteger(allowed) && kelasId !== allowed && !hasAccessOther) {
+
+			let isOwnClass = false;
+			const userKelasId = u.kelasId;
+			if (userKelasId != null && Number.isInteger(Number(userKelasId))) {
+				isOwnClass = Number(userKelasId) === kelasId;
+			} else if (u.pegawaiId) {
+				const owned = await db.query.tableKelas.findFirst({
+					columns: { id: true },
+					where: and(eq(tableKelas.id, kelasId), eq(tableKelas.waliKelasId, u.pegawaiId))
+				});
+				isOwnClass = !!owned;
+			}
+
+			if (!isOwnClass && !hasAccessOther) {
 				throw redirect(303, `/forbidden?required=kelas_id`);
 			}
 		}
@@ -127,12 +139,24 @@ export const actions = {
 
 		// Server-side permission: wali_kelas may only update for their own kelas
 		if (locals?.user && (locals.user as unknown as { type?: string }).type === 'wali_kelas') {
-			const u = locals.user as { kelasId?: number; permissions?: string[] };
-			const allowed = Number(u.kelasId);
+			const u = locals.user as { kelasId?: number; permissions?: string[]; pegawaiId?: number };
 			const hasAccessOther = Array.isArray(u.permissions)
 				? u.permissions.includes('kelas_pindah')
 				: false;
-			if (Number.isInteger(allowed) && kelasId !== allowed && !hasAccessOther) {
+
+			let isOwnClass = false;
+			const userKelasId = u.kelasId;
+			if (userKelasId != null && Number.isInteger(Number(userKelasId))) {
+				isOwnClass = Number(userKelasId) === kelasId;
+			} else if (u.pegawaiId) {
+				const owned = await db.query.tableKelas.findFirst({
+					columns: { id: true },
+					where: and(eq(tableKelas.id, kelasId), eq(tableKelas.waliKelasId, u.pegawaiId))
+				});
+				isOwnClass = !!owned;
+			}
+
+			if (!isOwnClass && !hasAccessOther) {
 				throw redirect(303, `/forbidden?required=kelas_id`);
 			}
 		}
@@ -187,18 +211,33 @@ export const actions = {
 		try {
 			// If caller is wali_kelas without akses_lain, ensure all target rows belong to their kelas
 			if (locals?.user && (locals.user as unknown as { type?: string }).type === 'wali_kelas') {
-				const u = locals.user as { kelasId?: number; permissions?: string[] };
-				const allowed = Number(u.kelasId);
+				const u = locals.user as { kelasId?: number; permissions?: string[]; pegawaiId?: number };
 				const hasAccessOther = Array.isArray(u.permissions)
 					? u.permissions.includes('kelas_pindah')
 					: false;
-				if (Number.isInteger(allowed) && !hasAccessOther) {
-					const rows = await db.query.tableEkstrakurikuler.findMany({
-						columns: { id: true, kelasId: true },
-						where: inArray(tableEkstrakurikuler.id, ids)
-					});
-					const other = rows.some((r) => r.kelasId !== allowed);
-					if (other) throw redirect(303, `/forbidden?required=kelas_id`);
+
+				if (!hasAccessOther) {
+					let allowedKelasId: number | null = null;
+					const userKelasId = u.kelasId;
+					if (userKelasId != null && Number.isInteger(Number(userKelasId))) {
+						allowedKelasId = Number(userKelasId);
+					} else if (u.pegawaiId) {
+						const owned = await db.query.tableKelas.findFirst({
+							columns: { id: true },
+							where: eq(tableKelas.waliKelasId, u.pegawaiId),
+							orderBy: asc(tableKelas.id)
+						});
+						allowedKelasId = owned?.id ?? null;
+					}
+
+					if (allowedKelasId != null) {
+						const rows = await db.query.tableEkstrakurikuler.findMany({
+							columns: { id: true, kelasId: true },
+							where: inArray(tableEkstrakurikuler.id, ids)
+						});
+						const other = rows.some((r) => r.kelasId !== allowedKelasId);
+						if (other) throw redirect(303, `/forbidden?required=kelas_id`);
+					}
 				}
 			}
 			await db.delete(tableEkstrakurikuler).where(inArray(tableEkstrakurikuler.id, ids));
@@ -220,12 +259,24 @@ export const actions = {
 
 		// Server-side permission: wali_kelas may only import for their own kelas
 		if (locals?.user && (locals.user as unknown as { type?: string }).type === 'wali_kelas') {
-			const u = locals.user as { kelasId?: number; permissions?: string[] };
-			const allowed = Number(u.kelasId);
+			const u = locals.user as { kelasId?: number; permissions?: string[]; pegawaiId?: number };
 			const hasAccessOther = Array.isArray(u.permissions)
 				? u.permissions.includes('kelas_pindah')
 				: false;
-			if (Number.isInteger(allowed) && kelasId !== allowed && !hasAccessOther) {
+
+			let isOwnClass = false;
+			const userKelasId = u.kelasId;
+			if (userKelasId != null && Number.isInteger(Number(userKelasId))) {
+				isOwnClass = Number(userKelasId) === kelasId;
+			} else if (u.pegawaiId) {
+				const owned = await db.query.tableKelas.findFirst({
+					columns: { id: true },
+					where: and(eq(tableKelas.id, kelasId), eq(tableKelas.waliKelasId, u.pegawaiId))
+				});
+				isOwnClass = !!owned;
+			}
+
+			if (!isOwnClass && !hasAccessOther) {
 				throw redirect(303, `/forbidden?required=kelas_id`);
 			}
 		}

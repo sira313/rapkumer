@@ -28,6 +28,7 @@ export type MuridRow = {
 	deskripsi: string | null;
 	hasNilai: boolean;
 	lastUpdated: string | null;
+	isAsuhanku: boolean;
 };
 
 export type PaginationState = {

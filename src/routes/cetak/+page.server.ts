@@ -1,5 +1,8 @@
+import db from '$lib/server/db';
 import { computeNilaiAkhirRekap } from '$lib/server/nilai-akhir';
 import { buildKelasContext, fetchMuridList } from '$lib/server/route-utils';
+import { tablePegawai } from '$lib/server/db/schema';
+import { eq } from 'drizzle-orm';
 
 export async function load({ locals, url, depends, parent }) {
 	depends('app:cetak');
@@ -15,7 +18,21 @@ export async function load({ locals, url, depends, parent }) {
 		return { academicContext, kelasId, daftarMurid: [], muridCount: 0 };
 	}
 
-	const daftarMurid = await fetchMuridList(sekolahId, kelasId, kelasIds);
+	let daftarMurid = await fetchMuridList(sekolahId, kelasId, kelasIds);
+
+	const userWithType = locals.user as { type?: string; pegawaiId?: number } | null;
+	if (userWithType?.type === 'wali_asuh' && userWithType.pegawaiId) {
+		const peg = await db.query.tablePegawai.findFirst({
+			columns: { nama: true },
+			where: eq(tablePegawai.id, userWithType.pegawaiId)
+		});
+		const pegNama = peg?.nama?.trim().toLowerCase();
+		if (pegNama) {
+			daftarMurid = daftarMurid.filter((m) => (m.waliAsuhNama?.trim().toLowerCase() ?? '') === pegNama);
+		} else {
+			daftarMurid = [];
+		}
+	}
 
 	let piagamRankingOptions: Array<{
 		muridId: number;

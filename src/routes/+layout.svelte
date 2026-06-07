@@ -19,6 +19,26 @@
 	let loggingOut = $state(false);
 	const isLoginPage = $derived(page.url.pathname === '/login');
 
+	const readonlyRoutes = [
+		'/murid',
+		'/kokurikuler',
+		'/ekstrakurikuler',
+		'/keasramaan',
+		'/asesmen-kokurikuler',
+		'/nilai-ekstrakurikuler',
+		'/asesmen-keasramaan',
+		'/absen',
+		'/catatan-wali-kelas',
+		'/keputusan',
+		'/cetak'
+	];
+
+	const isReadonlyPage = $derived(
+		readonlyRoutes.some((r) => page.url.pathname === r || page.url.pathname.startsWith(r + '/'))
+	);
+
+	const disableInteraction = $derived(data.user?.type === 'user' && isReadonlyPage);
+
 	async function stopServer() {
 		if (stoppingServer) return;
 		stoppingServer = true;
@@ -126,7 +146,9 @@
 					<div class="m-4 flex flex-row xl:gap-4">
 						<div class="w-full max-w-7xl min-w-0 flex-1">
 							<ScrollToTop />
-							{@render children()}
+							<div class={disableInteraction ? 'is-readonly' : ''}>
+								{@render children()}
+							</div>
 						</div>
 						<div class="sticky top-4 self-start">
 							<Task variant="sidebar" />
@@ -165,3 +187,11 @@
 <Toast />
 <GlobalModal />
 <NavIndicator />
+
+<style>
+	:global(.is-readonly :is(button, input, select, textarea, a, [role='button']):not(.pointer-events-auto)) {
+		opacity: var(--btn-disabled-opacity, 0.5) !important;
+		cursor: not-allowed !important;
+		pointer-events: none !important;
+	}
+</style>

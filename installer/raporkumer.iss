@@ -1,5 +1,5 @@
 #define AppName "Rapor Kurikulum Merdeka"
-#define AppVersion "1.6.0"
+#define AppVersion "1.6.1"
 #define StagePath "..\\dist\\windows\\stage\\Rapkumer"
 
 [Setup]

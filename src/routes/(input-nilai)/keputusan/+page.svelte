@@ -40,7 +40,7 @@
 
 	const canEdit = $derived.by(() => {
 		const u = page.data.user as { type?: string } | null | undefined;
-		return u?.type !== 'wali_asuh';
+		return u?.type !== 'wali_asuh' && u?.type !== 'user';
 	});
 
 	const currentPage = $derived.by(() => data.page?.currentPage ?? 1);
@@ -334,10 +334,10 @@
 			{#each pages as pageNumber (pageNumber)}
 				<button
 					type="button"
-					class="join-item btn"
+					class="join-item btn pointer-events-auto"
 					class:btn-active={pageNumber === currentPage}
-					disabled={pageNumber === currentPage && totalPages === 1}
 					onclick={() => handlePageClick(pageNumber)}
+					aria-current={pageNumber === currentPage ? 'page' : undefined}
 				>
 					{pageNumber}
 				</button>

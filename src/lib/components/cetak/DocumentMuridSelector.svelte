@@ -25,6 +25,13 @@
 		selectedMuridId = $bindable(''),
 		daftarMurid = [],
 		piagamRankingOptions = [],
+		documentOptions = [
+			{ value: 'cover', label: 'Cover' },
+			{ value: 'biodata', label: 'Biodata' },
+			{ value: 'rapor', label: 'Rapor' },
+			{ value: 'piagam', label: 'Piagam' },
+			{ value: 'keasramaan', label: 'Rapor Keasramaan' }
+		],
 		onDownload,
 		onBulkDownload,
 		downloadDisabled = false,
@@ -37,20 +44,13 @@
 		selectedMuridId: string;
 		daftarMurid: MuridData[];
 		piagamRankingOptions: PiagamRankingOption[];
+		documentOptions?: Array<{ value: DocumentType; label: string }>;
 		onDownload: () => void;
 		onBulkDownload: () => void;
 		downloadDisabled?: boolean;
 		downloadButtonTitle?: string;
 		downloadLoading?: boolean;
 	} = $props();
-
-	const documentOptions: Array<{ value: DocumentType; label: string }> = [
-		{ value: 'cover', label: 'Cover' },
-		{ value: 'biodata', label: 'Biodata' },
-		{ value: 'rapor', label: 'Rapor' },
-		{ value: 'piagam', label: 'Piagam' },
-		{ value: 'keasramaan', label: 'Rapor Keasramaan' }
-	];
 
 	const isPiagamSelected = $derived.by(() => selectedDocument === 'piagam');
 	const hasMurid = $derived.by(() => daftarMurid.length > 0);

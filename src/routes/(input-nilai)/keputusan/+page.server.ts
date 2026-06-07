@@ -1,7 +1,7 @@
 import db from '$lib/server/db';
-import { tableKeputusanMurid, tableMurid } from '$lib/server/db/schema';
+import { tableKeputusanMurid, tableMurid, tableKelas } from '$lib/server/db/schema';
 import { fail, redirect } from '@sveltejs/kit';
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 
 const PER_PAGE = 20;
 const TABLE_MISSING_MESSAGE =
@@ -165,6 +165,14 @@ export const actions = {
 			return fail(401, { fail: 'Sekolah tidak ditemukan' });
 		}
 
+		// Permission check: only admin and wali_kelas can save keputusan
+		const saveUserType = (locals.user as { type?: string } | null)?.type;
+		if (saveUserType !== 'admin' && saveUserType !== 'wali_kelas') {
+			return fail(403, {
+				fail: 'Anda tidak memiliki izin untuk menyimpan keputusan kenaikan kelas.'
+			});
+		}
+
 		const formData = await request.formData();
 
 		const muridIdsRaw = formData.getAll('muridId');
@@ -188,6 +196,29 @@ export const actions = {
 			}
 
 			updates.push({ muridId, naik: naikVal === 'true' });
+		}
+
+		// If wali_kelas, verify they are the wali of all selected students' class
+		if (saveUserType === 'wali_kelas') {
+			const pegawaiId = (locals.user as { pegawaiId?: number | null }).pegawaiId;
+			if (!pegawaiId) {
+				return fail(403, { fail: 'Data wali kelas tidak lengkap.' });
+			}
+			const kepMuridIds = updates.map((u) => u.muridId);
+			const kepMuridList = await db
+				.select({ id: tableMurid.id, kelasId: tableMurid.kelasId })
+				.from(tableMurid)
+				.where(and(eq(tableMurid.sekolahId, sekolahId), inArray(tableMurid.id, kepMuridIds)));
+			const kepUniqueKelasIds = new Set(kepMuridList.map((m) => m.kelasId));
+			for (const kId of kepUniqueKelasIds) {
+				const kelasRow = await db.query.tableKelas.findFirst({
+					columns: { id: true, waliKelasId: true },
+					where: eq(tableKelas.id, kId)
+				});
+				if (!kelasRow || kelasRow.waliKelasId !== pegawaiId) {
+					return fail(403, { fail: 'Anda bukan wali kelas dari murid yang dipilih.' });
+				}
+			}
 		}
 
 		try {

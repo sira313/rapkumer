@@ -1,6 +1,11 @@
 import db from '$lib/server/db';
 import { ensureAsesmenSumatifSchema } from '$lib/server/db/ensure-asesmen-sumatif';
-import { tableAsesmenSumatif, tableMataPelajaran, tableMurid } from '$lib/server/db/schema';
+import {
+	tableAsesmenSumatif,
+	tableMataPelajaran,
+	tableMurid,
+	tableAuthUserMataPelajaran
+} from '$lib/server/db/schema';
 import { error } from '@sveltejs/kit';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 
@@ -162,6 +167,8 @@ export async function load({ parent, url, locals, depends }) {
 		where: eq(tableMataPelajaran.kelasId, kelasAktif.id),
 		orderBy: asc(tableMataPelajaran.nama)
 	});
+
+	// Guru mapel can see all subjects on this page (read-only view)
 
 	const mapelRecords = pickAgamaMapel(rawMapelRecords, murid.agama);
 

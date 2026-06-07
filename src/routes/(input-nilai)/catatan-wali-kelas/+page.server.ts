@@ -1,6 +1,6 @@
 import db from '$lib/server/db';
 import { ensureCatatanWaliSchema } from '$lib/server/db/ensure-catatan-wali';
-import { tableCatatanWaliKelas, tableMurid } from '$lib/server/db/schema';
+import { tableCatatanWaliKelas, tableMurid, tableKelas } from '$lib/server/db/schema';
 import { fail, redirect } from '@sveltejs/kit';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { buildKelasContext } from '$lib/server/route-utils';
@@ -109,6 +109,12 @@ export const actions = {
 			return fail(401, { fail: 'Sekolah tidak ditemukan' });
 		}
 
+		// Permission check: only admin and wali_kelas can write catatan wali kelas
+		const saveUserType = (locals.user as { type?: string } | null)?.type;
+		if (saveUserType !== 'admin' && saveUserType !== 'wali_kelas') {
+			return fail(403, { fail: 'Anda tidak memiliki izin untuk menulis catatan wali kelas.' });
+		}
+
 		await ensureCatatanWaliSchema();
 
 		const formData = await request.formData();
@@ -121,12 +127,27 @@ export const actions = {
 		}
 
 		const murid = await db.query.tableMurid.findFirst({
-			columns: { id: true },
+			columns: { id: true, kelasId: true },
 			where: and(eq(tableMurid.id, muridId), eq(tableMurid.sekolahId, sekolahId))
 		});
 
 		if (!murid) {
 			return fail(404, { fail: 'Murid tidak ditemukan' });
+		}
+
+		// If wali_kelas, verify they are the actual wali of the student's class
+		if (saveUserType === 'wali_kelas') {
+			const pegawaiId = (locals.user as { pegawaiId?: number | null }).pegawaiId;
+			if (!pegawaiId) {
+				return fail(403, { fail: 'Data wali kelas tidak lengkap.' });
+			}
+			const kelas = await db.query.tableKelas.findFirst({
+				columns: { id: true, waliKelasId: true },
+				where: eq(tableKelas.id, murid.kelasId)
+			});
+			if (!kelas || kelas.waliKelasId !== pegawaiId) {
+				return fail(403, { fail: 'Anda bukan wali kelas dari murid ini.' });
+			}
 		}
 
 		const catatanValue = typeof catatanRaw === 'string' ? catatanRaw : '';
@@ -161,6 +182,12 @@ export const actions = {
 			return fail(401, { fail: 'Sekolah tidak ditemukan' });
 		}
 
+		// Permission check: only admin and wali_kelas can write catatan wali kelas
+		const fillUserType = (locals.user as { type?: string } | null)?.type;
+		if (fillUserType !== 'admin' && fillUserType !== 'wali_kelas') {
+			return fail(403, { fail: 'Anda tidak memiliki izin untuk menulis catatan wali kelas.' });
+		}
+
 		await ensureCatatanWaliSchema();
 
 		const formData = await request.formData();
@@ -187,6 +214,28 @@ export const actions = {
 
 		if (!muridIds.length) {
 			return fail(400, { fail: 'Tidak ada murid yang dipilih' });
+		}
+
+		// If wali_kelas, verify they are the wali of ALL selected students' classes
+		if (fillUserType === 'wali_kelas') {
+			const pegawaiId = (locals.user as { pegawaiId?: number | null }).pegawaiId;
+			if (!pegawaiId) {
+				return fail(403, { fail: 'Data wali kelas tidak lengkap.' });
+			}
+			const fillMuridList = await db
+				.select({ id: tableMurid.id, kelasId: tableMurid.kelasId })
+				.from(tableMurid)
+				.where(and(eq(tableMurid.sekolahId, sekolahId), inArray(tableMurid.id, muridIds)));
+			const uniqueKelasIds = new Set(fillMuridList.map((m) => m.kelasId));
+			for (const kId of uniqueKelasIds) {
+				const kelasRow = await db.query.tableKelas.findFirst({
+					columns: { id: true, waliKelasId: true },
+					where: eq(tableKelas.id, kId)
+				});
+				if (!kelasRow || kelasRow.waliKelasId !== pegawaiId) {
+					return fail(403, { fail: 'Anda bukan wali kelas dari salah satu murid yang dipilih.' });
+				}
+			}
 		}
 
 		const muridList = await db

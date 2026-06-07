@@ -12,10 +12,10 @@
 
 	let { data } = $props();
 
-	// Restrict editing for wali_asuh
+	// Restrict editing for wali_asuh and user (guru mapel)
 	const canEdit = $derived.by(() => {
 		const u = page.data.user as { type?: string } | null | undefined;
-		return u?.type !== 'wali_asuh';
+		return u?.type !== 'wali_asuh' && u?.type !== 'user';
 	});
 
 	let kelas = `${data.murid.kelas?.nama || '-'} Fase ${data.murid.kelas?.fase || '-'}`;
@@ -150,7 +150,7 @@
 	<div class="join join-vertical w-full max-w-full">
 		<div class="tabs tabs-box">
 			<!-- data Murid -->
-			<input type="radio" name="tab-detil-murid" class="tab" aria-label="Data Murid" checked />
+			<input type="radio" name="tab-detil-murid" class="tab pointer-events-auto" aria-label="Data Murid" checked />
 			<div class="tab-content bg-base-100 p-4">
 				<div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
 					<!-- Foto murid (placeholder) -->
@@ -209,7 +209,7 @@
 				</div>
 			</div>
 			<!-- data Orang Tua -->
-			<input type="radio" name="tab-detil-murid" class="tab" aria-label="Data Orang Tua" />
+			<input type="radio" name="tab-detil-murid" class="tab pointer-events-auto" aria-label="Data Orang Tua" />
 			<div class="tab-content bg-base-100 p-4">
 				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 					{@render field('Nama Ayah', data.murid.ayah?.nama)}
@@ -223,7 +223,7 @@
 				</div>
 			</div>
 			<!-- data Alamat Murid -->
-			<input type="radio" name="tab-detil-murid" class="tab" aria-label="Data Alamat Murid" />
+			<input type="radio" name="tab-detil-murid" class="tab pointer-events-auto" aria-label="Data Alamat Murid" />
 			<div class="tab-content bg-base-100 p-4">
 				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 					{@render field('Jalan', data.murid.alamat?.jalan)}
@@ -234,7 +234,7 @@
 				</div>
 			</div>
 			<!-- data Wali -->
-			<input type="radio" name="tab-detil-murid" class="tab" aria-label="Data Wali" />
+			<input type="radio" name="tab-detil-murid" class="tab pointer-events-auto" aria-label="Data Wali" />
 			<div class="tab-content bg-base-100 p-4">
 				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 					{@render field('Nama Wali', data.murid.wali?.nama)}
@@ -244,7 +244,7 @@
 				</div>
 			</div>
 			<!-- data Wali Asuh -->
-			<input type="radio" name="tab-detil-murid" class="tab" aria-label="Wali Asuh" />
+			<input type="radio" name="tab-detil-murid" class="tab pointer-events-auto" aria-label="Wali Asuh" />
 			<div class="tab-content bg-base-100 p-4">
 				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 					{@render field('Nama Wali Asuh', data.murid.waliAsuhNama)}

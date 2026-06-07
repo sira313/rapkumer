@@ -14,9 +14,14 @@
 	let { muridList, search, disabled = false, onNilaiClick }: Props = $props();
 
 	function handleNilaiClick(muridId: number) {
-		if (!disabled) {
-			onNilaiClick?.(muridId);
-		}
+		if (disabled) return;
+		const m = muridList.find((m) => m.id === muridId);
+		if (!m || !m.isAsuhanku) return;
+		onNilaiClick?.(muridId);
+	}
+
+	function isDisabled(murid: MuridRow) {
+		return disabled || !murid.isAsuhanku;
 	}
 </script>
 
@@ -44,8 +49,8 @@
 							type="button"
 							class="btn btn-sm btn-soft shadow-none"
 							onclick={() => handleNilaiClick(murid.id)}
-							class:btn-disabled={disabled}
-							aria-disabled={disabled}
+							class:btn-disabled={isDisabled(murid)}
+							aria-disabled={isDisabled(murid)}
 						>
 							<Icon name="edit" />
 							Nilai

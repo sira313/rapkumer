@@ -7,6 +7,7 @@ import {
 	tableMataPelajaran,
 	tableAuthUserMataPelajaran,
 	tableAuthUserKelas,
+	tableMurid,
 	tableSemester
 } from '$lib/server/db/schema';
 import { tableSekolah } from '$lib/server/db/schema';
@@ -293,101 +294,80 @@ export async function load({ url }) {
 			}
 		}
 
-		// STEP 2: Process current kelas with wali_asuh and ensure accounts exist
-		const kelasWithWaliAsuh = await db.query.tableKelas.findMany({
-			where: sql`${tableKelas.waliAsuhId} IS NOT NULL`,
-			columns: { id: true, waliAsuhId: true }
+		// STEP 2: Detect wali_asuh from per-student assignments on tableMurid
+		const muridWaliRows = await db.query.tableMurid.findMany({
+			columns: { waliAsuhNama: true, waliAsuhNip: true },
+			where: sql`${tableMurid.waliAsuhNama} IS NOT NULL AND trim(${tableMurid.waliAsuhNama}) != ''`
 		});
 
-		// Group kelas by waliAsuhId to detect multi-kelas scenarios
-		const kelasGroupedByWaliAsuh = new Map<number, typeof kelasWithWaliAsuh>();
-		for (const k of kelasWithWaliAsuh) {
-			if (!k.waliAsuhId) continue;
-			const arr = kelasGroupedByWaliAsuh.get(k.waliAsuhId) ?? [];
-			arr.push(k);
-			kelasGroupedByWaliAsuh.set(k.waliAsuhId, arr);
+		// Deduplicate by normalized name
+		const waliAsuhByName = new Map<string, { nama: string; nip: string | null }>();
+		for (const row of muridWaliRows) {
+			const nama = (row.waliAsuhNama ?? '').trim();
+			if (!nama) continue;
+			const key = nama.toLowerCase();
+			if (!waliAsuhByName.has(key)) {
+				waliAsuhByName.set(key, { nama, nip: row.waliAsuhNip ?? null });
+			}
 		}
 
-		// Process each wali_asuh
-		for (const [waliAsuhPegawaiId, kelasArr] of kelasGroupedByWaliAsuh) {
-			if (!waliAsuhPegawaiId || kelasArr.length === 0) continue;
-
-			const exists = await db.query.tableAuthUser.findFirst({
-				where: and(
-					eq(tableAuthUser.pegawaiId, waliAsuhPegawaiId),
-					eq(tableAuthUser.type, 'wali_asuh')
-				),
-				columns: { id: true, permissions: true }
+		for (const { nama, nip } of waliAsuhByName.values()) {
+			// Find or create pegawai record by name
+			let pegawaiId: number | null = null;
+			const existingPegawai = await db.query.tablePegawai.findFirst({
+				columns: { id: true },
+				where: sql`LOWER(trim(${tablePegawai.nama})) = ${nama.toLowerCase()}`
 			});
 
-			if (!exists) {
-				// Need to create new account for this wali_asuh
-				const firstKelas = kelasArr[0];
-
-				// Fetch pegawai name
-				const peg = await db.query.tablePegawai.findFirst({
-					where: eq(tablePegawai.id, waliAsuhPegawaiId),
-					columns: { nama: true }
-				});
-				const nama = (peg?.nama || '').trim();
-				if (!nama) continue;
-
-				const username = nama;
-				const usernameNormalized = username.toLowerCase();
-				const password = randomBytes(6).toString('base64url');
-				const { hash, salt } = hashPassword(password);
+			if (existingPegawai) {
+				pegawaiId = existingPegawai.id;
+			} else {
+				// Auto-create pegawai for this wali_asuh
 				const timestamp = new Date().toISOString();
-
-				// Wali asuh permissions: only keasramaan access
-				const permissions: UserPermission[] = [];
-				if (kelasArr.length > 1) {
-					permissions.push('kelas_pindah' as UserPermission);
-				}
-
-				await db.insert(tableAuthUser).values({
-					username,
-					usernameNormalized,
-					passwordHash: hash,
-					passwordSalt: salt,
-					passwordUpdatedAt: timestamp,
-					permissions,
-					type: 'wali_asuh',
-					pegawaiId: waliAsuhPegawaiId,
-					kelasId: firstKelas.id,
-					createdAt: timestamp,
-					updatedAt: timestamp
-				});
-
-				const kelasLog = kelasArr.map((k) => k.id).join(', ');
-				console.info(
-					`[pengguna] Created user for wali_asuh ${nama} (kelas: ${kelasLog})${kelasArr.length > 1 ? ' [multi-kelas]' : ''}`
-				);
-			} else if (kelasArr.length > 1) {
-				// Account exists, wali has >1 kelas: ensure 'kelas_pindah' permission
-				const currentPerms = Array.isArray(exists.permissions) ? exists.permissions : [];
-				if (!currentPerms.includes('kelas_pindah')) {
-					const updatedPerms: UserPermission[] = [
-						...(currentPerms as UserPermission[]),
-						'kelas_pindah' as UserPermission
-					];
-					await db
-						.update(tableAuthUser)
-						.set({
-							permissions: updatedPerms,
-							updatedAt: new Date().toISOString()
-						})
-						.where(eq(tableAuthUser.id, exists.id));
-
-					const peg = await db.query.tablePegawai.findFirst({
-						where: eq(tablePegawai.id, waliAsuhPegawaiId),
-						columns: { nama: true }
-					});
-					const kelasLog = kelasArr.map((k) => k.id).join(', ');
-					console.info(
-						`[pengguna] Updated wali_asuh ${peg?.nama ?? 'unknown'} with kelas_pindah permission (kelas: ${kelasLog})`
-					);
+				const insertPeg = await db
+					.insert(tablePegawai)
+					.values({ nama, nip: nip ?? '', createdAt: timestamp, updatedAt: timestamp })
+					.returning({ id: tablePegawai.id });
+				pegawaiId = insertPeg?.[0]?.id ?? null;
+				if (pegawaiId) {
+					console.info(`[pengguna] Created pegawai for wali_asuh "${nama}" (ID=${pegawaiId})`);
 				}
 			}
+
+			if (!pegawaiId) continue;
+
+			// Check if auth_user already exists for this pegawai
+			const exists = await db.query.tableAuthUser.findFirst({
+				where: and(
+					eq(tableAuthUser.pegawaiId, pegawaiId),
+					eq(tableAuthUser.type, 'wali_asuh')
+				),
+				columns: { id: true }
+			});
+
+			if (exists) continue;
+
+			// Create auth_user — no kelasId since wali_asuh is per-student, not per-class
+			const username = nama;
+			const usernameNormalized = username.toLowerCase();
+			const password = randomBytes(6).toString('base64url');
+			const { hash, salt } = hashPassword(password);
+			const timestamp = new Date().toISOString();
+
+			await db.insert(tableAuthUser).values({
+				username,
+				usernameNormalized,
+				passwordHash: hash,
+				passwordSalt: salt,
+				passwordUpdatedAt: timestamp,
+				permissions: [],
+				type: 'wali_asuh',
+				pegawaiId,
+				createdAt: timestamp,
+				updatedAt: timestamp
+			});
+
+			console.info(`[pengguna] Created user for wali_asuh "${nama}" (pegawaiId=${pegawaiId})`);
 		}
 	} catch (err) {
 		console.warn('[pengguna] Failed to ensure wali_kelas/wali_asuh users:', err);
@@ -457,16 +437,20 @@ export async function load({ url }) {
 					userRow.kelasName = kelasNames;
 				}
 			} else if (userRow.type === 'wali_asuh' && userRow.pegawaiId) {
-				// Query ALL kelas where waliAsuhId = pegawaiId
-				const allKelas = await db.query.tableKelas.findMany({
-					columns: { id: true, nama: true },
-					where: eq(tableKelas.waliAsuhId, userRow.pegawaiId)
+				// Wali_asuh is per-student, not per-class
+				// Show count of assigned students instead
+				const peg = await db.query.tablePegawai.findFirst({
+					columns: { nama: true },
+					where: eq(tablePegawai.id, userRow.pegawaiId)
 				});
-
-				// Aggregate kelas names
-				if (allKelas.length > 0) {
-					const kelasNames = allKelas.map((k) => k.nama).join(', ');
-					userRow.kelasName = kelasNames;
+				if (peg?.nama) {
+					const [{ count }] = await db
+						.select({ count: sql<number>`count(*)` })
+						.from(tableMurid)
+						.where(
+							sql`LOWER(trim(${tableMurid.waliAsuhNama})) = ${peg.nama.toLowerCase()} AND trim(${tableMurid.waliAsuhNama}) != ''`
+						);
+					userRow.kelasName = `${count} murid`;
 				}
 			}
 		}
@@ -821,15 +805,14 @@ export const actions = {
 
 			const blocked = candidates.filter((c) => c.type === 'wali_kelas' || c.type === 'wali_asuh');
 			if (blocked.length) {
-				// construct warning messages for blocked users
 				const messages = blocked.map((b) => {
 					const name = b.pegawaiName || b.username || 'Pengguna';
 					const kelas = b.kelasName || '';
 					const role = b.type === 'wali_asuh' ? 'Wali Asuh' : 'Wali Kelas';
-					return (
-						`${name} adalah ${role} ${kelas || ''}`.trim() +
-						`, tidak dapat dihapus. Untuk menggantinya silahkan buka menu Data Kelas`
-					);
+					if (b.type === 'wali_asuh') {
+						return `${name} adalah ${role}, tidak dapat dihapus. Ubah wali asuh melalui menu Data Murid`;
+					}
+					return `${name} adalah ${role} ${kelas}, tidak dapat dihapus. Untuk menggantinya buka menu Data Kelas`;
 				});
 				return new Response(JSON.stringify({ type: 'warning', message: messages.join(' | ') }), {
 					status: 400,

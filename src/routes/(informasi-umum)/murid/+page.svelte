@@ -21,10 +21,10 @@
 
 	let { data } = $props();
 
-	// Restrict editing for wali_asuh
+	// Restrict editing for wali_asuh and user (guru mapel)
 	const canEdit = $derived.by(() => {
 		const u = page.data.user as { type?: string } | null | undefined;
-		return u?.type !== 'wali_asuh';
+		return u?.type !== 'wali_asuh' && u?.type !== 'user';
 	});
 	let searchTerm = $state(data.page.search ?? '');
 	let searchTimer: ReturnType<typeof setTimeout> | undefined;
@@ -441,7 +441,7 @@
 								<td>
 									<div class="flex flex-row">
 										<a
-											class="btn btn-sm btn-soft rounded-r-none shadow-none"
+											class="btn btn-sm btn-soft rounded-r-none shadow-none pointer-events-auto"
 											href="/murid/{murid.id}"
 											use:modalRoute={'detail-murid'}
 											title="Lihat detail murid"
@@ -488,7 +488,7 @@
 		{#each pages as pageNumber (pageNumber)}
 			<button
 				type="button"
-				class="join-item btn"
+				class="join-item btn pointer-events-auto"
 				class:btn-active={pageNumber === currentPage}
 				onclick={() => handlePageClick(pageNumber)}
 				aria-current={pageNumber === currentPage ? 'page' : undefined}

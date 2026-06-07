@@ -502,13 +502,11 @@ export async function load({ parent, url, depends }) {
 			selectedMapelValue = String(maybeUser.mataPelajaranId);
 		}
 	}
-	// If selected mapel value is not in the options list, redirect to reset the selection
+	// If selected mapel value is not in the options list, reset it.
+	// Do NOT redirect — the value may come from the user's legacy
+	// mataPelajaranId column (not URL), and redirecting would loop.
 	if (selectedMapelValue && !mapelOptions.some((option) => option.value === selectedMapelValue)) {
-		// Remove invalid mapel_id from query params and redirect
-		const params = new URLSearchParams(url.searchParams);
-		params.delete('mapel_id');
-		params.delete('page'); // Also reset pagination
-		throw redirect(303, `${url.pathname}${params.size ? `?${params}` : ''}`);
+		selectedMapelValue = null;
 	}
 	if (!selectedMapelValue && mapelOptions.length) {
 		selectedMapelValue = mapelOptions[0].value;

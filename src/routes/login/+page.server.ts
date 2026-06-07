@@ -97,11 +97,11 @@ export const actions: Actions = {
 			console.warn('[login action] failed to set sekolah from user record', err);
 		}
 
-		// If the authenticated user is a wali_kelas or wali_asuh, set the active-kelas-id cookie
+		// If the authenticated user is a wali_kelas, set the active-kelas-id cookie
 		// so the UI will select their assigned class immediately after login.
 		try {
 			const authUser = user as AuthUser;
-			if ((authUser.type === 'wali_kelas' || authUser.type === 'wali_asuh') && authUser.kelasId) {
+			if (authUser.type === 'wali_kelas' && authUser.kelasId) {
 				cookies.set(cookieNames.ACTIVE_KELAS_ID, String(authUser.kelasId), {
 					path: '/',
 					secure

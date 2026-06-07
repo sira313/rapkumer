@@ -196,17 +196,8 @@ const authGuard: Handle = async ({ event, resolve }) => {
 							throw redirect(303, `/forbidden?required=kelas_id`);
 						}
 					}
-				} else if (u.type === 'wali_asuh' && Number.isInteger(Number(u.kelasId))) {
-					// Same logic for wali_asuh
-					const allowed = Number(u.kelasId);
-					if (kelasIdNumber !== allowed) {
-						const hasAccessOther = Array.isArray(u.permissions)
-							? u.permissions.includes('kelas_pindah')
-							: false;
-						if (!hasAccessOther) {
-							throw redirect(303, `/forbidden?required=kelas_id`);
-						}
-					}
+				} else if (u.type === 'wali_asuh') {
+					// Wali_asuh is per-student, not per-class — allow access to any class
 				}
 			}
 		}

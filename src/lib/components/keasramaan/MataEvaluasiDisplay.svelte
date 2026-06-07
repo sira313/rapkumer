@@ -14,11 +14,13 @@
 	interface Props {
 		mataEvaluasi: MataEvaluasi[];
 		tableReady: boolean;
+		canEdit: boolean;
 	}
 
-	let { mataEvaluasi, tableReady }: Props = $props();
+	let { mataEvaluasi, tableReady, canEdit }: Props = $props();
 
 	function navigateToTP(indikatorId: number) {
+		if (!canEdit) return;
 		// Use full navigation to avoid SvelteKit goto lint rule here
 		void (location as Location).assign(`/keasramaan/tp?indikatorId=${indikatorId}`);
 	}
@@ -52,6 +54,7 @@
 													type="button"
 													class="btn btn-sm btn-soft shadow-none"
 													title="Edit tujuan pembelajaran indikator"
+													disabled={!canEdit}
 													onclick={() => navigateToTP(indicator.id)}
 												>
 													<Icon name="book" />
