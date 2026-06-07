@@ -164,6 +164,40 @@ export async function ensureCoreSchema() {
 			status TEXT NOT NULL DEFAULT 'active',
 			created_at TEXT NOT NULL,
 			updated_at TEXT
+		)`,
+		`CREATE TABLE IF NOT EXISTS wali_murid (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			nama TEXT NOT NULL,
+			pekerjaan TEXT NOT NULL,
+			kontak TEXT,
+			alamat TEXT,
+			created_at TEXT NOT NULL,
+			updated_at TEXT
+		)`,
+		`CREATE TABLE IF NOT EXISTS murid (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			nis TEXT NOT NULL,
+			nisn TEXT NOT NULL,
+			sekolah_id INTEGER NOT NULL REFERENCES sekolah(id),
+			semester_id INTEGER NOT NULL REFERENCES semester(id) ON DELETE CASCADE,
+			kelas_id INTEGER NOT NULL REFERENCES kelas(id),
+			nama TEXT NOT NULL,
+			tempat_lahir TEXT NOT NULL,
+			tanggal_lahir TEXT NOT NULL,
+			jenis_kelamin TEXT NOT NULL,
+			agama TEXT NOT NULL,
+			pendidikan_sebelumnya TEXT NOT NULL,
+			tanggal_masuk TEXT NOT NULL,
+			alamat_id INTEGER NOT NULL REFERENCES alamat(id),
+			ibu_id INTEGER REFERENCES wali_murid(id),
+			ayah_id INTEGER REFERENCES wali_murid(id),
+			wali_id INTEGER REFERENCES wali_murid(id),
+			foto TEXT,
+			wali_asuh_nama TEXT,
+			wali_asuh_nip TEXT,
+			created_at TEXT NOT NULL,
+			updated_at TEXT,
+			UNIQUE(sekolah_id, semester_id, nis)
 		)`
 	]);
 }
