@@ -598,8 +598,8 @@
 		</div>
 	</div>
 
-	<div class="flex flex-col justify-between gap-2 sm:flex-row">
-		<form class="w-full md:max-w-80" method="get" use:autoSubmit>
+	<div class="flex flex-col justify-between gap-2 sm:flex-row sm:flex-wrap">
+		<form class="w-full sm:max-w-80 md:max-w-80" method="get" use:autoSubmit>
 			<select
 				class="select bg-base-200 w-full dark:border-none"
 				title="Pilih mata pelajaran"
