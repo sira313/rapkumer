@@ -81,68 +81,78 @@
 </script>
 
 <div class="mb-2 flex flex-col gap-2 sm:flex-row">
-	<select
-		class="select bg-base-200 w-full dark:border-none"
-		bind:value={selectedDocument}
-		title="Pilih dokumen yang ingin dipreview"
-	>
-		<option value="">Pilih dokumen…</option>
-		{#each documentOptions as option (option.value)}
-			<option value={option.value}>{option.label}</option>
-		{/each}
-	</select>
-	{#if isPiagamSelected}
+	<div class="min-w-0 flex-1">
 		<select
-			class="select bg-base-200 w-full max-w-30 dark:border-none"
-			bind:value={selectedTemplate}
-			title="Pilih template piagam"
+			class="select bg-base-200 w-full min-w-0 dark:border-none"
+			bind:value={selectedDocument}
+			title="Pilih dokumen yang ingin dipreview"
 		>
-			<option value="1">Template 1</option>
-			<option value="2">Template 2</option>
-		</select>
-	{/if}
-	{#if selectedDocument === 'rapor'}
-		<select
-			class="select bg-base-200 w-full dark:border-none"
-			bind:value={selectedRaporPeriode}
-			title="Pilih periode rapor"
-		>
-			<option value="">Pilih periode…</option>
-			<option value="ras">Rapor Akhir Semester</option>
-			<option value="rts">Rapor Tengah Semester</option>
-		</select>
-	{/if}
-	{#if isPiagamSelected}
-		<select
-			class="select bg-base-200 w-full dark:border-none"
-			bind:value={selectedMuridId}
-			title="Pilih peringkat piagam yang ingin dipreview"
-			disabled={!hasPiagamRankingOptions}
-		>
-			<option value="">Pilih peringkat…</option>
-			{#each piagamSelectOptions as option (option.value)}
+			<option value="">Pilih dokumen…</option>
+			{#each documentOptions as option (option.value)}
 				<option value={option.value}>{option.label}</option>
 			{/each}
 		</select>
+	</div>
+	{#if isPiagamSelected}
+		<div class="min-w-0 flex-1">
+			<select
+				class="select bg-base-200 w-full min-w-0 max-w-30 dark:border-none"
+				bind:value={selectedTemplate}
+				title="Pilih template piagam"
+			>
+				<option value="1">Template 1</option>
+				<option value="2">Template 2</option>
+			</select>
+		</div>
+	{/if}
+	{#if selectedDocument === 'rapor'}
+		<div class="min-w-0 flex-1">
+			<select
+				class="select bg-base-200 w-full min-w-0 dark:border-none"
+				bind:value={selectedRaporPeriode}
+				title="Pilih periode rapor"
+			>
+				<option value="">Pilih periode…</option>
+				<option value="ras">Rapor Akhir Semester</option>
+				<option value="rts">Rapor Tengah Semester</option>
+			</select>
+		</div>
+	{/if}
+	{#if isPiagamSelected}
+		<div class="min-w-0 flex-1">
+			<select
+				class="select bg-base-200 w-full min-w-0 dark:border-none"
+				bind:value={selectedMuridId}
+				title="Pilih peringkat piagam yang ingin dipreview"
+				disabled={!hasPiagamRankingOptions}
+			>
+				<option value="">Pilih peringkat…</option>
+				{#each piagamSelectOptions as option (option.value)}
+					<option value={option.value}>{option.label}</option>
+				{/each}
+			</select>
+		</div>
 	{:else}
-		<select
-			class="select bg-base-200 w-full dark:border-none"
-			bind:value={selectedMuridId}
-			title="Pilih murid yang ingin dipreview dokumennya"
-			disabled={!hasMurid}
-		>
-			<option value="">Pilih murid…</option>
-			{#each daftarMurid as murid (murid.id)}
-				<option value={String(murid.id)}>
-					{murid.nama}
-					{#if murid.nisn}
-						— {murid.nisn}
-					{:else if murid.nis}
-						— {murid.nis}
-					{/if}
-				</option>
-			{/each}
-		</select>
+		<div class="min-w-0 flex-1 overflow-hidden">
+			<select
+				class="select bg-base-200 w-full min-w-0 dark:border-none"
+				bind:value={selectedMuridId}
+				title="Pilih murid yang ingin dipreview dokumennya"
+				disabled={!hasMurid}
+			>
+				<option value="">Pilih murid…</option>
+				{#each daftarMurid as murid (murid.id)}
+					<option value={String(murid.id)}>
+						{murid.nama}
+						{#if murid.nisn}
+							— {murid.nisn}
+						{:else if murid.nis}
+							— {murid.nis}
+						{/if}
+					</option>
+				{/each}
+			</select>
+		</div>
 	{/if}
 	<div class="flex flex-row">
 		<button
