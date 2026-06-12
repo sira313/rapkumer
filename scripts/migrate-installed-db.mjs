@@ -207,55 +207,77 @@ async function main() {
 			}
 		}
 
-		// Run drizzle push, but be tolerant of a common sqlite "index ... already exists" error
-		// by running fix-drizzle-indexes and retrying once.
 		// Aggressive pre-clean: drop any index variants that differ only by case/formatting
 		// (some installs historically created `auth_user_usernameNormalized_unique` etc).
 		try {
+			const { createClient: createClientLocal } = await import('@libsql/client');
+			const cleanupClient = createClientLocal({ url: dbPath });
 			try {
-				const { createClient: createClientLocal } = await import('@libsql/client');
-				const cleanupClient = createClientLocal({ url: dbPath });
+				// 1) scan sqlite_master for any index names and drop those that
+				// normalize to contain 'usernamenormalized' (robust to camelCase/underscore).
+				const foundMaster = await cleanupClient.execute({
+					sql: `SELECT name FROM sqlite_master WHERE type='index'`
+				});
+				const masterRows = foundMaster.rows || [];
+				for (const r of masterRows) {
+					const name = r && (r.name || r[0] || r[1]);
+					const normalized = normalizeIndexNameForMatch(name);
+					if (name && normalized.includes('usernamenormalized')) {
+						try {
+							await cleanupClient.execute({ sql: `DROP INDEX IF EXISTS "${name}"` });
+							console.info(
+								`[migrate-installed-db] Dropped pre-existing index from sqlite_master: ${name}`
+							);
+						} catch (err) {
+							console.warn(
+								`[migrate-installed-db] Failed to drop index ${name}:`,
+								err && (err.message || err.toString())
+							);
+						}
+					}
+				}
+
+				// 2) also check the auth_user table's index list (PRAGMA) for variants
 				try {
-					// 1) scan sqlite_master for any index names and drop those that
-					// normalize to contain 'usernamenormalized' (robust to camelCase/underscore).
-					const foundMaster = await cleanupClient.execute({
-						sql: `SELECT name FROM sqlite_master WHERE type='index'`
-					});
-					const masterRows = foundMaster.rows || [];
-					for (const r of masterRows) {
+					const idxRes = await cleanupClient.execute({ sql: `PRAGMA index_list('auth_user')` });
+					const idxRows = idxRes.rows || [];
+					for (const r of idxRows) {
 						const name = r && (r.name || r[0] || r[1]);
+						if (!name) continue;
 						const normalized = normalizeIndexNameForMatch(name);
-						if (name && normalized.includes('usernamenormalized')) {
+						// Prefer name-based match first (fast); fall back to column inspection.
+						if (normalized.includes('usernamenormalized')) {
 							try {
 								await cleanupClient.execute({ sql: `DROP INDEX IF EXISTS "${name}"` });
 								console.info(
-									`[migrate-installed-db] Dropped pre-existing index from sqlite_master: ${name}`
+									`[migrate-installed-db] Dropped pre-existing index (name match): ${name}`
 								);
+								continue;
 							} catch (err) {
 								console.warn(
-									`[migrate-installed-db] Failed to drop index ${name}:`,
+									`[migrate-installed-db] Failed to drop pragma index ${name}:`,
 									err && (err.message || err.toString())
 								);
 							}
 						}
-					}
-
-					// 2) also check the auth_user table's index list (PRAGMA) for variants
-					try {
-						const idxRes = await cleanupClient.execute({ sql: `PRAGMA index_list('auth_user')` });
-						const idxRows = idxRes.rows || [];
-						for (const r of idxRows) {
-							const name = r && (r.name || r[0] || r[1]);
-							if (!name) continue;
-							const normalized = normalizeIndexNameForMatch(name);
-							// Prefer name-based match first (fast); fall back to column inspection.
-							if (normalized.includes('usernamenormalized')) {
+						// Use PRAGMA index_info to inspect indexed columns and drop any index
+						// that references the `username_normalized` column (case-insensitive).
+						try {
+							const safeName = String(name).replace(/'/g, "''");
+							const infoRes = await cleanupClient.execute({
+								sql: `PRAGMA index_info('${safeName}')`
+							});
+							const infoRows = infoRes.rows || [];
+							const cols = infoRows.map((c) => c.name || c[2] || c[1] || '');
+							const hasUsernameNormalized = cols.some(
+								(col) => String(col).toLowerCase() === 'username_normalized'
+							);
+							if (hasUsernameNormalized) {
 								try {
 									await cleanupClient.execute({ sql: `DROP INDEX IF EXISTS "${name}"` });
 									console.info(
-										`[migrate-installed-db] Dropped pre-existing index (name match): ${name}`
+										`[migrate-installed-db] Dropped pre-existing index (indexed column match): ${name}`
 									);
-									continue;
 								} catch (err) {
 									console.warn(
 										`[migrate-installed-db] Failed to drop pragma index ${name}:`,
@@ -263,171 +285,124 @@ async function main() {
 									);
 								}
 							}
-							// Use PRAGMA index_info to inspect indexed columns and drop any index
-							// that references the `username_normalized` column (case-insensitive).
-							try {
-								const safeName = String(name).replace(/'/g, "''");
-								const infoRes = await cleanupClient.execute({
-									sql: `PRAGMA index_info('${safeName}')`
-								});
-								const infoRows = infoRes.rows || [];
-								const cols = infoRows.map((c) => c.name || c[2] || c[1] || '');
-								const hasUsernameNormalized = cols.some(
-									(col) => String(col).toLowerCase() === 'username_normalized'
-								);
-								if (hasUsernameNormalized) {
-									try {
-										await cleanupClient.execute({ sql: `DROP INDEX IF EXISTS "${name}"` });
-										console.info(
-											`[migrate-installed-db] Dropped pre-existing index (indexed column match): ${name}`
-										);
-									} catch (err) {
-										console.warn(
-											`[migrate-installed-db] Failed to drop pragma index ${name}:`,
-											err && (err.message || err.toString())
-										);
-									}
-								}
-							} catch (err) {
-								console.info(
-									'[migrate-installed-db] PRAGMA index_info check skipped/failed for',
-									name,
-									err && (err.message || err.toString())
-								);
-							}
-						}
-					} catch (err) {
-						// ignore PRAGMA failures but log for diagnostics
-						console.info(
-							'[migrate-installed-db] PRAGMA index_list check skipped/failed:',
-							err && (err.message || err.toString())
-						);
-					}
-
-					// 3) final catch-all: look for any CREATE INDEX statements that reference the
-					// `username_normalized` column in sqlite_master.sql and drop them. This will
-					// catch mixed-cased names like `auth_user_usernameNormalized_unique`.
-					try {
-						const sqlRes = await cleanupClient.execute({
-							sql: `SELECT name, sql FROM sqlite_master WHERE type='index' AND sql LIKE '%username_normalized%' COLLATE NOCASE`
-						});
-						const sqlRows = sqlRes.rows || [];
-						for (const r of sqlRows) {
-							const name = r && (r.name || r[0] || r[1]);
-							if (!name) continue;
-							const normalized = normalizeIndexNameForMatch(name);
-							if (!normalized.includes('usernamenormalized')) continue;
-							try {
-								await cleanupClient.execute({ sql: `DROP INDEX IF EXISTS "${name}"` });
-								console.info(
-									`[migrate-installed-db] Dropped index referenced in sqlite_master.sql: ${name}`
-								);
-							} catch (err) {
-								console.warn(
-									`[migrate-installed-db] Failed to drop sqlite_master index ${name}:`,
-									err && (err.message || err.toString())
-								);
-							}
-						}
-					} catch (err) {
-						console.info(
-							'[migrate-installed-db] sqlite_master sql-scan skipped/failed:',
-							err && (err.message || err.toString())
-						);
-					}
-				} finally {
-					if (typeof cleanupClient.close === 'function') await cleanupClient.close();
-				}
-			} catch (err) {
-				// Non-fatal: log and continue to let the standard fix-drizzle-indexes handle other cases
-				console.info(
-					'[migrate-installed-db] Pre-drizzle index cleanup skipped or failed:',
-					err && (err.message || err.toString())
-				);
-			}
-
-			// Now run drizzle push (capture stderr/stdout so we can parse CLI errors)
-			runCapture(drizzleCmd, ['push', '--force'], { env: childEnv, cwd: projectRoot });
-		} catch (err) {
-			const msg = String(err?.message || err || '');
-			if (
-				msg.includes('already exists') ||
-				msg.includes('UNIQUE constraint failed') ||
-				msg.includes('SQLITE_ERROR')
-			) {
-				console.info(
-					'[migrate-installed-db] drizzle push failed with index error; attempting targeted drop and retry'
-				);
-				// Try to extract the index name from the error message (e.g. "index auth_user_usernameNormalized_unique already exists")
-				const idxMatch = msg.match(/index\s+(["']?)([^"'\s]+)\1\s+already exists/i);
-				const indexNameFromMsg = idxMatch ? idxMatch[2] : null;
-				if (indexNameFromMsg) {
-					console.info(
-						'[migrate-installed-db] Detected conflicting index from error:',
-						indexNameFromMsg
-					);
-					try {
-						const { createClient: createClientLocal2 } = await import('@libsql/client');
-						const dropClient = createClientLocal2({ url: dbPath });
-						try {
-							await dropClient.execute({ sql: `DROP INDEX IF EXISTS "${indexNameFromMsg}"` });
+						} catch (err) {
 							console.info(
-								`[migrate-installed-db] Dropped conflicting index reported by drizzle: ${indexNameFromMsg}`
+								'[migrate-installed-db] PRAGMA index_info check skipped/failed for',
+								name,
+								err && (err.message || err.toString())
 							);
-						} finally {
-							if (typeof dropClient.close === 'function') await dropClient.close();
-						}
-						// Retry drizzle push once after dropping the specific index
-						run(drizzleCmd, ['push', '--force'], { env: childEnv, cwd: projectRoot });
-						console.info('[migrate-installed-db] Retry after dropping specific index succeeded');
-						// continue normal flow
-					} catch (err2) {
-						console.error(
-							'[migrate-installed-db] Failed to drop specific index or retry push:',
-							err2?.message || err2
-						);
-						// fall back to running the broader fixer script and rethrow if that fails
-						try {
-							run(
-								process.execPath,
-								[path.join(projectRoot, 'scripts', 'fix-drizzle-indexes.mjs')],
-								{
-									env: childEnv,
-									cwd: projectRoot
-								}
-							);
-							run(drizzleCmd, ['push', '--force'], { env: childEnv, cwd: projectRoot });
-						} catch (err3) {
-							console.error(
-								'[migrate-installed-db] retry after fix-drizzle-indexes failed:',
-								err3?.message || err3
-							);
-							throw err3;
 						}
 					}
-				} else {
-					// No index name parsed; fall back to running the general fixer and retry once
+				} catch (err) {
+					// ignore PRAGMA failures but log for diagnostics
 					console.info(
-						'[migrate-installed-db] Could not parse index name from error; running generic fixer and retrying'
+						'[migrate-installed-db] PRAGMA index_list check skipped/failed:',
+						err && (err.message || err.toString())
 					);
+				}
+
+				// 3) final catch-all: look for any CREATE INDEX statements that reference the
+				// `username_normalized` column in sqlite_master.sql and drop them. This will
+				// catch mixed-cased names like `auth_user_usernameNormalized_unique`.
+				try {
+					const sqlRes = await cleanupClient.execute({
+						sql: `SELECT name, sql FROM sqlite_master WHERE type='index' AND sql LIKE '%username_normalized%' COLLATE NOCASE`
+					});
+					const sqlRows = sqlRes.rows || [];
+					for (const r of sqlRows) {
+						const name = r && (r.name || r[0] || r[1]);
+						if (!name) continue;
+						const normalized = normalizeIndexNameForMatch(name);
+						if (!normalized.includes('usernamenormalized')) continue;
+						try {
+							await cleanupClient.execute({ sql: `DROP INDEX IF EXISTS "${name}"` });
+							console.info(
+								`[migrate-installed-db] Dropped index referenced in sqlite_master.sql: ${name}`
+							);
+						} catch (err) {
+							console.warn(
+								`[migrate-installed-db] Failed to drop sqlite_master index ${name}:`,
+								err && (err.message || err.toString())
+							);
+						}
+					}
+				} catch (err) {
+					console.info(
+						'[migrate-installed-db] sqlite_master sql-scan skipped/failed:',
+						err && (err.message || err.toString())
+					);
+				}
+			} finally {
+				if (typeof cleanupClient.close === 'function') await cleanupClient.close();
+			}
+		} catch (err) {
+			// Non-fatal: log and continue to let the standard fix-drizzle-indexes handle other cases
+			console.info(
+				'[migrate-installed-db] Pre-drizzle index cleanup skipped or failed:',
+				err && (err.message || err.toString())
+			);
+		}
+
+		// Run drizzle push with retry for index conflicts.
+		// Some installed DBs have stale indexes that cause "index ... already exists".
+		// Retry up to MAX_RETRIES times, dropping conflicting indexes between attempts.
+		const MAX_RETRIES = 5;
+		let lastError;
+		for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+			try {
+				runCapture(drizzleCmd, ['push', '--force'], { env: childEnv, cwd: projectRoot });
+				lastError = null;
+				break;
+			} catch (err) {
+				lastError = err;
+				const msg = String(err?.message || err || '');
+				const isIndexConflict =
+					msg.includes('already exists') ||
+					msg.includes('UNIQUE constraint failed') ||
+					msg.includes('SQLITE_ERROR');
+				if (!isIndexConflict) throw err;
+
+				if (attempt < MAX_RETRIES) {
+					const idxMatch = msg.match(/index\s+(["']?)([^"'\s]+)\1\s+already exists/i);
+					const indexName = idxMatch ? idxMatch[2] : null;
+					console.info(
+						`[migrate-installed-db] drizzle push failed (attempt ${attempt}/${MAX_RETRIES})` +
+							(indexName ? `: index "${indexName}" already exists` : '')
+					);
+
+					if (indexName) {
+						try {
+							const { createClient: createClientLocal2 } = await import('@libsql/client');
+							const dropClient = createClientLocal2({ url: dbPath });
+							try {
+								await dropClient.execute({ sql: `DROP INDEX IF EXISTS "${indexName}"` });
+								console.info(`[migrate-installed-db] Dropped conflicting index: ${indexName}`);
+							} finally {
+								if (typeof dropClient.close === 'function') await dropClient.close();
+							}
+						} catch (dropErr) {
+							console.warn(
+								'[migrate-installed-db] Failed to drop conflicting index:',
+								dropErr?.message || dropErr
+							);
+						}
+					}
+
+					// Run fix-drizzle-indexes to handle auth_user username_normalized variants
 					try {
 						run(process.execPath, [path.join(projectRoot, 'scripts', 'fix-drizzle-indexes.mjs')], {
 							env: childEnv,
 							cwd: projectRoot
 						});
-						run(drizzleCmd, ['push', '--force'], { env: childEnv, cwd: projectRoot });
-					} catch (err2) {
-						console.error(
-							'[migrate-installed-db] retry after fix-drizzle-indexes failed:',
-							err2?.message || err2
-						);
-						throw err2;
+					} catch (_) {
+						// non-fatal
 					}
+
+					continue;
 				}
-			} else {
-				throw err;
 			}
 		}
+		if (lastError) throw lastError;
 		run(process.execPath, [path.join(projectRoot, 'scripts', 'fix-drizzle-indexes.mjs')], {
 			env: childEnv,
 			cwd: projectRoot
