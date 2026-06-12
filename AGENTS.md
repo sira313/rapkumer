@@ -11,15 +11,17 @@ pnpm db:studio               # drizzle-kit studio
 pnpm db:cleanup              # cleanup orphan records
 pnpm seed:walis              # seed wali asuh users
 pnpm package:win             # stage windows installer artifacts
-pnpm check                   # svelte-kit sync + svelte-check (scripts/svelte-check-wrapper.mjs)
+pnpm prepare                 # svelte-kit sync (auto-runs on install)
+pnpm check                   # svelte-kit sync + svelte-check
+pnpm check:watch             # svelte-kit sync + svelte-check --watch
 pnpm lint                    # prettier --check . && eslint .
-pnpm format                  # prettier --write .
+pnpm format                  # prettier --write . (tabs, single quotes, no trailing comma)
 ```
 
 ## Stack
 
 - **SvelteKit 2 + Svelte 5 runes** — use `$props()`, `$state`, `$derived`. No `export let`, `$:`, or `(on:click)`.
-- **PagedJS + puppeteer-core** — server-side PDF gen. Needs system Chrome/Chromium. Set path via `PUPPETEER_EXECUTABLE_PATH`.
+- **PagedJS + puppeteer-core** — server-side PDF gen from `src/lib/server/pdf/templates/`. Needs system Chrome/Chromium; set path via `PUPPETEER_EXECUTABLE_PATH`.
 - **TailwindCSS 4 + DaisyUI 5** — CSS via `@import "tailwindcss"` + `@plugin "daisyui"` in `src/app.css`. No tailwind.config.js.
 - **Drizzle ORM + SQLite** — `@libsql/client`. `snake_case` in DB, camelCase in schema (`drizzle.config.js` sets `casing: 'snake_case'`).
 - **mdsvex** — `.md` files render as Svelte components. `svelte.config.js` sets `extensions: ['.svelte', '.md']`.
@@ -31,7 +33,10 @@ pnpm format                  # prettier --write .
 - `src/routes/` — route groups: `(informasi-umum)/`, `(mata-pelajaran)/`, `(input-nilai)/`, `cetak/`, `api/`, `pengaturan/`, `pengguna/`, `login/`, `logout/`.
 - `src/lib/components/` — domain subfolders. Keep presentation logic here, not in route files.
 - `src/lib/server/db/schema.ts` — all tables + relations.
-- `src/lib/server/db/index.ts` — DB connection (Proxy for HMR, WAL mode, busy timeout).
+- `src/lib/server/db/index.ts` — DB connection (Proxy for HMR, WAL mode, busy timeout). `reloadDbClient()` reconnects.
+- `src/lib/server/db/ensure-*.ts` — schema migration helpers, run on first request.
+- `src/lib/server/pdf/templates/` — PagedJS rapor/cover/biodata/piagam/keasramaan HTML templates.
+- `installer/` — InnoSetup script + packaging config for Windows builds.
 - `$lib/utils.ts` — `cookieNames`, `flatten`/`unflatten`/`populateForm`, `modalRoute`.
 
 ## UI conventions
@@ -52,6 +57,7 @@ pnpm format                  # prettier --write .
 - CSRF: SvelteKit's built-in disabled (`csrf.trustedOrigins: ['*']`). Custom guard checks origin/referer.
 - `event.locals.sekolah` scopes all queries — set by `cookieParser` hook.
 - Body size limit from `process.env.BODY_SIZE_LIMIT` (default 512K).
+- User type `user` accounts are **read-only** on `/murid`, `/kokurikuler`, `/ekstrakurikuler`, `/keasramaan`, `/asesmen-kokurikuler`, `/nilai-ekstrakurikuler`, `/asesmen-keasramaan`, `/absen`, `/catatan-wali-kelas`, `/keputusan`, `/cetak` — enforced in `+layout.svelte` via `disableInteraction`.
 
 ## DB
 
