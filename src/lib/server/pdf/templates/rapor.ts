@@ -1,4 +1,5 @@
 import { sharedStyles, formatValue, formatUpper, getTutwuriBwDataUri } from './shared';
+import { parseTingkat, lastGradeOfFase, isGraduatingFase } from '$lib/tingkat';
 
 export interface RaporPrintData {
 	sekolah: {
@@ -65,8 +66,10 @@ export function renderRaporHTML(data: RaporPrintData): string {
 
 	const isGenap =
 		data.periode.semester.toLowerCase().includes('genap') || data.periode.semester.includes('2');
+	const tingkat = parseTingkat(data.rombel.nama);
 	const isGraduating =
-		data.rombel.fase === 'Fase C' || data.rombel.fase === 'Fase D' || data.rombel.fase === 'Fase F';
+		isGraduatingFase(data.rombel.fase ?? '') &&
+		(tingkat === null ? true : lastGradeOfFase[data.rombel.fase ?? ''] === tingkat);
 	const { sakit, izin, tanpaKeterangan } = data.ketidakhadiran;
 
 	const kelompokMap: Record<string, { items: typeof data.nilaiIntrakurikuler }> = {};
