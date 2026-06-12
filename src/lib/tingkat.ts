@@ -23,6 +23,7 @@ export const lastGradeOfFase: Record<string, number> = {
 };
 
 const GRADUATING_FASES = ['Fase C', 'Fase D', 'Fase F'];
+const GRADUATING_GRADES = [6, 9, 12];
 
 function parseToken(token: string): number | null {
 	const arab = parseInt(token, 10);
@@ -48,4 +49,8 @@ export function parseTingkat(namaKelas: string): number | null {
 
 export function isGraduatingFase(fase: string): boolean {
 	return GRADUATING_FASES.includes(fase);
+}
+
+export function isGraduatingGrade(tingkat: number | null): boolean {
+	return tingkat !== null && GRADUATING_GRADES.includes(tingkat);
 }

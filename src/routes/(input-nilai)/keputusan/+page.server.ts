@@ -2,7 +2,7 @@ import db from '$lib/server/db';
 import { tableKeputusanMurid, tableMurid, tableKelas } from '$lib/server/db/schema';
 import { fail, redirect } from '@sveltejs/kit';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
-import { parseTingkat, lastGradeOfFase, isGraduatingFase } from '$lib/tingkat';
+import { parseTingkat, lastGradeOfFase, isGraduatingFase, isGraduatingGrade } from '$lib/tingkat';
 
 const PER_PAGE = 20;
 const TABLE_MISSING_MESSAGE =
@@ -134,8 +134,9 @@ export async function load({ parent, locals, url, depends }) {
 
 	const tingkat = parseTingkat(kelasAktif.nama);
 	const isGraduating =
-		isGraduatingFase(kelasAktif.fase ?? '') &&
-		(tingkat === null ? true : lastGradeOfFase[kelasAktif.fase ?? ''] === tingkat);
+		isGraduatingGrade(tingkat) ||
+		(isGraduatingFase(kelasAktif.fase ?? '') &&
+			(tingkat === null ? true : lastGradeOfFase[kelasAktif.fase ?? ''] === tingkat));
 
 	const rows: KeputusanRow[] = queryRecords.map((murid, index) => ({
 		id: murid.id,
