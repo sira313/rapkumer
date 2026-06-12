@@ -4,6 +4,7 @@
 	import MapelEkstrakurikulerStats from '$lib/components/dashboard/mapel-ekstrakurikuler-stats.svelte';
 	import ProgressCard from '$lib/components/dashboard/progress-card.svelte';
 	import QuickActionsCard from '$lib/components/dashboard/quick-actions-card.svelte';
+	import TimeCard from '$lib/components/dashboard/time-card.svelte';
 
 	let { data } = $props();
 	const sekolah = (data.sekolah ?? null) as Sekolah | null;
@@ -40,6 +41,7 @@
 		<SekolahOverviewCard {sekolah} />
 		<RombelMuridStats rombel={statistikDashboard.rombel} murid={statistikDashboard.murid} />
 		<MapelEkstrakurikulerStats mapel={mapelStats} ekstrakurikuler={ekstrakurikulerStats} />
+		<TimeCard />
 	</div>
 
 	<!-- Kolom 2: Progress & Aksi -->
