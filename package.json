@@ -1,7 +1,7 @@
 {
 	"name": "rapkumer",
 	"private": true,
-	"version": "1.6.2",
+	"version": "1.6.3",
 	"type": "module",
 	"scripts": {
 		"db:push": "node scripts/migrate-installed-db.mjs",
