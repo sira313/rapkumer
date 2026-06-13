@@ -9,7 +9,7 @@ import { ensureAbsensiSchema } from '$lib/server/db/ensure-absensi';
 import { ensureKetidakhadiranHarianSchema } from '$lib/server/db/ensure-ketidakhadiran-harian';
 import { ensurePresensiSettingsSchema } from '$lib/server/db/ensure-presensi-settings';
 import { fail, redirect } from '@sveltejs/kit';
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 
 const PER_PAGE = 20;
 const TABLE_MISSING_MESSAGE =
@@ -36,9 +36,7 @@ type KehadiranRow = {
 	no: number;
 	nama: string;
 	hadir: boolean;
-	sakit: number;
-	izin: number;
-	alfa: number;
+	keterangan: string | null;
 	updatedAt: string | null;
 };
 
@@ -150,9 +148,7 @@ export async function load({ parent, locals, url, depends }) {
 						id: true,
 						muridId: true,
 						tanggal: true,
-						sakit: true,
-						izin: true,
-						alfa: true,
+						keterangan: true,
 						createdAt: true,
 						updatedAt: true
 					},
@@ -198,13 +194,36 @@ export async function load({ parent, locals, url, depends }) {
 			id: murid.id,
 			no: offset + index + 1,
 			nama: murid.nama,
-			hadir: murid.absensi.length > 0,
-			sakit: kh?.sakit ?? 0,
-			izin: kh?.izin ?? 0,
-			alfa: kh?.alfa ?? 0,
+			hadir: murid.absensi.length > 0 && !kh?.keterangan,
+			keterangan: kh?.keterangan ?? null,
 			updatedAt: kh?.updatedAt ?? kh?.createdAt ?? null
 		};
 	});
+
+	let semuaMurid: Array<{ id: number; nama: string; keterangan: string | null }> = [];
+	if (tableReady) {
+		try {
+			const semuaMuridRecords = await db.query.tableMurid.findMany({
+				columns: { id: true, nama: true },
+				with: {
+					ketidakhadiranHarian: {
+						columns: { keterangan: true },
+						where: eq(tableKetidakhadiranHarian.tanggal, tanggal),
+						limit: 1
+					}
+				},
+				where: baseFilter,
+				orderBy: asc(tableMurid.nama)
+			});
+			semuaMurid = semuaMuridRecords.map((m) => ({
+				id: m.id,
+				nama: m.nama,
+				keterangan: m.ketidakhadiranHarian?.[0]?.keterangan ?? null
+			}));
+		} catch {
+			tableReady = false;
+		}
+	}
 
 	const pageState: PageState = {
 		search,
@@ -219,19 +238,11 @@ export async function load({ parent, locals, url, depends }) {
 		tableReady,
 		page: pageState,
 		daftarMurid: rows,
+		semuaMurid,
 		totalMurid: total,
 		muridCount: muridCount ?? 0,
 		presensiSettings
 	};
-}
-
-function parseCount(value: FormDataEntryValue | null): number | null {
-	if (value == null) return 0;
-	const raw = value.toString().trim();
-	if (!raw) return 0;
-	const parsed = Number(raw);
-	if (!Number.isInteger(parsed) || parsed < 0) return null;
-	return parsed;
 }
 
 export const actions = {
@@ -239,6 +250,10 @@ export const actions = {
 		const sekolahId = locals.sekolah?.id ?? null;
 		if (!sekolahId) {
 			return fail(401, { fail: 'Sekolah tidak ditemukan' });
+		}
+
+		if (locals.user?.type === 'user' || locals.user?.type === 'wali_asuh') {
+			return fail(403, { fail: 'Anda tidak memiliki izin untuk mengubah data kehadiran' });
 		}
 
 		const formData = await request.formData();
@@ -253,13 +268,8 @@ export const actions = {
 			return fail(400, { fail: 'ID murid tidak valid' });
 		}
 
-		const [sakit, izin, alfa] = ['sakit', 'izin', 'alfa'].map((key) =>
-			parseCount(formData.get(key))
-		);
-
-		if (sakit == null || izin == null || alfa == null) {
-			return fail(400, { fail: 'Nilai kehadiran harus berupa angka bulat dan tidak negatif' });
-		}
+		const keteranganRaw = formData.get('keterangan')?.toString().trim() ?? '';
+		const keterangan = ['sakit', 'izin', 'alfa'].includes(keteranganRaw) ? keteranganRaw : null;
 
 		const muridRecord = await db.query.tableMurid.findFirst({
 			columns: { id: true },
@@ -276,16 +286,12 @@ export const actions = {
 				.values({
 					muridId,
 					tanggal: todayDateString(),
-					sakit,
-					izin,
-					alfa
+					keterangan
 				})
 				.onConflictDoUpdate({
 					target: [tableKetidakhadiranHarian.muridId, tableKetidakhadiranHarian.tanggal],
 					set: {
-						sakit,
-						izin,
-						alfa,
+						keterangan,
 						updatedAt: new Date().toISOString()
 					}
 				});
@@ -299,13 +305,130 @@ export const actions = {
 		return { message: 'Ketidakhadiran hari ini berhasil diperbarui' };
 	},
 
+	isiSekaligus: async ({ request, locals }) => {
+		const sekolahId = locals.sekolah?.id ?? null;
+		if (!sekolahId) {
+			return fail(401, { fail: 'Sekolah tidak ditemukan' });
+		}
+
+		if (locals.user?.type === 'user' || locals.user?.type === 'wali_asuh') {
+			return fail(403, { fail: 'Anda tidak memiliki izin untuk mengubah data kehadiran' });
+		}
+
+		const formData = await request.formData();
+		const mode = formData.get('mode')?.toString();
+
+		if (!mode || !['hadir_semua', 'selected'].includes(mode)) {
+			return fail(400, { fail: 'Mode tidak valid' });
+		}
+
+		const kelasIdRaw = formData.get('kelasId')?.toString();
+		const kelasId = kelasIdRaw ? Number(kelasIdRaw) : null;
+		if (!kelasId || !Number.isInteger(kelasId)) {
+			return fail(400, { fail: 'Kelas tidak ditemukan' });
+		}
+
+		const tanggal = todayDateString();
+		const now = new Date().toISOString();
+		const todayStart = new Date();
+		todayStart.setHours(0, 0, 0, 0);
+		const todayEnd = new Date();
+		todayEnd.setHours(23, 59, 59, 999);
+
+		try {
+			const semuaMurid = await db.query.tableMurid.findMany({
+				columns: { id: true },
+				where: and(eq(tableMurid.sekolahId, sekolahId), eq(tableMurid.kelasId, kelasId))
+			});
+
+			if (mode === 'hadir_semua') {
+				for (const murid of semuaMurid) {
+					await db
+						.insert(tableKetidakhadiranHarian)
+						.values({ muridId: murid.id, tanggal, keterangan: null })
+						.onConflictDoUpdate({
+							target: [tableKetidakhadiranHarian.muridId, tableKetidakhadiranHarian.tanggal],
+							set: { keterangan: null, updatedAt: now }
+						});
+
+					const existingAbsensi = await db.query.tableAbsensi.findFirst({
+						columns: { id: true },
+						where: and(
+							eq(tableAbsensi.muridId, murid.id),
+							sql`${tableAbsensi.waktu} >= ${todayStart.toISOString()}`,
+							sql`${tableAbsensi.waktu} <= ${todayEnd.toISOString()}`
+						)
+					});
+					if (!existingAbsensi) {
+						await db.insert(tableAbsensi).values({ muridId: murid.id, waktu: now });
+					}
+				}
+
+				return { message: 'Semua murid ditandai hadir' };
+			}
+
+			if (mode === 'selected') {
+				const entriesRaw = formData.get('entries')?.toString() ?? '';
+				let entries: Array<{ muridId: number; keterangan: string }> = [];
+				try {
+					entries = JSON.parse(entriesRaw);
+				} catch {
+					return fail(400, { fail: 'Data tidak valid' });
+				}
+
+				if (!Array.isArray(entries) || entries.length === 0) {
+					return fail(400, { fail: 'Pilih minimal satu murid' });
+				}
+
+				const entryMap = new Map<number, string>();
+				for (const e of entries) {
+					const id = Number(e.muridId);
+					if (Number.isInteger(id) && id > 0) {
+						const k = ['sakit', 'izin', 'alfa'].includes(e.keterangan) ? e.keterangan : 'alfa';
+						entryMap.set(id, k);
+					}
+				}
+
+				const selectedIds = Array.from(entryMap.keys());
+				if (selectedIds.length > 0) {
+					await db
+						.delete(tableAbsensi)
+						.where(
+							and(
+								inArray(tableAbsensi.muridId, selectedIds),
+								sql`${tableAbsensi.waktu} >= ${todayStart.toISOString()}`,
+								sql`${tableAbsensi.waktu} <= ${todayEnd.toISOString()}`
+							)
+						);
+				}
+
+				for (const [muridId, keterangan] of entryMap) {
+					await db
+						.insert(tableKetidakhadiranHarian)
+						.values({ muridId, tanggal, keterangan })
+						.onConflictDoUpdate({
+							target: [tableKetidakhadiranHarian.muridId, tableKetidakhadiranHarian.tanggal],
+							set: { keterangan, updatedAt: now }
+						});
+				}
+
+				return { message: 'Kehadiran berhasil diperbarui' };
+			}
+		} catch (error) {
+			if (isTableMissingError(error)) {
+				return fail(500, { fail: TABLE_MISSING_MESSAGE });
+			}
+			throw error;
+		}
+	},
+
 	savePresensiSettings: async ({ request, locals }) => {
 		const sekolahId = locals.sekolah?.id ?? null;
 		if (!sekolahId) {
 			return fail(401, { fail: 'Sekolah tidak ditemukan' });
 		}
 
-		if (locals.user?.type === 'wali_asuh') {
+		if (locals.user?.type === 'user' || locals.user?.type === 'wali_asuh') {
 			return fail(403, { fail: 'Anda tidak memiliki izin untuk mengubah pengaturan presensi' });
 		}
 

@@ -6,6 +6,7 @@
 	import { showModal } from '$lib/components/global-modal.svelte';
 	import PresensiSettingsModal from '$lib/components/presensi/presensi-settings-modal.svelte';
 	import ScannerModal from '$lib/components/absen/scanner-modal.svelte';
+	import IsiSekaligusModal from '$lib/components/absen/isi-sekaligus-modal.svelte';
 	import { searchQueryMarker } from '$lib/utils';
 	import { onDestroy, onMount } from 'svelte';
 
@@ -51,9 +52,7 @@
 		no: number;
 		nama: string;
 		hadir: boolean;
-		sakit: number;
-		izin: number;
-		alfa: number;
+		keterangan: string | null;
 		updatedAt: string | null;
 	};
 
@@ -74,6 +73,7 @@
 	type PageData = {
 		page: PageState;
 		daftarMurid: KehadiranRow[];
+		semuaMurid: Array<{ id: number; nama: string; keterangan: string | null }>;
 		tableReady: boolean;
 		totalMurid: number;
 		muridCount: number;
@@ -103,10 +103,8 @@
 	let searchTimer: ReturnType<typeof setTimeout> | undefined;
 
 	let editingRowId = $state<number | null>(null);
-	let editingValues = $state<{ sakit: string; izin: string; alfa: string }>({
-		sakit: '0',
-		izin: '0',
-		alfa: '0'
+	let editingValues = $state<{ keterangan: string }>({
+		keterangan: ''
 	});
 	let editingSubmitting = $state(false);
 
@@ -120,7 +118,7 @@
 
 	$effect(() => {
 		if (editingRowId == null) {
-			editingValues = { sakit: '0', izin: '0', alfa: '0' };
+			editingValues = { keterangan: '' };
 		}
 	});
 
@@ -202,17 +200,20 @@
 		gotoPage(pageNumber);
 	}
 
-	function displayCount(value: number | null | undefined) {
+	function displayKeterangan(value: string | null | undefined) {
 		if (value == null) return '-';
-		return value;
+		const labels: Record<string, string> = {
+			sakit: 'Sakit',
+			izin: 'Izin',
+			alfa: 'Alfa'
+		};
+		return labels[value] ?? value;
 	}
 
 	function startEdit(row: KehadiranRow) {
 		editingRowId = row.id;
 		editingValues = {
-			sakit: String(row.sakit ?? 0),
-			izin: String(row.izin ?? 0),
-			alfa: String(row.alfa ?? 0)
+			keterangan: row.keterangan ?? ''
 		};
 	}
 
@@ -220,33 +221,7 @@
 		editingRowId = null;
 	}
 
-	function updateEditingValue(key: keyof typeof editingValues, value: string) {
-		const sanitized = value.replace(/[^0-9]/g, '');
-		editingValues = { ...editingValues, [key]: sanitized };
-	}
-
-	function parseEditingValue(raw: string) {
-		if (!raw.trim()) return 0;
-		const parsed = Number(raw);
-		if (!Number.isInteger(parsed) || parsed < 0) return null;
-		return parsed;
-	}
-
-	const editingNumbers = $derived.by(() => ({
-		sakit: parseEditingValue(editingValues.sakit),
-		izin: parseEditingValue(editingValues.izin),
-		alfa: parseEditingValue(editingValues.alfa)
-	}));
-
-	const editingInvalid = $derived.by(
-		() =>
-			editingRowId != null &&
-			(editingNumbers.sakit == null || editingNumbers.izin == null || editingNumbers.alfa == null)
-	);
-
-	const editingSaveDisabled = $derived.by(
-		() => editingRowId == null || editingInvalid || editingSubmitting
-	);
+	const editingSaveDisabled = $derived.by(() => editingRowId == null || editingSubmitting);
 
 	async function handleUpdateSuccess() {
 		editingRowId = null;
@@ -303,14 +278,48 @@
 				<p class="text-base-content/80 block text-sm">{kelasAktifLabel}</p>
 			{/if}
 		</div>
-		<button
-			type="button"
-			class="btn btn-primary btn-soft shadow-none max-sm:w-full"
-			onclick={openScanner}
-		>
-			<Icon name="grid" />
-			Scan QR
-		</button>
+		<div class="flex">
+			<button
+				type="button"
+				class="btn btn-primary btn-soft rounded-r-none shadow-none max-sm:w-full"
+				onclick={openScanner}
+			>
+				<Icon name="grid" />
+				Scan QR
+			</button>
+			<div class="dropdown dropdown-end">
+				<button
+					type="button"
+					tabindex="0"
+					class="btn btn-primary btn-soft rounded-l-none shadow-none"
+				>
+					<Icon name="down" />
+				</button>
+				<ul
+					tabindex="-1"
+					class="dropdown-content menu bg-base-100 border-base-300 z-50 mt-2 w-49 rounded-md border p-2 shadow-lg"
+				>
+					<li>
+						<button
+							type="button"
+							class="w-full text-left"
+							onclick={() =>
+								showModal({
+									title: 'Isi Kehadiran Sekaligus',
+									body: IsiSekaligusModal,
+									bodyProps: {
+										daftarMurid: data.semuaMurid,
+										kelasId: kelasAktif?.id ?? undefined
+									},
+									dismissible: true
+								})}
+						>
+							Isi Sekaligus
+						</button>
+					</li>
+				</ul>
+			</div>
+		</div>
 	</div>
 
 	<div class="mb-4 flex items-start justify-between gap-2 max-sm:flex-col sm:flex-row">
@@ -369,9 +378,7 @@
 						<th style="width: 50px; min-width: 40px;">No</th>
 						<th class="w-full" style="min-width: 160px;">Nama</th>
 						<th class="text-center" style="min-width: 100px;">Hadir</th>
-						<th class="text-center" style="min-width: 90px;">Sakit</th>
-						<th class="text-center" style="min-width: 90px;">Izin</th>
-						<th class="text-center" style="min-width: 90px;">Alfa</th>
+						<th class="text-center" style="min-width: 120px;">Keterangan</th>
 						<th class="text-center" style="min-width: 120px;">Aksi</th>
 					</tr>
 				</thead>
@@ -393,50 +400,21 @@
 							</td>
 							<td class="text-center">
 								{#if isEditing}
-									<input
-										class="input input-sm bg-base-200 dark:bg-base-300 w-full text-center dark:border-none"
-										type="text"
-										inputmode="numeric"
-										value={editingValues.sakit}
-										oninput={(event) =>
-											updateEditingValue('sakit', (event.currentTarget as HTMLInputElement).value)}
-										placeholder="0"
-										maxlength="3"
-									/>
+									<select
+										class="select select-sm bg-base-200 dark:bg-base-300 w-full text-center dark:border-none"
+										value={editingValues.keterangan}
+										onchange={(event) =>
+											(editingValues = {
+												keterangan: (event.currentTarget as HTMLSelectElement).value
+											})}
+									>
+										<option value="">-</option>
+										<option value="sakit">Sakit</option>
+										<option value="izin">Izin</option>
+										<option value="alfa">Alfa</option>
+									</select>
 								{:else}
-									{displayCount(murid.sakit)}
-								{/if}
-							</td>
-							<td class="text-center">
-								{#if isEditing}
-									<input
-										class="input input-sm bg-base-200 dark:bg-base-300 w-full text-center dark:border-none"
-										type="text"
-										inputmode="numeric"
-										value={editingValues.izin}
-										oninput={(event) =>
-											updateEditingValue('izin', (event.currentTarget as HTMLInputElement).value)}
-										placeholder="0"
-										maxlength="3"
-									/>
-								{:else}
-									{displayCount(murid.izin)}
-								{/if}
-							</td>
-							<td class="text-center">
-								{#if isEditing}
-									<input
-										class="input input-sm bg-base-200 dark:bg-base-300 w-full text-center dark:border-none"
-										type="text"
-										inputmode="numeric"
-										value={editingValues.alfa}
-										oninput={(event) =>
-											updateEditingValue('alfa', (event.currentTarget as HTMLInputElement).value)}
-										placeholder="0"
-										maxlength="3"
-									/>
-								{:else}
-									{displayCount(murid.alfa)}
+									{displayKeterangan(murid.keterangan)}
 								{/if}
 							</td>
 							<td>
@@ -456,9 +434,7 @@
 													value={murid.id}
 													data-submitting={submitting ? '1' : '0'}
 												/>
-												<input type="hidden" name="sakit" value={editingNumbers.sakit ?? ''} />
-												<input type="hidden" name="izin" value={editingNumbers.izin ?? ''} />
-												<input type="hidden" name="alfa" value={editingNumbers.alfa ?? ''} />
+												<input type="hidden" name="keterangan" value={editingValues.keterangan} />
 											{/snippet}
 										</FormEnhance>
 										<button

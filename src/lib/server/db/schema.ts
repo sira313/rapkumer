@@ -1020,9 +1020,7 @@ export const tableKetidakhadiranHarian = sqliteTable(
 			.references(() => tableMurid.id, { onDelete: 'cascade' })
 			.notNull(),
 		tanggal: text().notNull(),
-		sakit: int().notNull().default(0),
-		izin: int().notNull().default(0),
-		alfa: int().notNull().default(0),
+		keterangan: text(),
 		...audit
 	},
 	(table) => [uniqueIndex('ketidakhadiran_murid_tanggal_idx').on(table.muridId, table.tanggal)]
