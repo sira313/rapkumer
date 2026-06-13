@@ -7,7 +7,30 @@
 	import PresensiSettingsModal from '$lib/components/presensi/presensi-settings-modal.svelte';
 	import ScannerModal from '$lib/components/absen/scanner-modal.svelte';
 	import { searchQueryMarker } from '$lib/utils';
-	import { onDestroy } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
+
+	const hariList = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+	let waktuSekarang = $state('');
+	let intervalTimer: ReturnType<typeof setInterval> | undefined;
+
+	function updateWaktu() {
+		const now = new Date();
+		const hari = hariList[now.getDay()];
+		const tgl = String(now.getDate()).padStart(2, '0');
+		const bln = String(now.getMonth() + 1).padStart(2, '0');
+		const thn = now.getFullYear();
+		const jam = String(now.getHours()).padStart(2, '0');
+		const menit = String(now.getMinutes()).padStart(2, '0');
+		waktuSekarang = `${hari}, ${tgl}/${bln}/${thn} ${jam}:${menit}`;
+	}
+
+	onMount(() => {
+		updateWaktu();
+		intervalTimer = setInterval(updateWaktu, 60000);
+		return () => {
+			if (intervalTimer) clearInterval(intervalTimer);
+		};
+	});
 
 	type KehadiranRow = {
 		id: number;
@@ -282,6 +305,12 @@
 			<Icon name="download" />
 			Download Rekap (.xlsx)
 		</a>
+	</div>
+	<div class="mb-4 flex flex-col gap-1">
+		<p class="text-base-content/60 text-xs">{waktuSekarang}</p>
+		<p class="text-base-content/40 text-[10px]">
+			Jika waktu tidak sesuai, setel pengaturan waktu di komputer ini
+		</p>
 	</div>
 
 	<form
