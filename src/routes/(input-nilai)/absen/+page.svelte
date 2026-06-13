@@ -5,6 +5,7 @@
 	import FormEnhance from '$lib/components/form-enhance.svelte';
 	import { showModal } from '$lib/components/global-modal.svelte';
 	import PresensiSettingsModal from '$lib/components/presensi/presensi-settings-modal.svelte';
+	import ScannerModal from '$lib/components/absen/scanner-modal.svelte';
 	import { searchQueryMarker } from '$lib/utils';
 	import { onDestroy } from 'svelte';
 
@@ -230,6 +231,14 @@
 			dismissible: false
 		});
 	}
+
+	function openScanner() {
+		showModal({
+			title: 'Scan QR Absensi',
+			body: ScannerModal,
+			dismissible: false
+		});
+	}
 </script>
 
 {#if !data.tableReady}
@@ -250,10 +259,14 @@
 				<p class="text-base-content/80 block text-sm">{kelasAktifLabel}</p>
 			{/if}
 		</div>
-		<a href="#" class="btn btn-primary btn-soft shadow-none max-sm:w-full">
+		<button
+			type="button"
+			class="btn btn-primary btn-soft shadow-none max-sm:w-full"
+			onclick={openScanner}
+		>
 			<Icon name="grid" />
 			Scan QR
-		</a>
+		</button>
 	</div>
 
 	<div class="mb-4 flex items-start justify-between gap-2 max-sm:flex-col sm:flex-row">

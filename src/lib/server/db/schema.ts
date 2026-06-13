@@ -388,7 +388,8 @@ export const tableMuridRelations = relations(tableMurid, ({ one, many }) => ({
 		fields: [tableMurid.id],
 		references: [tableKeputusanMurid.muridId]
 	}),
-	muridMataPelajaran: many(tableMuridMataPelajaran)
+	muridMataPelajaran: many(tableMuridMataPelajaran),
+	absensi: many(tableAbsensi)
 }));
 
 export const tableCatatanWaliKelasRelations = relations(tableCatatanWaliKelas, ({ one }) => ({
@@ -978,5 +979,25 @@ export const tableAsesmenKeasramaanRelations = relations(tableAsesmenKeasramaan,
 	tujuan: one(tableKeasramaanTujuan, {
 		fields: [tableAsesmenKeasramaan.tujuanId],
 		references: [tableKeasramaanTujuan.id]
+	})
+}));
+
+export const tableAbsensi = sqliteTable(
+	'absensi',
+	{
+		id: int().primaryKey({ autoIncrement: true }),
+		muridId: int()
+			.references(() => tableMurid.id, { onDelete: 'cascade' })
+			.notNull(),
+		waktu: text().notNull(),
+		...audit
+	},
+	(table) => [index('absensi_murid_waktu_idx').on(table.muridId, table.waktu)]
+);
+
+export const tableAbsensiRelations = relations(tableAbsensi, ({ one }) => ({
+	murid: one(tableMurid, {
+		fields: [tableAbsensi.muridId],
+		references: [tableMurid.id]
 	})
 }));
