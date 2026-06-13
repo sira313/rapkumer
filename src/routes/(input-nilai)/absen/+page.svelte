@@ -78,6 +78,7 @@
 		totalMurid: number;
 		muridCount: number;
 		presensiSettings: PresensiSettings | null;
+		tanggal: string;
 	};
 
 	let { data }: { data: PageData } = $props();
@@ -246,6 +247,36 @@
 		});
 	}
 
+	let selectedTanggal = $state(data.tanggal);
+
+	$effect(() => {
+		selectedTanggal = data.tanggal;
+	});
+
+	const isToday = $derived.by(() => {
+		const d = new Date();
+		const y = d.getFullYear();
+		const m = String(d.getMonth() + 1).padStart(2, '0');
+		const day = String(d.getDate()).padStart(2, '0');
+		return data.tanggal === `${y}-${m}-${day}`;
+	});
+
+	function viewDate() {
+		void applyNavigation((params) => {
+			params.set('tanggal', selectedTanggal);
+			params.delete('page');
+			params.delete('q');
+		});
+	}
+
+	function resetToToday() {
+		void applyNavigation((params) => {
+			params.delete('tanggal');
+			params.delete('page');
+			params.delete('q');
+		});
+	}
+
 	function openScanner() {
 		showModal({
 			title: 'Scan QR Kehadiran',
@@ -272,22 +303,26 @@
 	<div class="mb-4 flex items-start justify-between gap-2 max-sm:flex-col sm:flex-row">
 		<div>
 			<h2 class="text-xl font-bold">
-				Kehadiran murid hari Ini - <span class="text-primary">{waktuSekarang}</span>
+				Kehadiran murid{isToday ? ' hari Ini' : ''} -
+				<span class="text-primary">{waktuSekarang}</span>
 			</h2>
 			{#if kelasAktifLabel}
 				<p class="text-base-content/80 block text-sm">{kelasAktifLabel}</p>
 			{/if}
+			{#if !isToday}
+				<p class="text-base-content/60 block text-sm">Menampilkan data tanggal {data.tanggal}</p>
+			{/if}
 		</div>
-		<div class="flex">
+		<div class="flex max-sm:w-full">
 			<button
 				type="button"
-				class="btn btn-primary btn-soft rounded-r-none shadow-none max-sm:w-full"
+				class="btn btn-primary btn-soft flex-1 rounded-r-none shadow-none max-sm:flex-1"
 				onclick={openScanner}
 			>
 				<Icon name="grid" />
 				Scan QR
 			</button>
-			<div class="dropdown dropdown-end">
+			<div class="dropdown dropdown-end max-sm:flex-none">
 				<button
 					type="button"
 					tabindex="0"
@@ -309,7 +344,8 @@
 									body: IsiSekaligusModal,
 									bodyProps: {
 										daftarMurid: data.semuaMurid,
-										kelasId: kelasAktif?.id ?? undefined
+										kelasId: kelasAktif?.id ?? undefined,
+										tanggal: data.tanggal
 									},
 									dismissible: true
 								})}
@@ -323,15 +359,43 @@
 	</div>
 
 	<div class="mb-4 flex items-start justify-between gap-2 max-sm:flex-col sm:flex-row">
-		<button
-			type="button"
-			class="btn btn-soft shadow-none max-sm:w-full"
-			onclick={openPresensiSettings}
-		>
-			<Icon name="gear" />
-			Pengaturan Presensi
-		</button>
-		<a href="#" class="btn btn-soft shadow-none max-sm:w-full">
+		<div class="flex flex-wrap items-center gap-2 max-sm:w-full">
+			<button
+				type="button"
+				class="btn btn-soft shadow-none max-sm:w-full"
+				onclick={openPresensiSettings}
+			>
+				<Icon name="gear" />
+				Pengaturan Presensi
+			</button>
+			<div class="flex flex-row max-sm:w-full">
+				<input
+					type="date"
+					class="input bg-base-200 dark:bg-base-300 w-full rounded-r-none max-sm:w-full dark:border-none"
+					bind:value={selectedTanggal}
+				/>
+				<button
+					type="button"
+					class="btn btn-soft rounded-none shadow-none"
+					aria-label="Lihat presensi"
+					title="Lihat presensi"
+					onclick={viewDate}
+				>
+					<Icon name="eye" />
+				</button>
+				<button
+					type="button"
+					class="btn btn-soft rounded-l-none shadow-none"
+					aria-label="reset"
+					title="reset"
+					onclick={resetToToday}
+					disabled={isToday}
+				>
+					<Icon name="repeat" />
+				</button>
+			</div>
+		</div>
+		<a href="#" class="btn btn-soft shadow-none max-sm:w-full sm:w-auto">
 			<Icon name="download" />
 			Download Rekap (.xlsx)
 		</a>
@@ -435,6 +499,7 @@
 													data-submitting={submitting ? '1' : '0'}
 												/>
 												<input type="hidden" name="keterangan" value={editingValues.keterangan} />
+												<input type="hidden" name="tanggal" value={data.tanggal} />
 											{/snippet}
 										</FormEnhance>
 										<button

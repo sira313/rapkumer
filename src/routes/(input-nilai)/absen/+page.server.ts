@@ -31,6 +31,13 @@ function todayDateString() {
 	return `${y}-${m}-${day}`;
 }
 
+function isValidDate(s: string): boolean {
+	if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+	const [y, m, d] = s.split('-').map(Number);
+	const date = new Date(y, m - 1, d);
+	return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d;
+}
+
 type KehadiranRow = {
 	id: number;
 	no: number;
@@ -65,6 +72,8 @@ export async function load({ parent, locals, url, depends }) {
 	const requestedPage = Number(url.searchParams.get('page')) || 1;
 	const pageNumber =
 		Number.isFinite(requestedPage) && requestedPage > 0 ? Math.floor(requestedPage) : 1;
+	const tanggalParam = url.searchParams.get('tanggal');
+	const tanggal = tanggalParam && isValidDate(tanggalParam) ? tanggalParam : todayDateString();
 
 	const defaultPage: PageState = {
 		search,
@@ -81,7 +90,8 @@ export async function load({ parent, locals, url, depends }) {
 			page: defaultPage,
 			totalMurid: 0,
 			muridCount: 0,
-			presensiSettings: null
+			presensiSettings: null,
+			tanggal
 		};
 	}
 
@@ -130,11 +140,8 @@ export async function load({ parent, locals, url, depends }) {
 	});
 	const presensiSettings = presensiSettingsRecord ?? null;
 
-	const todayStart = new Date();
-	todayStart.setHours(0, 0, 0, 0);
-	const todayEnd = new Date();
-	todayEnd.setHours(23, 59, 59, 999);
-	const tanggal = todayDateString();
+	const todayStart = new Date(tanggal + 'T00:00:00');
+	const todayEnd = new Date(tanggal + 'T23:59:59.999');
 
 	let queryRecords: QueryRecord[] = [];
 	let tableReady = true;
@@ -241,7 +248,8 @@ export async function load({ parent, locals, url, depends }) {
 		semuaMurid,
 		totalMurid: total,
 		muridCount: muridCount ?? 0,
-		presensiSettings
+		presensiSettings,
+		tanggal
 	};
 }
 
@@ -257,6 +265,8 @@ export const actions = {
 		}
 
 		const formData = await request.formData();
+		const tanggalRaw = formData.get('tanggal')?.toString() ?? '';
+		const tanggal = isValidDate(tanggalRaw) ? tanggalRaw : todayDateString();
 		const muridIdRaw = formData.get('muridId');
 
 		if (!muridIdRaw) {
@@ -285,7 +295,7 @@ export const actions = {
 				.insert(tableKetidakhadiranHarian)
 				.values({
 					muridId,
-					tanggal: todayDateString(),
+					tanggal,
 					keterangan
 				})
 				.onConflictDoUpdate({
@@ -302,7 +312,7 @@ export const actions = {
 			throw error;
 		}
 
-		return { message: 'Ketidakhadiran hari ini berhasil diperbarui' };
+		return { message: 'Ketidakhadiran berhasil diperbarui' };
 	},
 
 	isiSekaligus: async ({ request, locals }) => {
@@ -316,6 +326,8 @@ export const actions = {
 		}
 
 		const formData = await request.formData();
+		const tanggalRaw = formData.get('tanggal')?.toString() ?? '';
+		const tanggal = isValidDate(tanggalRaw) ? tanggalRaw : todayDateString();
 		const mode = formData.get('mode')?.toString();
 
 		if (!mode || !['hadir_semua', 'selected'].includes(mode)) {
@@ -328,12 +340,10 @@ export const actions = {
 			return fail(400, { fail: 'Kelas tidak ditemukan' });
 		}
 
-		const tanggal = todayDateString();
 		const now = new Date().toISOString();
-		const todayStart = new Date();
-		todayStart.setHours(0, 0, 0, 0);
-		const todayEnd = new Date();
-		todayEnd.setHours(23, 59, 59, 999);
+		const todayStart = new Date(tanggal + 'T00:00:00');
+		const todayEnd = new Date(tanggal + 'T23:59:59.999');
+		const absensiWaktu = tanggal === todayDateString() ? now : todayStart.toISOString();
 
 		try {
 			const semuaMurid = await db.query.tableMurid.findMany({
@@ -360,7 +370,7 @@ export const actions = {
 						)
 					});
 					if (!existingAbsensi) {
-						await db.insert(tableAbsensi).values({ muridId: murid.id, waktu: now });
+						await db.insert(tableAbsensi).values({ muridId: murid.id, waktu: absensiWaktu });
 					}
 				}
 

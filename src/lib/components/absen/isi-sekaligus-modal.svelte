@@ -12,10 +12,12 @@
 
 	let {
 		daftarMurid,
-		kelasId = 0
+		kelasId = 0,
+		tanggal
 	}: {
 		daftarMurid: MuridItem[];
 		kelasId?: number;
+		tanggal: string;
 	} = $props();
 
 	let step = $state<'pilih-mode' | 'pilih-murid'>('pilih-mode');
@@ -102,6 +104,7 @@
 			const fd = new FormData();
 			fd.set('mode', 'hadir_semua');
 			fd.set('kelasId', String(kelasId));
+			fd.set('tanggal', tanggal);
 			const res = await fetch('?/isiSekaligus', { method: 'POST', body: fd, redirect: 'error' });
 			if (!res.ok) {
 				const err = await res.json().catch(() => ({ fail: 'Gagal menyimpan' }));
@@ -126,6 +129,7 @@
 			const fd = new FormData();
 			fd.set('mode', 'selected');
 			fd.set('kelasId', String(kelasId));
+			fd.set('tanggal', tanggal);
 			fd.set('entries', JSON.stringify(entries));
 			const res = await fetch('?/isiSekaligus', { method: 'POST', body: fd, redirect: 'error' });
 			if (!res.ok) {
@@ -180,7 +184,9 @@
 			/>
 		</label>
 
-		<div class="bg-base-100 dark:bg-base-200 max-h-80 overflow-y-auto rounded-md shadow-md dark:shadow-none">
+		<div
+			class="bg-base-100 dark:bg-base-200 max-h-80 overflow-y-auto rounded-md shadow-md dark:shadow-none"
+		>
 			<table class="border-base-200 table border dark:border-none">
 				<thead>
 					<tr class="bg-base-200 dark:bg-base-300 text-base-content text-left font-bold">
@@ -204,7 +210,7 @@
 								<input
 									type="checkbox"
 									class="checkbox checkbox-sm"
-									checked={checked}
+									{checked}
 									onclick={() => toggleSelect(murid.id)}
 								/>
 							</td>
@@ -214,7 +220,8 @@
 									<select
 										class="select select-sm bg-base-200 dark:bg-base-300 w-full text-center dark:border-none"
 										value={keteranganMap[murid.id] || 'alfa'}
-										onchange={(e) => setKeterangan(murid.id, (e.currentTarget as HTMLSelectElement).value)}
+										onchange={(e) =>
+											setKeterangan(murid.id, (e.currentTarget as HTMLSelectElement).value)}
 									>
 										<option value="sakit">Sakit</option>
 										<option value="izin">Izin</option>
