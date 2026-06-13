@@ -11,7 +11,10 @@ type KartuMuridContext = {
 	url: URL;
 };
 
-export async function getKartuMuridPreviewPayload({ locals, url }: KartuMuridContext) {
+export async function getKartuMuridPreviewPayload(
+	{ locals, url }: KartuMuridContext,
+	logoOverride?: string | null
+) {
 	const sekolah = locals.sekolah;
 	if (!sekolah?.id) {
 		throw error(404, 'Sekolah tidak ditemukan.');
@@ -33,11 +36,11 @@ export async function getKartuMuridPreviewPayload({ locals, url }: KartuMuridCon
 		throw error(404, 'Data murid tidak ditemukan.');
 	}
 
-	const logo = await getLogoSrc(sekolah.id);
+	const logo = logoOverride !== undefined ? logoOverride : await getLogoSrc(sekolah.id);
 
 	const qrText = `Nama: ${murid.nama}\nNISN: ${murid.nisn}`;
-	const qrSvg = await QRCode.toString(qrText, { type: 'svg', margin: 1 });
-	const qrDataUri = `data:image/svg+xml;base64,${Buffer.from(qrSvg, 'utf-8').toString('base64')}`;
+	const qrRaw = await QRCode.toString(qrText, { type: 'svg', margin: 0 });
+	const qrDataUri = `data:image/svg+xml;base64,${Buffer.from(qrRaw, 'utf-8').toString('base64')}`;
 
 	const kartuMuridData: KartuMuridData = {
 		murid: {

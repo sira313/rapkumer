@@ -6,6 +6,7 @@ import { getBiodataPreviewPayload } from '../../../cetak/biodata/preview-data';
 import { getKeasramaanPreviewPayload } from '../../../cetak/keasramaan/preview-data';
 import { getPiagamPreviewPayload } from '../../../cetak/piagam/preview-data';
 import { getKartuMuridPreviewPayload } from '../../../cetak/kartu-murid/preview-data';
+import { getLogoSrc } from '$lib/server/pdf/preview-utils';
 
 import {
 	renderKartuMuridBulkHTML,
@@ -66,10 +67,6 @@ async function fetchStudentData(
 			const p = await getPiagamPreviewPayload({ locals, url });
 			return p.piagamData as unknown as Record<string, unknown>;
 		}
-		case 'kartu-murid': {
-			const p = await getKartuMuridPreviewPayload({ locals, url });
-			return p.kartuMuridData as unknown as Record<string, unknown>;
-		}
 		default:
 			throw error(400, `Unknown document type: ${body.docType}`);
 	}
@@ -82,12 +79,22 @@ export const POST = (async ({ locals, request }) => {
 		throw error(400, 'Parameter docType dan muridIds wajib diisi.');
 	}
 
-	const allData = await Promise.all(
-		body.muridIds.map((muridId) => fetchStudentData(locals, body, muridId))
-	);
-
 	if (body.docType === 'kartu-murid') {
-		const html = renderKartuMuridBulkHTML(allData as unknown as KartuMuridData[]);
+		const sekolahId = locals.sekolah?.id;
+		const sharedLogo = sekolahId ? await getLogoSrc(sekolahId) : null;
+
+		const kartuData = await Promise.all(
+			body.muridIds.map(async (muridId) => {
+				const url = new URL('http://localhost');
+				url.searchParams.set('murid_id', String(muridId));
+				if (body.kelasId) url.searchParams.set('kelas_id', String(body.kelasId));
+
+				const p = await getKartuMuridPreviewPayload({ locals, url }, sharedLogo);
+				return p.kartuMuridData as KartuMuridData;
+			})
+		);
+
+		const html = renderKartuMuridBulkHTML(kartuData);
 		const pdfBuffer = await renderPDF(html);
 
 		const docLabel = body.docLabel || body.docType;
@@ -100,6 +107,10 @@ export const POST = (async ({ locals, request }) => {
 			}
 		});
 	}
+
+	const allData = await Promise.all(
+		body.muridIds.map((muridId) => fetchStudentData(locals, body, muridId))
+	);
 
 	const items = allData.map((data) => ({
 		docType: body.docType,

@@ -51,9 +51,19 @@ function cardRow(m: KartuMuridData): string {
 const cardStyles = `
 .kr-row {
 	display: flex;
-	gap: 12px;
+	gap: 20px;
 	align-items: center;
 	justify-content: center;
+}
+
+.kr-page-fold {
+	position: fixed;
+	left: 50%;
+	top: 0;
+	bottom: 0;
+	border-left: 1px dashed #94a3b8;
+	pointer-events: none;
+	z-index: 1000;
 }
 
 .kr-card {
@@ -62,7 +72,6 @@ const cardStyles = `
 	border: 1px solid #d1d5db;
 	border-radius: 8px;
 	background: #fff;
-	box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);
 	overflow: hidden;
 	flex-shrink: 0;
 }
@@ -92,6 +101,7 @@ const cardStyles = `
 	width: 26mm;
 	aspect-ratio: 1 / 1;
 	object-fit: contain;
+	padding: 4px;
 	border: 2px solid #000;
 	border-radius: 8px;
 }
@@ -180,6 +190,7 @@ body {
 	justify-content: center;
 	align-items: center;
 	min-height: 100%;
+	position: relative;
 }
 
 .page-break {
@@ -188,6 +199,7 @@ body {
 </style>
 </head>
 <body>
+	<div class="kr-page-fold"></div>
 	${cardRow(data)}
 </body>
 </html>`;
@@ -208,6 +220,7 @@ body {
 	font-family: Helvetica, Arial, sans-serif;
 	font-size: 12pt;
 	color: #000;
+	position: relative;
 }
 
 .kr-grid {
@@ -223,6 +236,7 @@ body {
 </style>
 </head>
 <body>
+	<div class="kr-page-fold"></div>
 	<div class="kr-grid">
 		${rows}
 	</div>
