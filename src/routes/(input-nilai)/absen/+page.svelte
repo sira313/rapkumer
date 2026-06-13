@@ -7,6 +7,7 @@
 	import PresensiSettingsModal from '$lib/components/presensi/presensi-settings-modal.svelte';
 	import ScannerModal from '$lib/components/absen/scanner-modal.svelte';
 	import IsiSekaligusModal from '$lib/components/absen/isi-sekaligus-modal.svelte';
+	import DownloadRekapModal from '$lib/components/absen/download-rekap-modal.svelte';
 	import { searchQueryMarker } from '$lib/utils';
 	import { onDestroy, onMount } from 'svelte';
 
@@ -277,6 +278,14 @@
 		});
 	}
 
+	function openDownloadRekap() {
+		showModal({
+			title: 'Download Rekap Kehadiran',
+			body: DownloadRekapModal,
+			dismissible: true
+		});
+	}
+
 	function openScanner() {
 		showModal({
 			title: 'Scan QR Kehadiran',
@@ -395,10 +404,14 @@
 				</button>
 			</div>
 		</div>
-		<a href="#" class="btn btn-soft shadow-none max-sm:w-full sm:w-auto">
+		<button
+			type="button"
+			class="btn btn-soft shadow-none max-sm:w-full sm:w-auto"
+			onclick={openDownloadRekap}
+		>
 			<Icon name="download" />
 			Download Rekap (.xlsx)
-		</a>
+		</button>
 	</div>
 
 	<form
