@@ -6,6 +6,7 @@ import { getRaporPreviewPayload } from '../../../rapor/preview-data';
 import { getBiodataPreviewPayload } from '../../../biodata/preview-data';
 import { getKeasramaanPreviewPayload } from '../../../keasramaan/preview-data';
 import { getPiagamPreviewPayload } from '../../../piagam/preview-data';
+import { getKartuMuridPreviewPayload } from '../../../kartu-murid/preview-data';
 import type { RequestHandler } from './$types';
 import type { DocumentType } from '$lib/server/pdf/generate';
 
@@ -53,6 +54,11 @@ export const GET = (async ({ locals, params }) => {
 		case 'piagam': {
 			const p = await getPiagamPreviewPayload({ locals, url });
 			data = p.piagamData;
+			break;
+		}
+		case 'kartu-murid': {
+			const p = await getKartuMuridPreviewPayload({ locals, url });
+			data = p.kartuMuridData;
 			break;
 		}
 		default:

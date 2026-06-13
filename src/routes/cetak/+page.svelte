@@ -26,7 +26,8 @@
 			{ value: 'biodata', label: 'Biodata' },
 			{ value: 'rapor', label: 'Rapor' },
 			{ value: 'piagam', label: 'Piagam' },
-			{ value: 'keasramaan', label: 'Rapor Keasramaan' }
+			{ value: 'keasramaan', label: 'Rapor Keasramaan' },
+			{ value: 'kartu-murid', label: 'Kartu Murid' }
 		];
 		if (userType === 'wali_asuh') {
 			return all.filter((o) => o.value === 'keasramaan');

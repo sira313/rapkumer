@@ -8,8 +8,9 @@ import { renderRaporHTML } from './templates/rapor';
 import { renderBiodataHTML } from './templates/biodata';
 import { renderKeasramaanHTML } from './templates/keasramaan';
 import { renderPiagamHTML } from './templates/piagam';
+import { renderKartuMuridHTML } from './templates/kartu-murid';
 
-export type DocumentType = 'cover' | 'rapor' | 'biodata' | 'keasramaan' | 'piagam';
+export type DocumentType = 'cover' | 'rapor' | 'biodata' | 'keasramaan' | 'piagam' | 'kartu-murid';
 
 export function renderHTML(
 	docType: DocumentType,
@@ -27,6 +28,8 @@ export function renderHTML(
 			return renderKeasramaanHTML(data as never);
 		case 'piagam':
 			return renderPiagamHTML(data as never, template ?? '1');
+		case 'kartu-murid':
+			return renderKartuMuridHTML(data as never);
 		default:
 			throw new Error(`Unknown document type: ${docType}`);
 	}

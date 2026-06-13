@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Icon from '$lib/components/icon.svelte';
 
-	type DocumentType = 'cover' | 'biodata' | 'rapor' | 'piagam' | 'keasramaan';
+	type DocumentType = 'cover' | 'biodata' | 'rapor' | 'piagam' | 'keasramaan' | 'kartu-murid';
 	type RaporPeriode = 'rts' | 'ras';
 
 	type MuridData = {
@@ -96,7 +96,7 @@
 	{#if isPiagamSelected}
 		<div class="min-w-0 flex-1">
 			<select
-				class="select bg-base-200 w-full min-w-0 max-w-30 dark:border-none"
+				class="select bg-base-200 w-full max-w-30 min-w-0 dark:border-none"
 				bind:value={selectedTemplate}
 				title="Pilih template piagam"
 			>

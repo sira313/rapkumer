@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Icon from '$lib/components/icon.svelte';
 
-	type DocumentType = 'cover' | 'biodata' | 'rapor' | 'piagam' | 'keasramaan';
+	type DocumentType = 'cover' | 'biodata' | 'rapor' | 'piagam' | 'keasramaan' | 'kartu-murid';
 
 	type PreviewPayload = {
 		meta?: { title?: string | null } | null;
@@ -10,6 +10,7 @@
 		raporData?: NonNullable<App.PageData['raporData']> | null;
 		piagamData?: NonNullable<App.PageData['piagamData']> | null;
 		keasramaanData?: NonNullable<App.PageData['keasramaanData']> | null;
+		kartuMuridData?: NonNullable<App.PageData['kartuMuridData']> | null;
 	};
 
 	let {

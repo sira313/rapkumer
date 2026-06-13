@@ -38,6 +38,7 @@
 		"@tailwindcss/typography": "^0.5.19",
 		"@tailwindcss/vite": "^4.3.0",
 		"@types/node": "^25.9.1",
+		"@types/qrcode": "^1.5.6",
 		"daisyui": "^5.5.20",
 		"drizzle-kit": "^0.31.10",
 		"eslint": "^9.39.4",
@@ -64,6 +65,7 @@
 		"pagedjs-cli": "^0.4.3",
 		"pdf-lib": "^1.17.1",
 		"puppeteer-core": "^25.1.0",
+		"qrcode": "^1.5.4",
 		"unzipper": "^0.12.3"
 	}
 }
