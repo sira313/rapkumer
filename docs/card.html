@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Kartu Absen - Budi Budiman - X.A</title>
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+
+<body>
+  <div class="hero bg-base-300 min-h-screen">
+    <div class="hero-content">
+      <!-- simulasi ukuran kertas dengan card -->
+      <div class="card bg-base-100 shadow-xl w-[210mm]">
+        <!-- simulasi margin kertas dengan card-body -->
+        <div class="card-body">
+          <div class="flex flex-col gap-4">
+
+            <!-- kartu nama -->
+            <div class="flex gap-4">
+              <div class="card border border-base-300 bg-base-100 shadow-xl w-[85.6mm] h-[53.98mm]">
+                <div class="p-2 grid grid-cols-[auto_auto_1fr] gap-0 h-full">
+                  <div class="flex items-center justify-center p-1">
+                    <!-- qr yang berisi data "Nama" dan "NISN" (fallback ke NIS) -->
+                    <img src="../static/sampleqr.svg" alt="QR" class="w-[30mm] aspect-square object-contain border-2 border-black rounded-lg" />
+                  </div>
+                  <div class="divider divider-horizontal mx-0 my-auto h-20 divider-error"></div>
+                  <div class="flex flex-col justify-center items-start p-2 text-[6px] leading-tight">
+                    <!-- nama murid -->
+                    <span class="font-bold text-[14px] text-error">Aris Wira Pratama</span>
+                    <!-- nama sekolah -->
+                    <span class="text-[10px]">SD Negeri 19 Periji</span>
+                    <!-- NISN / NIS -->
+                    <span class="text-[9px] mt-4">43984 / 4334</span>
+                  </div>
+                </div>
+              </div>
+              <div class="card border border-base-300 bg-base-100 shadow-xl w-[85.6mm] h-[53.98mm]">
+                <div class="card-body p-2 flex-col justify-center items-center gap-1">
+                  <!-- logo sekolah fallback ke tutwuri.png -->
+                  <img src="../static/tutwuri.png" alt="Tut Wuri" class="w-[20mm] object-contain" />
+                  <!-- nama sekolah -->
+                  <span class="text-[12px] font-bold">SD Negeri 19 Periji</span>
+                </div>
+              </div>
+            </div>
+            
+          </div>
+        </div>
+      </div>
+    </div>
+</body>
+
+</html>
