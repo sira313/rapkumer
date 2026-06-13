@@ -163,7 +163,7 @@ export async function load({ parent, locals, url, depends }) {
 	};
 
 	return {
-		meta: { title: 'Rekap Kehadiran Murid' } satisfies PageMeta,
+		meta: { title: 'Kehadiran Murid' } satisfies PageMeta,
 		tableReady,
 		page: pageState,
 		daftarMurid: rows,

@@ -218,11 +218,28 @@
 {/if}
 
 <div class="card bg-base-100 rounded-lg border border-none p-4 shadow-md">
-	<div class="mb-4">
-		<h2 class="text-xl font-bold">Rekapitulasi Kehadiran Murid</h2>
-		{#if kelasAktifLabel}
-			<p class="text-base-content/80 block text-sm">{kelasAktifLabel}</p>
-		{/if}
+	<div class="mb-4 flex items-start justify-between max-sm:flex-col sm:flex-row gap-2">
+		<div>
+			<h2 class="text-xl font-bold">Rekapitulasi Kehadiran Murid</h2>
+			{#if kelasAktifLabel}
+				<p class="text-base-content/80 block text-sm">{kelasAktifLabel}</p>
+			{/if}
+		</div>
+		<a href="#" class="btn btn-primary btn-soft shadow-none max-sm:w-full">
+			<Icon name="grid" />
+			Scan QR
+		</a>
+	</div>
+
+	<div class="mb-4 flex items-start justify-between max-sm:flex-col sm:flex-row gap-2">
+		<a href="#" class="btn btn-soft shadow-none max-sm:w-full">
+			<Icon name="gear" />
+			Pengaturan Presensi
+		</a>
+		<a href="#" class="btn btn-soft shadow-none max-sm:w-full">
+			<Icon name="download" />
+			Download Rekap (.xlsx)
+		</a>
 	</div>
 
 	<form
