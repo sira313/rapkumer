@@ -42,7 +42,9 @@ export const load = (async (event) => {
 		});
 		const pegNama = peg?.nama?.trim().toLowerCase();
 		if (pegNama) {
-			daftarMurid = daftarMurid.filter((m) => (m.waliAsuhNama?.trim().toLowerCase() ?? '') === pegNama);
+			daftarMurid = daftarMurid.filter(
+				(m) => (m.waliAsuhNama?.trim().toLowerCase() ?? '') === pegNama
+			);
 		} else {
 			daftarMurid = [];
 		}

@@ -1,5 +1,10 @@
 import db from '$lib/server/db';
-import { tableAsesmenKeasramaan, tableKeasramaan, tableMurid, tablePegawai } from '$lib/server/db/schema';
+import {
+	tableAsesmenKeasramaan,
+	tableKeasramaan,
+	tableMurid,
+	tablePegawai
+} from '$lib/server/db/schema';
 import {
 	ekstrakurikulerNilaiLabelByValue,
 	buildKeasramaanDeskripsi,

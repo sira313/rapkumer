@@ -1,26 +1,41 @@
 import db from '$lib/server/db';
-import { tableKehadiranMurid, tableMurid, tablePresensiSettings } from '$lib/server/db/schema';
+import {
+	tableAbsensi,
+	tableKetidakhadiranHarian,
+	tableMurid,
+	tablePresensiSettings
+} from '$lib/server/db/schema';
+import { ensureAbsensiSchema } from '$lib/server/db/ensure-absensi';
+import { ensureKetidakhadiranHarianSchema } from '$lib/server/db/ensure-ketidakhadiran-harian';
 import { ensurePresensiSettingsSchema } from '$lib/server/db/ensure-presensi-settings';
 import { fail, redirect } from '@sveltejs/kit';
 import { and, asc, eq, sql } from 'drizzle-orm';
-// authority() permission helper removed from this module
 
 const PER_PAGE = 20;
 const TABLE_MISSING_MESSAGE =
-	'Tabel kehadiran murid belum tersedia. Jalankan "pnpm db:push" untuk menerapkan migrasi terbaru.';
+	'Tabel ketidakhadiran harian belum tersedia. Jalankan "pnpm db:push" untuk menerapkan migrasi terbaru.';
 
 function isTableMissingError(error: unknown) {
 	return (
 		error instanceof Error &&
 		error.message.includes('no such table') &&
-		error.message.includes('kehadiran_murid')
+		(error.message.includes('ketidakhadiran_harian') || error.message.includes('absensi'))
 	);
+}
+
+function todayDateString() {
+	const d = new Date();
+	const y = d.getFullYear();
+	const m = String(d.getMonth() + 1).padStart(2, '0');
+	const day = String(d.getDate()).padStart(2, '0');
+	return `${y}-${m}-${day}`;
 }
 
 type KehadiranRow = {
 	id: number;
 	no: number;
 	nama: string;
+	hadir: boolean;
 	sakit: number;
 	izin: number;
 	alfa: number;
@@ -38,10 +53,11 @@ type PageState = {
 export async function load({ parent, locals, url, depends }) {
 	depends('app:absen');
 
-	// Permission 'nilai_absen' removed — require authenticated user only
 	if (!locals.user) throw redirect(303, '/login');
 
 	await ensurePresensiSettingsSchema();
+	await ensureAbsensiSchema();
+	await ensureKetidakhadiranHarianSchema();
 
 	const { kelasAktif } = await parent();
 	const sekolahId = locals.sekolah?.id ?? null;
@@ -105,13 +121,22 @@ export async function load({ parent, locals, url, depends }) {
 	}
 
 	type MuridMinimal = Pick<typeof tableMurid.$inferSelect, 'id' | 'nama'>;
-	type KehadiranMinimal = typeof tableKehadiranMurid.$inferSelect;
-	type QueryRecord = MuridMinimal & { kehadiran: KehadiranMinimal | null };
+	type KetidakhadiranMinimal = typeof tableKetidakhadiranHarian.$inferSelect;
+	type QueryRecord = MuridMinimal & {
+		ketidakhadiranHarian: KetidakhadiranMinimal[];
+		absensi: { id: number }[];
+	};
 
 	const presensiSettingsRecord = await db.query.tablePresensiSettings.findFirst({
 		where: eq(tablePresensiSettings.sekolahId, sekolahId)
 	});
 	const presensiSettings = presensiSettingsRecord ?? null;
+
+	const todayStart = new Date();
+	todayStart.setHours(0, 0, 0, 0);
+	const todayEnd = new Date();
+	todayEnd.setHours(23, 59, 59, 999);
+	const tanggal = todayDateString();
 
 	let queryRecords: QueryRecord[] = [];
 	let tableReady = true;
@@ -120,16 +145,26 @@ export async function load({ parent, locals, url, depends }) {
 		queryRecords = await db.query.tableMurid.findMany({
 			columns: { id: true, nama: true },
 			with: {
-				kehadiran: {
+				ketidakhadiranHarian: {
 					columns: {
 						id: true,
 						muridId: true,
+						tanggal: true,
 						sakit: true,
 						izin: true,
 						alfa: true,
 						createdAt: true,
 						updatedAt: true
-					}
+					},
+					where: eq(tableKetidakhadiranHarian.tanggal, tanggal)
+				},
+				absensi: {
+					columns: { id: true },
+					where: and(
+						sql`${tableAbsensi.waktu} >= ${todayStart.toISOString()}`,
+						sql`${tableAbsensi.waktu} <= ${todayEnd.toISOString()}`
+					),
+					limit: 1
 				}
 			},
 			where: searchFilter,
@@ -147,21 +182,29 @@ export async function load({ parent, locals, url, depends }) {
 				limit: PER_PAGE,
 				offset
 			});
-			queryRecords = fallbackRecords.map((record) => ({ ...record, kehadiran: null }));
+			queryRecords = fallbackRecords.map((record) => ({
+				...record,
+				ketidakhadiranHarian: [],
+				absensi: []
+			}));
 		} else {
 			throw error;
 		}
 	}
 
-	const rows: KehadiranRow[] = queryRecords.map((murid, index) => ({
-		id: murid.id,
-		no: offset + index + 1,
-		nama: murid.nama,
-		sakit: murid.kehadiran?.sakit ?? 0,
-		izin: murid.kehadiran?.izin ?? 0,
-		alfa: murid.kehadiran?.alfa ?? 0,
-		updatedAt: murid.kehadiran?.updatedAt ?? murid.kehadiran?.createdAt ?? null
-	}));
+	const rows: KehadiranRow[] = queryRecords.map((murid, index) => {
+		const kh = murid.ketidakhadiranHarian?.[0] ?? null;
+		return {
+			id: murid.id,
+			no: offset + index + 1,
+			nama: murid.nama,
+			hadir: murid.absensi.length > 0,
+			sakit: kh?.sakit ?? 0,
+			izin: kh?.izin ?? 0,
+			alfa: kh?.alfa ?? 0,
+			updatedAt: kh?.updatedAt ?? kh?.createdAt ?? null
+		};
+	});
 
 	const pageState: PageState = {
 		search,
@@ -229,15 +272,16 @@ export const actions = {
 
 		try {
 			await db
-				.insert(tableKehadiranMurid)
+				.insert(tableKetidakhadiranHarian)
 				.values({
 					muridId,
+					tanggal: todayDateString(),
 					sakit,
 					izin,
 					alfa
 				})
 				.onConflictDoUpdate({
-					target: tableKehadiranMurid.muridId,
+					target: [tableKetidakhadiranHarian.muridId, tableKetidakhadiranHarian.tanggal],
 					set: {
 						sakit,
 						izin,
@@ -252,7 +296,7 @@ export const actions = {
 			throw error;
 		}
 
-		return { message: 'Rekap kehadiran murid berhasil diperbarui' };
+		return { message: 'Ketidakhadiran hari ini berhasil diperbarui' };
 	},
 
 	savePresensiSettings: async ({ request, locals }) => {

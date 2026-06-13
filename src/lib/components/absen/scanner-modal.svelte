@@ -4,6 +4,8 @@
 	import { toast } from '$lib/components/toast.svelte';
 	import { hideModal } from '$lib/components/global-modal.svelte';
 
+	let { onscan }: { onscan?: () => void } = $props();
+
 	let videoEl: HTMLVideoElement;
 	let canvasEl: HTMLCanvasElement;
 	let stream: MediaStream | null = null;
@@ -79,6 +81,7 @@
 			const result = await res.json();
 			if (res.ok) {
 				toast({ message: result.message, type: 'success' });
+				onscan?.();
 			} else if (res.status === 409) {
 				toast({ message: result.error, type: 'warning' });
 			} else {

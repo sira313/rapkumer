@@ -54,7 +54,9 @@ export async function load({ url, locals, cookies }) {
 				const rows = await db
 					.selectDistinct({ kelasId: tableMurid.kelasId })
 					.from(tableMurid)
-					.where(sql`LOWER(trim(${tableMurid.waliAsuhNama})) = ${pegNamaLower} AND ${tableMurid.kelasId} IS NOT NULL`);
+					.where(
+						sql`LOWER(trim(${tableMurid.waliAsuhNama})) = ${pegNamaLower} AND ${tableMurid.kelasId} IS NOT NULL`
+					);
 
 				const kelasIds = rows.map((r) => r.kelasId).filter((id): id is number => id != null);
 				if (kelasIds.length > 0) {
@@ -62,7 +64,10 @@ export async function load({ url, locals, cookies }) {
 						columns: { id: true, nama: true, fase: true },
 						with: { waliKelas: { columns: { id: true, nama: true } } },
 						where: academicContext?.activeSemesterId
-							? and(inArray(tableKelas.id, kelasIds), eq(tableKelas.semesterId, academicContext.activeSemesterId))
+							? and(
+									inArray(tableKelas.id, kelasIds),
+									eq(tableKelas.semesterId, academicContext.activeSemesterId)
+								)
 							: inArray(tableKelas.id, kelasIds),
 						orderBy: asc(tableKelas.nama)
 					});

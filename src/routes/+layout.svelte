@@ -189,7 +189,9 @@
 <NavIndicator />
 
 <style>
-	:global(.is-readonly :is(button, input, select, textarea, a, [role='button']):not(.pointer-events-auto)) {
+	:global(
+		.is-readonly :is(button, input, select, textarea, a, [role='button']):not(.pointer-events-auto)
+	) {
 		opacity: var(--btn-disabled-opacity, 0.5) !important;
 		cursor: not-allowed !important;
 		pointer-events: none !important;

@@ -441,7 +441,7 @@
 								<td>
 									<div class="flex flex-row">
 										<a
-											class="btn btn-sm btn-soft rounded-r-none shadow-none pointer-events-auto"
+											class="btn btn-sm btn-soft pointer-events-auto rounded-r-none shadow-none"
 											href="/murid/{murid.id}"
 											use:modalRoute={'detail-murid'}
 											title="Lihat detail murid"

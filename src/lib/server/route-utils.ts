@@ -79,7 +79,11 @@ export async function getKelasContextForUser(
 			columns: { nama: true },
 			where: eq(tablePegawai.id, user.pegawaiId)
 		});
-		if (peg?.nama && student.waliAsuhNama && student.waliAsuhNama.toLowerCase() === peg.nama.toLowerCase()) {
+		if (
+			peg?.nama &&
+			student.waliAsuhNama &&
+			student.waliAsuhNama.toLowerCase() === peg.nama.toLowerCase()
+		) {
 			return { hasAccess: true };
 		}
 	}
@@ -131,10 +135,22 @@ export async function fetchMuridList(
 		kelasId ? eq(tableMurid.kelasId, Number(kelasId)) : inArray(tableMurid.kelasId, kelasIds)
 	);
 	return db.query.tableMurid.findMany({
-		columns: { id: true, nama: true, nis: true, nisn: true, waliAsuhNama: true } satisfies MuridColumn,
+		columns: {
+			id: true,
+			nama: true,
+			nis: true,
+			nisn: true,
+			waliAsuhNama: true
+		} satisfies MuridColumn,
 		where: filter,
 		orderBy: asc(tableMurid.nama)
 	}) as Promise<
-		Array<{ id: number; nama: string; nis: string | null; nisn: string | null; waliAsuhNama: string | null }>
+		Array<{
+			id: number;
+			nama: string;
+			nis: string | null;
+			nisn: string | null;
+			waliAsuhNama: string | null;
+		}>
 	>;
 }

@@ -1,5 +1,14 @@
 import { relations } from 'drizzle-orm';
-import { blob, index, int, real, sqliteTable, text, unique } from 'drizzle-orm/sqlite-core';
+import {
+	blob,
+	index,
+	int,
+	real,
+	sqliteTable,
+	text,
+	unique,
+	uniqueIndex
+} from 'drizzle-orm/sqlite-core';
 
 const audit = {
 	createdAt: text()
@@ -389,7 +398,8 @@ export const tableMuridRelations = relations(tableMurid, ({ one, many }) => ({
 		references: [tableKeputusanMurid.muridId]
 	}),
 	muridMataPelajaran: many(tableMuridMataPelajaran),
-	absensi: many(tableAbsensi)
+	absensi: many(tableAbsensi),
+	ketidakhadiranHarian: many(tableKetidakhadiranHarian)
 }));
 
 export const tableCatatanWaliKelasRelations = relations(tableCatatanWaliKelas, ({ one }) => ({
@@ -1001,3 +1011,29 @@ export const tableAbsensiRelations = relations(tableAbsensi, ({ one }) => ({
 		references: [tableMurid.id]
 	})
 }));
+
+export const tableKetidakhadiranHarian = sqliteTable(
+	'ketidakhadiran_harian',
+	{
+		id: int().primaryKey({ autoIncrement: true }),
+		muridId: int()
+			.references(() => tableMurid.id, { onDelete: 'cascade' })
+			.notNull(),
+		tanggal: text().notNull(),
+		sakit: int().notNull().default(0),
+		izin: int().notNull().default(0),
+		alfa: int().notNull().default(0),
+		...audit
+	},
+	(table) => [uniqueIndex('ketidakhadiran_murid_tanggal_idx').on(table.muridId, table.tanggal)]
+);
+
+export const tableKetidakhadiranHarianRelations = relations(
+	tableKetidakhadiranHarian,
+	({ one }) => ({
+		murid: one(tableMurid, {
+			fields: [tableKetidakhadiranHarian.muridId],
+			references: [tableMurid.id]
+		})
+	})
+);

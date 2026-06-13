@@ -10,18 +10,32 @@
 	import { onDestroy, onMount } from 'svelte';
 
 	const hariList = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+	const bulanList = [
+		'Januari',
+		'Februari',
+		'Maret',
+		'April',
+		'Mei',
+		'Juni',
+		'Juli',
+		'Agustus',
+		'September',
+		'Oktober',
+		'November',
+		'Desember'
+	];
 	let waktuSekarang = $state('');
 	let intervalTimer: ReturnType<typeof setInterval> | undefined;
 
 	function updateWaktu() {
 		const now = new Date();
 		const hari = hariList[now.getDay()];
-		const tgl = String(now.getDate()).padStart(2, '0');
-		const bln = String(now.getMonth() + 1).padStart(2, '0');
+		const tgl = now.getDate();
+		const bln = bulanList[now.getMonth()];
 		const thn = now.getFullYear();
 		const jam = String(now.getHours()).padStart(2, '0');
 		const menit = String(now.getMinutes()).padStart(2, '0');
-		waktuSekarang = `${hari}, ${tgl}/${bln}/${thn} ${jam}:${menit}`;
+		waktuSekarang = `${hari}, ${tgl} ${bln} ${thn} ${jam}:${menit}`;
 	}
 
 	onMount(() => {
@@ -36,6 +50,7 @@
 		id: number;
 		no: number;
 		nama: string;
+		hadir: boolean;
 		sakit: number;
 		izin: number;
 		alfa: number;
@@ -83,7 +98,8 @@
 	const totalPages = $derived.by(() => Math.max(1, data.page?.totalPages ?? 1));
 	const pages = $derived.by(() => Array.from({ length: totalPages }, (_, index) => index + 1));
 
-	let searchTerm = $state(data.page.search ?? '');
+	const getSearch = () => data.page.search ?? '';
+	let searchTerm = $state(getSearch());
 	let searchTimer: ReturnType<typeof setTimeout> | undefined;
 
 	let editingRowId = $state<number | null>(null);
@@ -187,7 +203,7 @@
 	}
 
 	function displayCount(value: number | null | undefined) {
-		if (!value) return '-';
+		if (value == null) return '-';
 		return value;
 	}
 
@@ -257,8 +273,11 @@
 
 	function openScanner() {
 		showModal({
-			title: 'Scan QR Absensi',
+			title: 'Scan QR Kehadiran',
 			body: ScannerModal,
+			bodyProps: {
+				onscan: () => invalidate('app:absen')
+			},
 			dismissible: false
 		});
 	}
@@ -268,8 +287,8 @@
 	<div class="alert alert-soft alert-warning mb-6 flex items-center gap-3">
 		<Icon name="alert" />
 		<span>
-			Tabel kehadiran belum tersedia. Jalankan <strong>pnpm db:push</strong> untuk menerapkan migrasi
-			terbaru.
+			Tabel ketidakhadiran harian belum tersedia. Jalankan <strong>pnpm db:push</strong> untuk menerapkan
+			migrasi terbaru.
 		</span>
 	</div>
 {/if}
@@ -277,7 +296,9 @@
 <div class="card bg-base-100 rounded-lg border border-none p-4 shadow-md">
 	<div class="mb-4 flex items-start justify-between gap-2 max-sm:flex-col sm:flex-row">
 		<div>
-			<h2 class="text-xl font-bold">Rekapitulasi Kehadiran Murid</h2>
+			<h2 class="text-xl font-bold">
+				Kehadiran murid hari Ini - <span class="text-primary">{waktuSekarang}</span>
+			</h2>
 			{#if kelasAktifLabel}
 				<p class="text-base-content/80 block text-sm">{kelasAktifLabel}</p>
 			{/if}
@@ -305,12 +326,6 @@
 			<Icon name="download" />
 			Download Rekap (.xlsx)
 		</a>
-	</div>
-	<div class="mb-4 flex flex-col gap-1">
-		<p class="text-base-content/60 text-xs">{waktuSekarang}</p>
-		<p class="text-base-content/40 text-[10px]">
-			Jika waktu tidak sesuai, setel pengaturan waktu di komputer ini
-		</p>
 	</div>
 
 	<form
@@ -353,6 +368,7 @@
 					<tr class="bg-base-200 dark:bg-base-300 text-base-content text-left font-bold">
 						<th style="width: 50px; min-width: 40px;">No</th>
 						<th class="w-full" style="min-width: 160px;">Nama</th>
+						<th class="text-center" style="min-width: 100px;">Hadir</th>
 						<th class="text-center" style="min-width: 90px;">Sakit</th>
 						<th class="text-center" style="min-width: 90px;">Izin</th>
 						<th class="text-center" style="min-width: 90px;">Alfa</th>
@@ -366,6 +382,15 @@
 						<tr class={isEditing ? 'bg-base-200/40' : undefined}>
 							<td>{murid.no}</td>
 							<td>{@html searchQueryMarker(data.page.search, murid.nama)}</td>
+							<td class="text-center">
+								<span
+									class="badge badge-sm whitespace-nowrap {murid.hadir
+										? 'badge-success'
+										: 'badge-soft badge-error'}"
+								>
+									{murid.hadir ? 'Hadir' : 'Tidak hadir'}
+								</span>
+							</td>
 							<td class="text-center">
 								{#if isEditing}
 									<input

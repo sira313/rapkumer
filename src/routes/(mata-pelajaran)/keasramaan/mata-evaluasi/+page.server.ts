@@ -1,5 +1,9 @@
 import db from '$lib/server/db';
-import { tableKeasramaan, tableKeasramaanIndikator, tableAsesmenKeasramaan } from '$lib/server/db/schema';
+import {
+	tableKeasramaan,
+	tableKeasramaanIndikator,
+	tableAsesmenKeasramaan
+} from '$lib/server/db/schema';
 import { fail, redirect } from '@sveltejs/kit';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 

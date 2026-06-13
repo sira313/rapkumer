@@ -338,10 +338,7 @@ export async function load({ url }) {
 
 			// Check if auth_user already exists for this pegawai
 			const exists = await db.query.tableAuthUser.findFirst({
-				where: and(
-					eq(tableAuthUser.pegawaiId, pegawaiId),
-					eq(tableAuthUser.type, 'wali_asuh')
-				),
+				where: and(eq(tableAuthUser.pegawaiId, pegawaiId), eq(tableAuthUser.type, 'wali_asuh')),
 				columns: { id: true }
 			});
 
