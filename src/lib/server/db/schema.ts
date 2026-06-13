@@ -205,7 +205,8 @@ export const tableSekolahRelations = relations(tableSekolah, ({ one, many }) => 
 	}),
 	tahunAjaran: many(tableTahunAjaran),
 	tasks: many(tableTasks),
-	featureUnlocks: many(tableFeatureUnlock)
+	featureUnlocks: many(tableFeatureUnlock),
+	presensiSettings: one(tablePresensiSettings)
 }));
 
 export const tableFeatureUnlockRelations = relations(tableFeatureUnlock, ({ one }) => ({
@@ -853,6 +854,31 @@ export const tableAsesmenKokurikulerRelations = relations(tableAsesmenKokurikule
 	kokurikuler: one(tableKokurikuler, {
 		fields: [tableAsesmenKokurikuler.kokurikulerId],
 		references: [tableKokurikuler.id]
+	})
+}));
+
+export const tablePresensiSettings = sqliteTable(
+	'presensi_settings',
+	{
+		id: int().primaryKey({ autoIncrement: true }),
+		sekolahId: int()
+			.references(() => tableSekolah.id, { onDelete: 'cascade' })
+			.notNull(),
+		jamMasuk: text().notNull().default('07:30'),
+		jamPulang: text().notNull().default('15:00'),
+		hariSekolah: int().notNull().default(6),
+		tipePresensi: text({ enum: ['masuk_pulang', 'masuk_saja'] })
+			.notNull()
+			.default('masuk_pulang'),
+		...audit
+	},
+	(table) => [unique().on(table.sekolahId)]
+);
+
+export const tablePresensiSettingsRelations = relations(tablePresensiSettings, ({ one }) => ({
+	sekolah: one(tableSekolah, {
+		fields: [tablePresensiSettings.sekolahId],
+		references: [tableSekolah.id]
 	})
 }));
 

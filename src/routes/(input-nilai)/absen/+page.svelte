@@ -3,6 +3,8 @@
 	import { page } from '$app/state';
 	import Icon from '$lib/components/icon.svelte';
 	import FormEnhance from '$lib/components/form-enhance.svelte';
+	import { showModal } from '$lib/components/global-modal.svelte';
+	import PresensiSettingsModal from '$lib/components/presensi/presensi-settings-modal.svelte';
 	import { searchQueryMarker } from '$lib/utils';
 	import { onDestroy } from 'svelte';
 
@@ -23,12 +25,20 @@
 		// totalItems and perPage intentionally omitted when not used in this view
 	};
 
+	type PresensiSettings = {
+		jamMasuk: string;
+		jamPulang: string;
+		hariSekolah: number;
+		tipePresensi: string;
+	};
+
 	type PageData = {
 		page: PageState;
 		daftarMurid: KehadiranRow[];
 		tableReady: boolean;
 		totalMurid: number;
 		muridCount: number;
+		presensiSettings: PresensiSettings | null;
 	};
 
 	let { data }: { data: PageData } = $props();
@@ -205,6 +215,21 @@
 
 	const hasMurid = $derived.by(() => data.muridCount > 0);
 	const hasFilteredMurid = $derived.by(() => data.totalMurid > 0);
+
+	function openPresensiSettings() {
+		const settings = data.presensiSettings;
+		showModal({
+			title: 'Pengaturan Presensi',
+			body: PresensiSettingsModal,
+			bodyProps: {
+				jamMasuk: settings?.jamMasuk ?? '07:30',
+				jamPulang: settings?.jamPulang ?? '15:00',
+				hariSekolah: settings?.hariSekolah ?? 6,
+				tipePresensi: settings?.tipePresensi ?? 'masuk_pulang'
+			},
+			dismissible: false
+		});
+	}
 </script>
 
 {#if !data.tableReady}
@@ -218,7 +243,7 @@
 {/if}
 
 <div class="card bg-base-100 rounded-lg border border-none p-4 shadow-md">
-	<div class="mb-4 flex items-start justify-between max-sm:flex-col sm:flex-row gap-2">
+	<div class="mb-4 flex items-start justify-between gap-2 max-sm:flex-col sm:flex-row">
 		<div>
 			<h2 class="text-xl font-bold">Rekapitulasi Kehadiran Murid</h2>
 			{#if kelasAktifLabel}
@@ -231,11 +256,15 @@
 		</a>
 	</div>
 
-	<div class="mb-4 flex items-start justify-between max-sm:flex-col sm:flex-row gap-2">
-		<a href="#" class="btn btn-soft shadow-none max-sm:w-full">
+	<div class="mb-4 flex items-start justify-between gap-2 max-sm:flex-col sm:flex-row">
+		<button
+			type="button"
+			class="btn btn-soft shadow-none max-sm:w-full"
+			onclick={openPresensiSettings}
+		>
 			<Icon name="gear" />
 			Pengaturan Presensi
-		</a>
+		</button>
 		<a href="#" class="btn btn-soft shadow-none max-sm:w-full">
 			<Icon name="download" />
 			Download Rekap (.xlsx)

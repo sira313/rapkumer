@@ -1,5 +1,6 @@
 import db from '$lib/server/db';
-import { tableKehadiranMurid, tableMurid } from '$lib/server/db/schema';
+import { tableKehadiranMurid, tableMurid, tablePresensiSettings } from '$lib/server/db/schema';
+import { ensurePresensiSettingsSchema } from '$lib/server/db/ensure-presensi-settings';
 import { fail, redirect } from '@sveltejs/kit';
 import { and, asc, eq, sql } from 'drizzle-orm';
 // authority() permission helper removed from this module
@@ -40,6 +41,8 @@ export async function load({ parent, locals, url, depends }) {
 	// Permission 'nilai_absen' removed — require authenticated user only
 	if (!locals.user) throw redirect(303, '/login');
 
+	await ensurePresensiSettingsSchema();
+
 	const { kelasAktif } = await parent();
 	const sekolahId = locals.sekolah?.id ?? null;
 
@@ -63,7 +66,8 @@ export async function load({ parent, locals, url, depends }) {
 			daftarMurid: [] as KehadiranRow[],
 			page: defaultPage,
 			totalMurid: 0,
-			muridCount: 0
+			muridCount: 0,
+			presensiSettings: null
 		};
 	}
 
@@ -103,6 +107,11 @@ export async function load({ parent, locals, url, depends }) {
 	type MuridMinimal = Pick<typeof tableMurid.$inferSelect, 'id' | 'nama'>;
 	type KehadiranMinimal = typeof tableKehadiranMurid.$inferSelect;
 	type QueryRecord = MuridMinimal & { kehadiran: KehadiranMinimal | null };
+
+	const presensiSettingsRecord = await db.query.tablePresensiSettings.findFirst({
+		where: eq(tablePresensiSettings.sekolahId, sekolahId)
+	});
+	const presensiSettings = presensiSettingsRecord ?? null;
 
 	let queryRecords: QueryRecord[] = [];
 	let tableReady = true;
@@ -168,7 +177,8 @@ export async function load({ parent, locals, url, depends }) {
 		page: pageState,
 		daftarMurid: rows,
 		totalMurid: total,
-		muridCount: muridCount ?? 0
+		muridCount: muridCount ?? 0,
+		presensiSettings
 	};
 }
 
@@ -243,5 +253,68 @@ export const actions = {
 		}
 
 		return { message: 'Rekap kehadiran murid berhasil diperbarui' };
+	},
+
+	savePresensiSettings: async ({ request, locals }) => {
+		const sekolahId = locals.sekolah?.id ?? null;
+		if (!sekolahId) {
+			return fail(401, { fail: 'Sekolah tidak ditemukan' });
+		}
+
+		if (locals.user?.type === 'wali_asuh') {
+			return fail(403, { fail: 'Anda tidak memiliki izin untuk mengubah pengaturan presensi' });
+		}
+
+		const formData = await request.formData();
+		const jamMasuk = formData.get('jamMasuk')?.toString().trim() ?? '';
+		const jamPulang = formData.get('jamPulang')?.toString().trim() ?? '';
+		const hariSekolahRaw = formData.get('hariSekolah')?.toString().trim() ?? '';
+		const tipePresensi = formData.get('tipePresensi')?.toString().trim() ?? '';
+
+		const timeRegex = /^\d{2}:\d{2}$/;
+		if (!jamMasuk || !timeRegex.test(jamMasuk)) {
+			return fail(400, { fail: 'Jam masuk harus diisi dengan format HH:mm' });
+		}
+		if (!jamPulang || !timeRegex.test(jamPulang)) {
+			return fail(400, { fail: 'Jam pulang harus diisi dengan format HH:mm' });
+		}
+		if (jamMasuk >= jamPulang) {
+			return fail(400, { fail: 'Jam masuk harus lebih awal dari jam pulang' });
+		}
+
+		const hariSekolah = Number(hariSekolahRaw);
+		if (!Number.isInteger(hariSekolah) || ![5, 6].includes(hariSekolah)) {
+			return fail(400, { fail: 'Hari sekolah tidak valid' });
+		}
+
+		const tipePresensiEnum = tipePresensi as 'masuk_pulang' | 'masuk_saja';
+		if (!['masuk_pulang', 'masuk_saja'].includes(tipePresensiEnum)) {
+			return fail(400, { fail: 'Tipe presensi tidak valid' });
+		}
+
+		await ensurePresensiSettingsSchema();
+
+		await db
+			.insert(tablePresensiSettings)
+			.values({
+				sekolahId,
+				jamMasuk,
+				jamPulang,
+				hariSekolah,
+				tipePresensi: tipePresensiEnum,
+				updatedAt: new Date().toISOString()
+			})
+			.onConflictDoUpdate({
+				target: tablePresensiSettings.sekolahId,
+				set: {
+					jamMasuk,
+					jamPulang,
+					hariSekolah,
+					tipePresensi: tipePresensiEnum,
+					updatedAt: new Date().toISOString()
+				}
+			});
+
+		return { message: 'Pengaturan presensi berhasil disimpan' };
 	}
 };
