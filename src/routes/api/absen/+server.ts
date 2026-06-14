@@ -28,6 +28,55 @@ function formatTime(date: Date) {
 	return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 }
 
+function formatDateString(date: Date) {
+	const y = date.getFullYear();
+	const m = String(date.getMonth() + 1).padStart(2, '0');
+	const d = String(date.getDate()).padStart(2, '0');
+	return `${y}-${m}-${d}`;
+}
+
+function isHoliday(
+	settings: { hariSekolah: number; liburNasional: string; liburSemester: string },
+	date: Date
+): boolean {
+	const dayOfWeek = date.getDay();
+
+	if (settings.hariSekolah === 5 && (dayOfWeek === 0 || dayOfWeek === 6)) {
+		return true;
+	}
+	if (settings.hariSekolah === 6 && dayOfWeek === 0) {
+		return true;
+	}
+
+	const dateStr = formatDateString(date);
+
+	let liburNasional: string[] = [];
+	try {
+		const parsed = JSON.parse(settings.liburNasional || '[]');
+		if (Array.isArray(parsed)) liburNasional = parsed;
+	} catch {
+		// ignore
+	}
+	if (liburNasional.includes(dateStr)) {
+		return true;
+	}
+
+	let liburSemester: Array<{ start: string; end: string }> = [];
+	try {
+		const parsed = JSON.parse(settings.liburSemester || '[]');
+		if (Array.isArray(parsed)) liburSemester = parsed;
+	} catch {
+		// ignore
+	}
+	for (const range of liburSemester) {
+		if (dateStr >= range.start && dateStr <= range.end) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
 export const POST = (async ({ request, locals, cookies }) => {
 	if (!locals.user) {
 		return json({ error: 'Sesi tidak valid. Silakan login ulang.' }, { status: 401 });
@@ -45,6 +94,18 @@ export const POST = (async ({ request, locals, cookies }) => {
 	const kelasId = Number(cookies.get(cookieNames.ACTIVE_KELAS_ID) ?? '');
 	if (!kelasId) {
 		return json({ error: 'Kelas tidak ditemukan.' }, { status: 400 });
+	}
+
+	await ensurePresensiSettingsSchema();
+
+	const settings = await db.query.tablePresensiSettings.findFirst({
+		where: eq(tablePresensiSettings.sekolahId, sekolahId)
+	});
+
+	const now = new Date();
+
+	if (settings && isHoliday(settings, now)) {
+		return json({ error: 'Tidak dapat melakukan absensi di hari libur.' }, { status: 403 });
 	}
 
 	let body: { qrData?: string };
@@ -76,14 +137,6 @@ export const POST = (async ({ request, locals, cookies }) => {
 	if (!murid) {
 		return json({ error: 'Murid tidak ditemukan.' }, { status: 404 });
 	}
-
-	await ensurePresensiSettingsSchema();
-
-	const settings = await db.query.tablePresensiSettings.findFirst({
-		where: eq(tablePresensiSettings.sekolahId, sekolahId)
-	});
-
-	const now = new Date();
 	let isMorningWindow = false;
 	let isAfternoonWindow = false;
 	let morningEnd: Date | undefined;

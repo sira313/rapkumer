@@ -432,6 +432,69 @@ export const actions = {
 		}
 	},
 
+	deletePresensi: async ({ request, locals }) => {
+		const sekolahId = locals.sekolah?.id ?? null;
+		if (!sekolahId) {
+			return fail(401, { fail: 'Sekolah tidak ditemukan' });
+		}
+
+		if (locals.user?.type === 'user' || locals.user?.type === 'wali_asuh') {
+			return fail(403, { fail: 'Anda tidak memiliki izin untuk menghapus data presensi' });
+		}
+
+		const formData = await request.formData();
+		const tanggalRaw = formData.get('tanggal')?.toString() ?? '';
+		const tanggal = isValidDate(tanggalRaw) ? tanggalRaw : todayDateString();
+		const kelasIdRaw = formData.get('kelasId')?.toString();
+		const kelasId = kelasIdRaw ? Number(kelasIdRaw) : null;
+		if (!kelasId || !Number.isInteger(kelasId)) {
+			return fail(400, { fail: 'Kelas tidak ditemukan' });
+		}
+
+		const muridIds = await db
+			.select({ id: tableMurid.id })
+			.from(tableMurid)
+			.where(and(eq(tableMurid.sekolahId, sekolahId), eq(tableMurid.kelasId, kelasId)));
+
+		const ids = muridIds.map((m) => m.id);
+		if (ids.length === 0) {
+			return { message: 'Tidak ada data presensi untuk tanggal ini' };
+		}
+
+		const todayStart = new Date(tanggal + 'T00:00:00');
+		const todayEnd = new Date(tanggal + 'T23:59:59.999');
+
+		try {
+			await db.transaction(async (tx) => {
+				await tx
+					.delete(tableAbsensi)
+					.where(
+						and(
+							inArray(tableAbsensi.muridId, ids),
+							sql`${tableAbsensi.waktu} >= ${todayStart.toISOString()}`,
+							sql`${tableAbsensi.waktu} <= ${todayEnd.toISOString()}`
+						)
+					);
+
+				await tx
+					.delete(tableKetidakhadiranHarian)
+					.where(
+						and(
+							inArray(tableKetidakhadiranHarian.muridId, ids),
+							eq(tableKetidakhadiranHarian.tanggal, tanggal)
+						)
+					);
+			});
+		} catch (error) {
+			if (isTableMissingError(error)) {
+				return fail(500, { fail: TABLE_MISSING_MESSAGE });
+			}
+			throw error;
+		}
+
+		return { message: 'Semua data presensi berhasil dihapus' };
+	},
+
 	savePresensiSettings: async ({ request, locals }) => {
 		const sekolahId = locals.sekolah?.id ?? null;
 		if (!sekolahId) {
@@ -475,8 +538,7 @@ export const actions = {
 						'end' in d &&
 						/^\d{4}-\d{2}-\d{2}$/.test((d as { start: string }).start) &&
 						/^\d{4}-\d{2}-\d{2}$/.test((d as { end: string }).end) &&
-						(d as { start: string; end: string }).start <=
-							(d as { start: string; end: string }).end
+						(d as { start: string; end: string }).start <= (d as { start: string; end: string }).end
 				) as Array<{ start: string; end: string }>;
 			}
 		} catch {

@@ -8,6 +8,7 @@
 	import ScannerModal from '$lib/components/absen/scanner-modal.svelte';
 	import IsiSekaligusModal from '$lib/components/absen/isi-sekaligus-modal.svelte';
 	import DownloadRekapModal from '$lib/components/absen/download-rekap-modal.svelte';
+	import HapusPresensiModal from '$lib/components/absen/hapus-presensi-modal.svelte';
 	import { searchQueryMarker } from '$lib/utils';
 	import { onDestroy, onMount } from 'svelte';
 
@@ -300,6 +301,28 @@
 			dismissible: false
 		});
 	}
+
+	function formatTanggal(dateStr: string) {
+		const d = new Date(dateStr + 'T00:00:00');
+		const hari = hariList[d.getDay()];
+		const tgl = d.getDate();
+		const bln = bulanList[d.getMonth()];
+		const thn = d.getFullYear();
+		return `${hari}, ${tgl} ${bln} ${thn}`;
+	}
+
+	function openDeleteConfirm() {
+		showModal({
+			title: 'Hapus Data Presensi',
+			body: HapusPresensiModal,
+			bodyProps: {
+				tanggal: data.tanggal,
+				labelTanggal: formatTanggal(data.tanggal),
+				kelasId: kelasAktif?.id ?? undefined
+			},
+			dismissible: true
+		});
+	}
 </script>
 
 {#if !data.tableReady}
@@ -398,14 +421,25 @@
 				</button>
 				<button
 					type="button"
-					class="btn btn-soft rounded-l-none shadow-none"
-					aria-label="reset"
-					title="reset"
+					class="btn btn-soft rounded-none shadow-none"
+					aria-label="Kembali ke hari ini"
+					title="Kembali ke hari ini"
 					onclick={resetToToday}
 					disabled={isToday}
 				>
 					<Icon name="repeat" />
 				</button>
+				{#if canEdit}
+					<button
+						type="button"
+						class="btn btn-soft btn-error rounded-l-none shadow-none"
+						aria-label="Hapus data presensi"
+						title="Hapus data presensi tanggal ini"
+						onclick={openDeleteConfirm}
+					>
+						<Icon name="del" />
+					</button>
+				{/if}
 			</div>
 		</div>
 		<button
