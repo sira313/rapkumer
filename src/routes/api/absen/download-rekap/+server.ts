@@ -76,9 +76,22 @@ export async function POST({ cookies, locals, request }) {
 
 	const daysInMonth = getDaysInMonth(tahun, bulan);
 
-	const presensiSettings = await db.query.tablePresensiSettings.findFirst({
-		where: eq(tablePresensiSettings.sekolahId, sekolahId)
+	const kelasRecordTa = await db.query.tableKelas.findFirst({
+		columns: { tahunAjaranId: true },
+		where: eq(tableKelas.id, kelasAktifId)
 	});
+	const tahunAjaranId = kelasRecordTa?.tahunAjaranId ?? null;
+
+	const presensiSettings = tahunAjaranId
+		? await db.query.tablePresensiSettings.findFirst({
+				where: and(
+					eq(tablePresensiSettings.sekolahId, sekolahId),
+					eq(tablePresensiSettings.tahunAjaranId, tahunAjaranId)
+				)
+			})
+		: await db.query.tablePresensiSettings.findFirst({
+				where: eq(tablePresensiSettings.sekolahId, sekolahId)
+			});
 	const hariSekolah = presensiSettings?.hariSekolah ?? 6;
 
 	function expandRange(

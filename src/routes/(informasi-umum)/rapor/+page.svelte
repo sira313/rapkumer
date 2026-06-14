@@ -192,6 +192,45 @@
 		if (!activeSekolahId || !selectedSekolahId) return false;
 		return String(activeSekolahId) !== selectedSekolahId;
 	});
+
+	import { showModal } from '$lib/components/global-modal.svelte';
+	import PresensiSettingsModal from '$lib/components/presensi/presensi-settings-modal.svelte';
+
+	type PresensiSettingRow =
+		typeof import('$lib/server/db/schema').tablePresensiSettings.$inferSelect;
+	const presensiSettingsList = data.presensiSettingsList as PresensiSettingRow[];
+	const presensiTahunSet = $derived(new Set(presensiSettingsList.map((p) => p.tahunAjaranId)));
+
+	const selectedTahunAjaranNum = $derived(Number(selectedTahunAjaranId));
+	const hasPresensiSettings = $derived(
+		Number.isFinite(selectedTahunAjaranNum) && selectedTahunAjaranNum > 0
+			? presensiTahunSet.has(selectedTahunAjaranNum)
+			: false
+	);
+
+	function openPresensiSettings() {
+		const tahunId = Number(selectedTahunAjaranId);
+		if (!tahunId) return;
+		const existing = presensiSettingsList.find((p) => p.tahunAjaranId === tahunId) ?? null;
+		showModal({
+			title: 'Pengaturan Presensi',
+			body: PresensiSettingsModal,
+			bodyProps: {
+				tahunAjaranId: tahunId,
+				jamMasuk: existing?.jamMasuk ?? '07:30',
+				jamPulang: existing?.jamPulang ?? '15:00',
+				hariSekolah: existing?.hariSekolah ?? 6,
+				tipePresensi: existing?.tipePresensi ?? 'masuk_pulang',
+				liburNasional: existing?.liburNasional ?? '[]',
+				liburSemester: existing?.liburSemester ?? '[]'
+			},
+			dismissible: false
+		});
+	}
+
+	let presensiBtnClass = $derived(
+		hasPresensiSettings ? 'btn-success shadow-none' : 'btn-error shadow-none'
+	);
 </script>
 
 <div class="grid grid-cols-1 gap-6">
@@ -369,19 +408,32 @@
 					</div>
 
 					<div class="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-between">
-						<button
-							class="btn btn-soft shadow-none"
-							type="submit"
-							formaction="?/copy-semester"
-							disabled={submitting || !canCopySemester || !canRaporManage}
-							aria-disabled={!canRaporManage}
-							title={!canRaporManage
-								? 'Anda tidak memiliki izin untuk menyalin semester'
-								: (copyButtonTooltip ?? undefined)}
-						>
-							<Icon name="copy" />
-							Salin Semester Ganjil
-						</button>
+						<div class="flex flex-wrap gap-2">
+							<button
+								class="btn btn-soft shadow-none"
+								type="submit"
+								formaction="?/copy-semester"
+								disabled={submitting || !canCopySemester || !canRaporManage}
+								aria-disabled={!canRaporManage}
+								title={!canRaporManage
+									? 'Anda tidak memiliki izin untuk menyalin semester'
+									: (copyButtonTooltip ?? undefined)}
+							>
+								<Icon name="copy" />
+								Salin Semester Ganjil
+							</button>
+							<button
+								type="button"
+								class="btn {presensiBtnClass}"
+								onclick={openPresensiSettings}
+								disabled={!selectedTahunAjaranId || !canRaporManage}
+								aria-disabled={!canRaporManage}
+								title={!canRaporManage ? 'Anda tidak memiliki izin untuk mengatur presensi' : ''}
+							>
+								<Icon name="gear" />
+								Pengaturan Presensi
+							</button>
+						</div>
 						<button
 							class="btn btn-primary shadow-none"
 							type="submit"

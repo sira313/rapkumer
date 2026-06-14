@@ -1,10 +1,5 @@
 import db from '$lib/server/db';
-import {
-	tableAbsensi,
-	tableKetidakhadiranHarian,
-	tableMurid,
-	tablePresensiSettings
-} from '$lib/server/db/schema';
+import { tableAbsensi, tableKetidakhadiranHarian, tableMurid } from '$lib/server/db/schema';
 import { ensureAbsensiSchema } from '$lib/server/db/ensure-absensi';
 import { ensureKetidakhadiranHarianSchema } from '$lib/server/db/ensure-ketidakhadiran-harian';
 import { ensurePresensiSettingsSchema } from '$lib/server/db/ensure-presensi-settings';
@@ -90,7 +85,6 @@ export async function load({ parent, locals, url, depends }) {
 			page: defaultPage,
 			totalMurid: 0,
 			muridCount: 0,
-			presensiSettings: null,
 			tanggal
 		};
 	}
@@ -134,11 +128,6 @@ export async function load({ parent, locals, url, depends }) {
 		ketidakhadiranHarian: KetidakhadiranMinimal[];
 		absensi: { id: number }[];
 	};
-
-	const presensiSettingsRecord = await db.query.tablePresensiSettings.findFirst({
-		where: eq(tablePresensiSettings.sekolahId, sekolahId)
-	});
-	const presensiSettings = presensiSettingsRecord ?? null;
 
 	const todayStart = new Date(tanggal + 'T00:00:00');
 	const todayEnd = new Date(tanggal + 'T23:59:59.999');
@@ -248,7 +237,6 @@ export async function load({ parent, locals, url, depends }) {
 		semuaMurid,
 		totalMurid: total,
 		muridCount: muridCount ?? 0,
-		presensiSettings,
 		tanggal
 	};
 }
@@ -493,107 +481,5 @@ export const actions = {
 		}
 
 		return { message: 'Semua data presensi berhasil dihapus' };
-	},
-
-	savePresensiSettings: async ({ request, locals }) => {
-		const sekolahId = locals.sekolah?.id ?? null;
-		if (!sekolahId) {
-			return fail(401, { fail: 'Sekolah tidak ditemukan' });
-		}
-
-		if (locals.user?.type === 'user' || locals.user?.type === 'wali_asuh') {
-			return fail(403, { fail: 'Anda tidak memiliki izin untuk mengubah pengaturan presensi' });
-		}
-
-		const formData = await request.formData();
-		const jamMasuk = formData.get('jamMasuk')?.toString().trim() ?? '';
-		const jamPulang = formData.get('jamPulang')?.toString().trim() ?? '';
-		const hariSekolahRaw = formData.get('hariSekolah')?.toString().trim() ?? '';
-		const tipePresensi = formData.get('tipePresensi')?.toString().trim() ?? '';
-		const liburNasionalRaw = formData.get('liburNasional')?.toString() ?? '[]';
-
-		let liburNasionalParsed: string[] = [];
-		try {
-			const parsed = JSON.parse(liburNasionalRaw);
-			if (Array.isArray(parsed)) {
-				liburNasionalParsed = parsed.filter(
-					(d: unknown) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)
-				);
-			}
-		} catch {
-			// invalid JSON, use empty array
-		}
-		const liburNasional = JSON.stringify(liburNasionalParsed);
-
-		const liburSemesterRaw = formData.get('liburSemester')?.toString() ?? '[]';
-		let liburSemesterParsed: Array<{ start: string; end: string }> = [];
-		try {
-			const parsed = JSON.parse(liburSemesterRaw);
-			if (Array.isArray(parsed)) {
-				liburSemesterParsed = parsed.filter(
-					(d: unknown) =>
-						typeof d === 'object' &&
-						d !== null &&
-						'start' in d &&
-						'end' in d &&
-						/^\d{4}-\d{2}-\d{2}$/.test((d as { start: string }).start) &&
-						/^\d{4}-\d{2}-\d{2}$/.test((d as { end: string }).end) &&
-						(d as { start: string; end: string }).start <= (d as { start: string; end: string }).end
-				) as Array<{ start: string; end: string }>;
-			}
-		} catch {
-			// invalid JSON, use empty array
-		}
-		const liburSemester = JSON.stringify(liburSemesterParsed);
-
-		const timeRegex = /^\d{2}:\d{2}$/;
-		if (!jamMasuk || !timeRegex.test(jamMasuk)) {
-			return fail(400, { fail: 'Jam masuk harus diisi dengan format HH:mm' });
-		}
-		if (!jamPulang || !timeRegex.test(jamPulang)) {
-			return fail(400, { fail: 'Jam pulang harus diisi dengan format HH:mm' });
-		}
-		if (jamMasuk >= jamPulang) {
-			return fail(400, { fail: 'Jam masuk harus lebih awal dari jam pulang' });
-		}
-
-		const hariSekolah = Number(hariSekolahRaw);
-		if (!Number.isInteger(hariSekolah) || ![5, 6].includes(hariSekolah)) {
-			return fail(400, { fail: 'Hari sekolah tidak valid' });
-		}
-
-		const tipePresensiEnum = tipePresensi as 'masuk_pulang' | 'masuk_saja';
-		if (!['masuk_pulang', 'masuk_saja'].includes(tipePresensiEnum)) {
-			return fail(400, { fail: 'Tipe presensi tidak valid' });
-		}
-
-		await ensurePresensiSettingsSchema();
-
-		await db
-			.insert(tablePresensiSettings)
-			.values({
-				sekolahId,
-				jamMasuk,
-				jamPulang,
-				hariSekolah,
-				tipePresensi: tipePresensiEnum,
-				liburNasional,
-				liburSemester,
-				updatedAt: new Date().toISOString()
-			})
-			.onConflictDoUpdate({
-				target: tablePresensiSettings.sekolahId,
-				set: {
-					jamMasuk,
-					jamPulang,
-					hariSekolah,
-					tipePresensi: tipePresensiEnum,
-					liburNasional,
-					liburSemester,
-					updatedAt: new Date().toISOString()
-				}
-			});
-
-		return { message: 'Pengaturan presensi berhasil disimpan' };
 	}
 };

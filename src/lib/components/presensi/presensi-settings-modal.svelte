@@ -10,6 +10,7 @@
 	}
 
 	interface Props {
+		tahunAjaranId: number | string;
 		jamMasuk?: string;
 		jamPulang?: string;
 		hariSekolah?: number;
@@ -19,6 +20,7 @@
 	}
 
 	let {
+		tahunAjaranId,
 		jamMasuk = '07:30',
 		jamPulang = '15:00',
 		hariSekolah = 6,
@@ -109,6 +111,7 @@
 
 		submitting = true;
 		const formData = new FormData();
+		formData.append('tahunAjaranId', String(tahunAjaranId));
 		formData.append('jamMasuk', jamMasukValue);
 		formData.append('jamPulang', jamPulangValue);
 		formData.append('hariSekolah', hariSekolahValue);
@@ -135,7 +138,7 @@
 
 			hideModal();
 			toast('Pengaturan presensi berhasil disimpan', 'success');
-			await invalidate('app:absen');
+			await invalidate('app:rapor');
 		} catch (e) {
 			const message = e instanceof Error ? e.message : 'Gagal menyimpan pengaturan presensi';
 			toast(message, 'error');

@@ -1,7 +1,7 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
 import { and, eq, sql } from 'drizzle-orm';
 import db from '$lib/server/db';
-import { tableAbsensi, tableMurid, tablePresensiSettings } from '$lib/server/db/schema';
+import { tableAbsensi, tableKelas, tableMurid, tablePresensiSettings } from '$lib/server/db/schema';
 import { ensureAbsensiSchema } from '$lib/server/db/ensure-absensi';
 import { ensurePresensiSettingsSchema } from '$lib/server/db/ensure-presensi-settings';
 import { cookieNames } from '$lib/utils';
@@ -98,9 +98,22 @@ export const POST = (async ({ request, locals, cookies }) => {
 
 	await ensurePresensiSettingsSchema();
 
-	const settings = await db.query.tablePresensiSettings.findFirst({
-		where: eq(tablePresensiSettings.sekolahId, sekolahId)
+	const kelasRecord = await db.query.tableKelas.findFirst({
+		columns: { tahunAjaranId: true },
+		where: eq(tableKelas.id, kelasId)
 	});
+	const tahunAjaranId = kelasRecord?.tahunAjaranId ?? null;
+
+	const settings = tahunAjaranId
+		? await db.query.tablePresensiSettings.findFirst({
+				where: and(
+					eq(tablePresensiSettings.sekolahId, sekolahId),
+					eq(tablePresensiSettings.tahunAjaranId, tahunAjaranId)
+				)
+			})
+		: await db.query.tablePresensiSettings.findFirst({
+				where: eq(tablePresensiSettings.sekolahId, sekolahId)
+			});
 
 	const now = new Date();
 

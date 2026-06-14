@@ -875,6 +875,9 @@ export const tablePresensiSettings = sqliteTable(
 		sekolahId: int()
 			.references(() => tableSekolah.id, { onDelete: 'cascade' })
 			.notNull(),
+		tahunAjaranId: int()
+			.references(() => tableTahunAjaran.id, { onDelete: 'cascade' })
+			.notNull(),
 		jamMasuk: text().notNull().default('07:30'),
 		jamPulang: text().notNull().default('15:00'),
 		hariSekolah: int().notNull().default(6),
@@ -885,13 +888,17 @@ export const tablePresensiSettings = sqliteTable(
 		liburSemester: text().notNull().default('[]'),
 		...audit
 	},
-	(table) => [unique().on(table.sekolahId)]
+	(table) => [unique().on(table.sekolahId, table.tahunAjaranId)]
 );
 
 export const tablePresensiSettingsRelations = relations(tablePresensiSettings, ({ one }) => ({
 	sekolah: one(tableSekolah, {
 		fields: [tablePresensiSettings.sekolahId],
 		references: [tableSekolah.id]
+	}),
+	tahunAjaran: one(tableTahunAjaran, {
+		fields: [tablePresensiSettings.tahunAjaranId],
+		references: [tableTahunAjaran.id]
 	})
 }));
 

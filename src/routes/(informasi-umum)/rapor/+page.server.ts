@@ -1,10 +1,12 @@
 import db from '$lib/server/db';
 import type { AcademicContext } from '$lib/server/db/academic';
 import { resolveSekolahAcademicContext } from '$lib/server/db/academic';
+import { ensurePresensiSettingsSchema } from '$lib/server/db/ensure-presensi-settings';
 import {
 	tableAlamat,
 	tableKelas,
 	tableMurid,
+	tablePresensiSettings,
 	tableSekolah,
 	tableSemester,
 	tableTahunAjaran,
@@ -675,7 +677,9 @@ async function copyKelasDanMuridDariGanjilKeGenap(opts: {
 	});
 }
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals, depends }) => {
+	depends('app:rapor');
+
 	const meta: PageMeta = {
 		title: 'Data Rapor',
 		description: 'Kelola sekolah aktif, tahun ajaran, semester, dan tanggal bagi rapor.'
@@ -700,6 +704,14 @@ export const load: PageServerLoad = async ({ locals }) => {
 			academicContext);
 	}
 
+	let presensiSettingsList: (typeof tablePresensiSettings.$inferSelect)[] = [];
+	if (activeSekolahId) {
+		await ensurePresensiSettingsSchema();
+		presensiSettingsList = await db.query.tablePresensiSettings.findMany({
+			where: eq(tablePresensiSettings.sekolahId, activeSekolahId)
+		});
+	}
+
 	return {
 		meta,
 		sekolahList,
@@ -707,7 +719,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 		tahunAjaranList,
 		activeTahunAjaranId,
 		activeSemesterId,
-		tanggalBagiRaport
+		tanggalBagiRaport,
+		presensiSettingsList
 	};
 };
 
@@ -1143,5 +1156,119 @@ export const actions: Actions = {
 		});
 
 		return { message: 'Tanggal bagi rapor diperbarui' };
+	},
+	savePresensiSettings: async ({ request, locals }) => {
+		const sekolahId = locals.sekolah?.id ?? null;
+		if (!sekolahId) {
+			return fail(401, { fail: 'Sekolah tidak ditemukan' });
+		}
+
+		if (locals.user?.type === 'user' || locals.user?.type === 'wali_asuh') {
+			return fail(403, { fail: 'Anda tidak memiliki izin untuk mengubah pengaturan presensi' });
+		}
+
+		const formData = await request.formData();
+		const tahunAjaranId = Number(formData.get('tahunAjaranId'));
+		if (!tahunAjaranId) {
+			return fail(400, { fail: 'Tahun ajaran tidak valid' });
+		}
+
+		const tahunAjaran = await db.query.tableTahunAjaran.findFirst({
+			where: and(eq(tableTahunAjaran.id, tahunAjaranId), eq(tableTahunAjaran.sekolahId, sekolahId))
+		});
+		if (!tahunAjaran) {
+			return fail(404, { fail: 'Data tahun ajaran tidak ditemukan' });
+		}
+
+		const jamMasuk = formData.get('jamMasuk')?.toString().trim() ?? '';
+		const jamPulang = formData.get('jamPulang')?.toString().trim() ?? '';
+		const hariSekolahRaw = formData.get('hariSekolah')?.toString().trim() ?? '';
+		const tipePresensi = formData.get('tipePresensi')?.toString().trim() ?? '';
+		const liburNasionalRaw = formData.get('liburNasional')?.toString() ?? '[]';
+
+		let liburNasionalParsed: string[] = [];
+		try {
+			const parsed = JSON.parse(liburNasionalRaw);
+			if (Array.isArray(parsed)) {
+				liburNasionalParsed = parsed.filter(
+					(d: unknown) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)
+				);
+			}
+		} catch {
+			// invalid JSON, use empty array
+		}
+		const liburNasional = JSON.stringify(liburNasionalParsed);
+
+		const liburSemesterRaw = formData.get('liburSemester')?.toString() ?? '[]';
+		let liburSemesterParsed: Array<{ start: string; end: string }> = [];
+		try {
+			const parsed = JSON.parse(liburSemesterRaw);
+			if (Array.isArray(parsed)) {
+				liburSemesterParsed = parsed.filter(
+					(d: unknown) =>
+						typeof d === 'object' &&
+						d !== null &&
+						'start' in d &&
+						'end' in d &&
+						/^\d{4}-\d{2}-\d{2}$/.test((d as { start: string }).start) &&
+						/^\d{4}-\d{2}-\d{2}$/.test((d as { end: string }).end) &&
+						(d as { start: string; end: string }).start <= (d as { start: string; end: string }).end
+				) as Array<{ start: string; end: string }>;
+			}
+		} catch {
+			// invalid JSON, use empty array
+		}
+		const liburSemester = JSON.stringify(liburSemesterParsed);
+
+		const timeRegex = /^\d{2}:\d{2}$/;
+		if (!jamMasuk || !timeRegex.test(jamMasuk)) {
+			return fail(400, { fail: 'Jam masuk harus diisi dengan format HH:mm' });
+		}
+		if (!jamPulang || !timeRegex.test(jamPulang)) {
+			return fail(400, { fail: 'Jam pulang harus diisi dengan format HH:mm' });
+		}
+		if (jamMasuk >= jamPulang) {
+			return fail(400, { fail: 'Jam masuk harus lebih awal dari jam pulang' });
+		}
+
+		const hariSekolah = Number(hariSekolahRaw);
+		if (!Number.isInteger(hariSekolah) || ![5, 6].includes(hariSekolah)) {
+			return fail(400, { fail: 'Hari sekolah tidak valid' });
+		}
+
+		const tipePresensiEnum = tipePresensi as 'masuk_pulang' | 'masuk_saja';
+		if (!['masuk_pulang', 'masuk_saja'].includes(tipePresensiEnum)) {
+			return fail(400, { fail: 'Tipe presensi tidak valid' });
+		}
+
+		await ensurePresensiSettingsSchema();
+
+		await db
+			.insert(tablePresensiSettings)
+			.values({
+				sekolahId,
+				tahunAjaranId,
+				jamMasuk,
+				jamPulang,
+				hariSekolah,
+				tipePresensi: tipePresensiEnum,
+				liburNasional,
+				liburSemester,
+				updatedAt: new Date().toISOString()
+			})
+			.onConflictDoUpdate({
+				target: [tablePresensiSettings.sekolahId, tablePresensiSettings.tahunAjaranId],
+				set: {
+					jamMasuk,
+					jamPulang,
+					hariSekolah,
+					tipePresensi: tipePresensiEnum,
+					liburNasional,
+					liburSemester,
+					updatedAt: new Date().toISOString()
+				}
+			});
+
+		return { message: 'Pengaturan presensi berhasil disimpan' };
 	}
 };
