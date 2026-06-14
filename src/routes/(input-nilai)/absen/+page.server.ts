@@ -93,8 +93,49 @@ export async function load({ parent, locals, url, depends }) {
 	await ensureAbsensiSchema();
 	await ensureKetidakhadiranHarianSchema();
 
-	const { kelasAktif } = await parent();
+	const { kelasAktif, academicContext } = await parent();
 	const sekolahId = locals.sekolah?.id ?? null;
+	const kelasRecordTa =
+		sekolahId && kelasAktif?.id
+			? await db.query.tableKelas.findFirst({
+					columns: { tahunAjaranId: true, semesterId: true },
+					where: eq(tableKelas.id, kelasAktif.id)
+				})
+			: null;
+	const tahunAjaranId = kelasRecordTa?.tahunAjaranId ?? null;
+
+	// Presensi readiness check
+	let presensiReady = true;
+	let presensiWarningMessage = '';
+	let presensiSettings: typeof tablePresensiSettings.$inferSelect | null = null;
+	if (sekolahId && kelasAktif?.id && tahunAjaranId) {
+		presensiSettings = await db.query.tablePresensiSettings.findFirst({
+			where: and(
+				eq(tablePresensiSettings.sekolahId, sekolahId),
+				eq(tablePresensiSettings.tahunAjaranId, tahunAjaranId)
+			)
+		}) ?? null;
+
+		const activeTa = academicContext?.tahunAjaranList.find((ta) => ta.id === academicContext?.activeTahunAjaranId);
+		const activeSem = activeTa?.semester.find((s) => s.id === academicContext?.activeSemesterId);
+		const tanggalMasuk = activeSem?.tanggalMasuk ?? null;
+		const activeSemesterLabel =
+			activeSem && activeTa ? `${activeSem.nama} (${activeTa.nama})` : '';
+
+		const hasPresensiSettings = !!presensiSettings;
+		const hasTanggalMasuk = !!tanggalMasuk;
+		presensiReady = hasPresensiSettings && hasTanggalMasuk;
+
+		if (!presensiReady) {
+			const parts: string[] = [];
+			if (!hasPresensiSettings) parts.push('melakukan pengaturan presensi');
+			if (!hasTanggalMasuk) parts.push('menetapkan tanggal masuk semester ' + activeSemesterLabel);
+			presensiWarningMessage = `Tidak dapat melakukan presensi sebelum ${parts.join(' dan ')}`;
+		}
+	} else {
+		presensiReady = false;
+		presensiWarningMessage = 'Tidak dapat melakukan presensi karena pengaturan sekolah atau kelas belum lengkap.';
+	}
 
 	const searchParam = url.searchParams.get('q');
 	const search = searchParam?.trim() ? searchParam.trim() : null;
@@ -130,7 +171,9 @@ export async function load({ parent, locals, url, depends }) {
 			tahun: tahunQuery,
 			daysInMonth: 0,
 			bulananRows: [] as BulananRow[],
-			redDays: [] as number[]
+			redDays: [] as number[],
+			presensiReady,
+			presensiWarningMessage
 		};
 
 		if (!sekolahId || !kelasAktif?.id) return defaultBulanan;
@@ -194,22 +237,7 @@ export async function load({ parent, locals, url, depends }) {
 
 		const muridIds = semuaMurid.map((m) => m.id);
 
-		// Fetch presensi settings for hariSekolah and libur dates
-		const kelasRecordTa = await db.query.tableKelas.findFirst({
-			columns: { tahunAjaranId: true },
-			where: eq(tableKelas.id, kelasAktif.id)
-		});
-		const tahunAjaranId = kelasRecordTa?.tahunAjaranId ?? null;
-		const presensiSettings = tahunAjaranId
-			? await db.query.tablePresensiSettings.findFirst({
-					where: and(
-						eq(tablePresensiSettings.sekolahId, sekolahId),
-						eq(tablePresensiSettings.tahunAjaranId, tahunAjaranId)
-					)
-				})
-			: await db.query.tablePresensiSettings.findFirst({
-					where: eq(tablePresensiSettings.sekolahId, sekolahId)
-				});
+		// Reuse presensiSettings from readiness check above
 		const hariSekolah = presensiSettings?.hariSekolah ?? 6;
 
 		// Build libur date set
@@ -373,7 +401,9 @@ export async function load({ parent, locals, url, depends }) {
 			tahun: tahunQuery,
 			daysInMonth,
 			bulananRows,
-			redDays
+			redDays,
+			presensiReady,
+			presensiWarningMessage
 		};
 	}
 
@@ -398,7 +428,9 @@ export async function load({ parent, locals, url, depends }) {
 			tahun: 0,
 			daysInMonth: 0,
 			bulananRows: [] as BulananRow[],
-			redDays: [] as number[]
+			redDays: [] as number[],
+			presensiReady,
+			presensiWarningMessage
 		};
 	}
 
@@ -556,7 +588,9 @@ export async function load({ parent, locals, url, depends }) {
 		tahun: 0,
 		daysInMonth: 0,
 		bulananRows: [] as BulananRow[],
-		redDays: [] as number[]
+		redDays: [] as number[],
+		presensiReady,
+		presensiWarningMessage
 	};
 }
 

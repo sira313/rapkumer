@@ -272,6 +272,7 @@ export async function load({ url, locals, cookies }) {
 		daftarKelas,
 		kelasAktif,
 		user: userForClient,
-		activeSemesterTipe: academicContext?.activeSemesterTipe ?? null
+		activeSemesterTipe: academicContext?.activeSemesterTipe ?? null,
+		academicContext
 	};
 }

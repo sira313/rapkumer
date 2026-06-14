@@ -90,6 +90,8 @@
 		daysInMonth: number;
 		bulananRows: BulananRow[];
 		redDays: number[];
+		presensiReady: boolean;
+		presensiWarningMessage: string;
 	};
 
 	let { data }: { data: PageData } = $props();
@@ -364,7 +366,30 @@
 		});
 	}
 
+	function presensiNotReady() {
+		showModal({
+			title: 'Pengaturan Presensi',
+			body: data.presensiWarningMessage,
+			onPositive: {
+				label: 'Atur sekarang',
+				class: 'btn-primary',
+				action: ({ close }) => {
+					close();
+					goto('/rapor');
+				}
+			},
+			onNeutral: {
+				label: 'Tutup'
+			},
+			dismissible: true
+		});
+	}
+
 	function openScanner() {
+		if (!data.presensiReady) {
+			presensiNotReady();
+			return;
+		}
 		showModal({
 			title: 'Scan QR Kehadiran',
 			body: ScannerModal,
@@ -454,7 +479,11 @@
 							class="w-full text-left"
 							disabled={!canEdit}
 							title={!canEdit ? 'Anda tidak memiliki izin untuk mengisi sekaligus' : ''}
-							onclick={() =>
+							onclick={() => {
+								if (!data.presensiReady) {
+									presensiNotReady();
+									return;
+								}
 								showModal({
 									title: 'Isi Kehadiran Sekaligus',
 									body: IsiSekaligusModal,
@@ -464,7 +493,8 @@
 										tanggal: data.tanggal
 									},
 									dismissible: true
-								})}
+								});
+							}}
 						>
 							Isi Sekaligus
 						</button>
