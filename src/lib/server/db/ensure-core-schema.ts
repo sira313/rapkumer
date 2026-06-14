@@ -1,3 +1,4 @@
+import db from '$lib/server/db';
 import { ensureSchema } from './ensure-helper';
 
 const CORE = 'core';
@@ -200,4 +201,11 @@ export async function ensureCoreSchema() {
 			UNIQUE(sekolah_id, semester_id, nis)
 		)`
 	]);
+
+	// Add tanggal_masuk column to existing semester tables (migration)
+	try {
+		await db.$client.execute(`ALTER TABLE semester ADD COLUMN tanggal_masuk TEXT`);
+	} catch {
+		// column already exists
+	}
 }

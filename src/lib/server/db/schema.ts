@@ -164,6 +164,7 @@ export const tableSemester = sqliteTable(
 		tanggalMulai: text(),
 		tanggalSelesai: text(),
 		tanggalBagiRaport: text(),
+		tanggalMasuk: text(),
 		isAktif: int({ mode: 'boolean' }).default(false).notNull(),
 		...audit
 	},

@@ -690,6 +690,7 @@ export const load: PageServerLoad = async ({ locals, depends }) => {
 	let activeTahunAjaranId: number | null = null;
 	let activeSemesterId: number | null = null;
 	let tanggalBagiRaport: AcademicContext['tanggalBagiRaport'] = {};
+	let tanggalMasuk: AcademicContext['tanggalMasuk'] = {};
 
 	const [sekolahList, academicContext] = await Promise.all([
 		db.query.tableSekolah.findMany({
@@ -700,7 +701,7 @@ export const load: PageServerLoad = async ({ locals, depends }) => {
 	]);
 
 	if (academicContext) {
-		({ tahunAjaranList, activeTahunAjaranId, activeSemesterId, tanggalBagiRaport } =
+		({ tahunAjaranList, activeTahunAjaranId, activeSemesterId, tanggalBagiRaport, tanggalMasuk } =
 			academicContext);
 	}
 
@@ -720,6 +721,7 @@ export const load: PageServerLoad = async ({ locals, depends }) => {
 		activeTahunAjaranId,
 		activeSemesterId,
 		tanggalBagiRaport,
+		tanggalMasuk,
 		presensiSettingsList
 	};
 };
@@ -887,8 +889,8 @@ export const actions: Actions = {
 		}
 
 		const form = unflattenFormData<{
-			ganjil?: { id?: string; tanggalBagiRaport?: string };
-			genap?: { id?: string; tanggalBagiRaport?: string };
+			ganjil?: { id?: string; tanggalBagiRaport?: string; tanggalMasuk?: string };
+			genap?: { id?: string; tanggalBagiRaport?: string; tanggalMasuk?: string };
 		}>(formData);
 
 		const ids = [form.ganjil?.id, form.genap?.id]
@@ -911,9 +913,10 @@ export const actions: Actions = {
 				for (const semester of semesterList) {
 					const tipe = semester.tipe as 'ganjil' | 'genap';
 					const tanggal = form[tipe]?.tanggalBagiRaport?.trim() || null;
+					const tanggalMasukVal = form[tipe]?.tanggalMasuk?.trim() || null;
 					await tx
 						.update(tableSemester)
-						.set({ tanggalBagiRaport: tanggal })
+						.set({ tanggalBagiRaport: tanggal, tanggalMasuk: tanggalMasukVal })
 						.where(eq(tableSemester.id, semester.id));
 				}
 			});
@@ -1121,8 +1124,8 @@ export const actions: Actions = {
 
 		const formData = await request.formData();
 		const form = unflattenFormData<{
-			ganjil?: { id?: string; tanggalBagiRaport?: string };
-			genap?: { id?: string; tanggalBagiRaport?: string };
+			ganjil?: { id?: string; tanggalBagiRaport?: string; tanggalMasuk?: string };
+			genap?: { id?: string; tanggalBagiRaport?: string; tanggalMasuk?: string };
 		}>(formData);
 
 		const ids = [form.ganjil?.id, form.genap?.id]
@@ -1148,9 +1151,10 @@ export const actions: Actions = {
 			for (const semester of semesterList) {
 				const tipe = semester.tipe as 'ganjil' | 'genap';
 				const tanggal = form[tipe]?.tanggalBagiRaport?.trim() || null;
+				const tanggalMasukVal = form[tipe]?.tanggalMasuk?.trim() || null;
 				await tx
 					.update(tableSemester)
-					.set({ tanggalBagiRaport: tanggal })
+					.set({ tanggalBagiRaport: tanggal, tanggalMasuk: tanggalMasukVal })
 					.where(eq(tableSemester.id, semester.id));
 			}
 		});
