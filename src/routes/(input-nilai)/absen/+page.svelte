@@ -256,9 +256,22 @@
 	}
 
 	function openDownloadRekap() {
+		let actions: { download: () => Promise<void>; cancel: () => void };
 		showModal({
 			title: 'Download Rekap Kehadiran',
 			body: DownloadRekapModal,
+			bodyProps: {
+				onAction: (a) => {
+					actions = a;
+				}
+			},
+			onPositive: {
+				label: 'Download',
+				action: () => actions.download()
+			},
+			onNegative: {
+				label: 'Batal'
+			},
 			dismissible: true
 		});
 	}

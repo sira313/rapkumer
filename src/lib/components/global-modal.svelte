@@ -72,7 +72,7 @@
 				<div class="modal-action">
 					{#if props.onNegative}
 						<button
-							class="btn btn-soft gap-2 shadow-none"
+							class="btn {props.onNegative.class ?? 'btn-soft'} gap-2 shadow-none"
 							type="button"
 							onclick={() => {
 								if (props.onNegative?.action) {
@@ -91,7 +91,7 @@
 
 					{#if props.onNeutral}
 						<button
-							class="btn gap-2 shadow-none"
+							class="btn {props.onNeutral.class ?? ''} gap-2 shadow-none"
 							type="button"
 							onclick={() => {
 								if (props.onNeutral?.action) {
@@ -110,7 +110,7 @@
 
 					{#if props.onPositive}
 						<button
-							class="btn btn-primary gap-2 shadow-none"
+							class="btn {props.onPositive.class ?? 'btn-primary'} gap-2 shadow-none"
 							type="button"
 							disabled={isLoading}
 							onclick={() => {

@@ -212,6 +212,7 @@
 		const tahunId = Number(selectedTahunAjaranId);
 		if (!tahunId) return;
 		const existing = presensiSettingsList.find((p) => p.tahunAjaranId === tahunId) ?? null;
+		let actions: { submit: () => Promise<void>; cancel: () => void };
 		showModal({
 			title: 'Pengaturan Presensi',
 			body: PresensiSettingsModal,
@@ -222,7 +223,17 @@
 				hariSekolah: existing?.hariSekolah ?? 6,
 				tipePresensi: existing?.tipePresensi ?? 'masuk_pulang',
 				liburNasional: existing?.liburNasional ?? '[]',
-				liburSemester: existing?.liburSemester ?? '[]'
+				liburSemester: existing?.liburSemester ?? '[]',
+				onAction: (a) => {
+					actions = a;
+				}
+			},
+			onPositive: {
+				label: 'Simpan',
+				action: () => actions.submit()
+			},
+			onNegative: {
+				label: 'Batal'
 			},
 			dismissible: false
 		});

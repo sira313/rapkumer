@@ -25,13 +25,20 @@
 		onClose,
 		onSuccess
 	}: Props = $props();
+
+	let submitting = $state(false);
 </script>
 
 {#if open}
 	<dialog class="modal" {open} onclose={onClose}>
 		<div class="modal-box max-w-md">
-			<FormEnhance {action} onsuccess={onSuccess}>
-				{#snippet children({ submitting })}
+			<FormEnhance
+				id="form-delete-keasramaan"
+				{action}
+				onsuccess={onSuccess}
+				submitStateChange={(v) => (submitting = v)}
+			>
+				{#snippet children()}
 					<div class="mb-4 flex items-start gap-3">
 						<Icon name="warning" class="text-error mt-1 shrink-0" />
 						<div>
@@ -53,27 +60,29 @@
 					{#each ids as id, idx (id)}
 						<input name={`ids.${idx}`} value={id} hidden />
 					{/each}
-
-					<div class="modal-action mt-6 flex gap-2">
-						<button class="btn btn-soft shadow-none" type="button" onclick={onClose}>
-							<Icon name="close" />
-							Batal
-						</button>
-						<button
-							class="btn btn-error btn-soft shadow-none"
-							disabled={submitting || disabled || ids.length === 0}
-							aria-busy={submitting}
-						>
-							{#if submitting}
-								<div class="loading loading-spinner"></div>
-							{:else}
-								<Icon name="del" />
-							{/if}
-							Hapus
-						</button>
-					</div>
 				{/snippet}
 			</FormEnhance>
+
+			<div class="modal-action mt-6 flex gap-2">
+				<button class="btn btn-soft shadow-none" type="button" onclick={onClose}>
+					<Icon name="close" />
+					Batal
+				</button>
+				<button
+					class="btn btn-error btn-soft shadow-none"
+					type="submit"
+					form="form-delete-keasramaan"
+					disabled={submitting || disabled || ids.length === 0}
+					aria-busy={submitting}
+				>
+					{#if submitting}
+						<div class="loading loading-spinner"></div>
+					{:else}
+						<Icon name="del" />
+					{/if}
+					Hapus
+				</button>
+			</div>
 		</div>
 		<form method="dialog" class="modal-backdrop">
 			<button

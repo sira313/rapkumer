@@ -42,6 +42,8 @@
 		onClose: () => void;
 		onSuccess: (payload: { form: HTMLFormElement }) => void;
 	}>();
+
+	let submitting = $state(false);
 </script>
 
 {#if open}
@@ -58,8 +60,13 @@
 			<h3 class="mb-2 text-lg font-bold">{title}</h3>
 			<p class="font-semibold">Pilih Dimensi Profil Lulusan</p>
 
-			<FormEnhance {action} onsuccess={onSuccess}>
-				{#snippet children({ submitting })}
+			<FormEnhance
+				id="form-kokurikuler"
+				{action}
+				onsuccess={onSuccess}
+				submitStateChange={(v) => (submitting = v)}
+			>
+				{#snippet children()}
 					<input name="kelasId" value={kelasId ?? ''} hidden />
 					{#if isEditMode && modalItem}
 						<input name="id" value={modalItem.id} hidden />
@@ -94,30 +101,32 @@
 						required
 						disabled={!canManage}
 					></textarea>
-
-					<div class="modal-action mt-6 flex gap-2">
-						<button class="btn btn-soft shadow-none" type="button" onclick={onClose}>
-							<Icon name="close" />
-							Batal
-						</button>
-						<button
-							class="btn btn-primary shadow-none"
-							disabled={submitting ||
-								!selectedDimensions.length ||
-								!kelasId ||
-								!tableReady ||
-								!tujuanInput.trim()}
-						>
-							{#if submitting}
-								<div class="loading loading-spinner"></div>
-							{:else}
-								<Icon name="save" />
-							{/if}
-							{isEditMode ? 'Simpan Perubahan' : 'Simpan'}
-						</button>
-					</div>
 				{/snippet}
 			</FormEnhance>
+
+			<div class="modal-action mt-6 flex gap-2">
+				<button class="btn btn-soft shadow-none" type="button" onclick={onClose}>
+					<Icon name="close" />
+					Batal
+				</button>
+				<button
+					class="btn btn-primary shadow-none"
+					type="submit"
+					form="form-kokurikuler"
+					disabled={submitting ||
+						!selectedDimensions.length ||
+						!kelasId ||
+						!tableReady ||
+						!tujuanInput.trim()}
+				>
+					{#if submitting}
+						<div class="loading loading-spinner"></div>
+					{:else}
+						<Icon name="save" />
+					{/if}
+					{isEditMode ? 'Simpan Perubahan' : 'Simpan'}
+				</button>
+			</div>
 		</dialog>
 		<form method="dialog" class="modal-backdrop">
 			<button

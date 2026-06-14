@@ -20,10 +20,12 @@
 	const now = new Date();
 	let bulan = $state(now.getMonth() + 1);
 	let tahun = $state(now.getFullYear());
-	let submitting = $state(false);
+
+	let { onAction } = $props<{
+		onAction?: (actions: { download: () => Promise<void>; cancel: () => void }) => void;
+	}>();
 
 	async function handleDownload() {
-		submitting = true;
 		try {
 			const response = await fetch('/api/absen/download-rekap', {
 				method: 'POST',
@@ -54,14 +56,16 @@
 		} catch (e) {
 			const message = e instanceof Error ? e.message : 'Gagal mengunduh rekap';
 			toast(message, 'error');
-		} finally {
-			submitting = false;
 		}
 	}
 
 	function handleCancel() {
 		hideModal();
 	}
+
+	$effect(() => {
+		onAction?.({ download: handleDownload, cancel: handleCancel });
+	});
 </script>
 
 <div class="not-prose flex flex-col gap-6">
@@ -87,27 +91,5 @@
 				max="2099"
 			/>
 		</label>
-	</div>
-
-	<div class="modal-action mt-2">
-		<button
-			type="button"
-			class="btn btn-soft gap-2 shadow-none"
-			onclick={handleCancel}
-			disabled={submitting}
-		>
-			Batal
-		</button>
-		<button
-			type="button"
-			class="btn btn-primary gap-2 shadow-none"
-			onclick={handleDownload}
-			disabled={submitting}
-		>
-			{#if submitting}
-				<span class="loading loading-spinner loading-xs" aria-hidden="true"></span>
-			{/if}
-			Download
-		</button>
 	</div>
 </div>

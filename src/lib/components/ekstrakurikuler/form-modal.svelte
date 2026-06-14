@@ -30,6 +30,8 @@
 		onClose: () => void;
 		onSuccess: (payload: { form: HTMLFormElement }) => void;
 	}>();
+
+	let submitting = $state(false);
 </script>
 
 {#if open}
@@ -48,8 +50,13 @@
 				Isi nama ekstrakurikuler sesuai kegiatan yang berjalan di kelas.
 			</p>
 
-			<FormEnhance {action} onsuccess={onSuccess}>
-				{#snippet children({ submitting })}
+			<FormEnhance
+				id="form-ekstrakurikuler"
+				{action}
+				onsuccess={onSuccess}
+				submitStateChange={(v) => (submitting = v)}
+			>
+				{#snippet children()}
 					<input name="kelasId" value={kelasId ?? ''} hidden />
 					{#if isEditMode && modalItem}
 						<input name="id" value={modalItem.id} hidden />
@@ -67,26 +74,28 @@
 							disabled={!canManage}
 						/>
 					</label>
-
-					<div class="modal-action mt-6 flex gap-2">
-						<button class="btn btn-soft shadow-none" type="button" onclick={onClose}>
-							<Icon name="close" />
-							Batal
-						</button>
-						<button
-							class="btn btn-primary btn-soft shadow-none"
-							disabled={submitting || !namaInput.trim() || !kelasId || !tableReady}
-						>
-							{#if submitting}
-								<div class="loading loading-spinner"></div>
-							{:else}
-								<Icon name="save" />
-							{/if}
-							{isEditMode ? 'Simpan Perubahan' : 'Simpan'}
-						</button>
-					</div>
 				{/snippet}
 			</FormEnhance>
+
+			<div class="modal-action mt-6 flex gap-2">
+				<button class="btn btn-soft shadow-none" type="button" onclick={onClose}>
+					<Icon name="close" />
+					Batal
+				</button>
+				<button
+					class="btn btn-primary btn-soft shadow-none"
+					type="submit"
+					form="form-ekstrakurikuler"
+					disabled={submitting || !namaInput.trim() || !kelasId || !tableReady}
+				>
+					{#if submitting}
+						<div class="loading loading-spinner"></div>
+					{:else}
+						<Icon name="save" />
+					{/if}
+					{isEditMode ? 'Simpan Perubahan' : 'Simpan'}
+				</button>
+			</div>
 		</dialog>
 		<form method="dialog" class="modal-backdrop">
 			<button

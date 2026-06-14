@@ -13,6 +13,7 @@
 	let fileInput: HTMLInputElement | null = null;
 	let hasFile = $state(false);
 	let fileName = $state('');
+	let submitting = $state(false);
 
 	function handleFileChange(event: Event) {
 		const target = event.currentTarget as HTMLInputElement;
@@ -76,6 +77,7 @@
 		</div>
 
 		<FormEnhance
+			id="form-import-tp"
 			action="?/import"
 			enctype="multipart/form-data"
 			showToast={true}
@@ -83,8 +85,9 @@
 				onSuccess();
 				resetForm(form);
 			}}
+			submitStateChange={(v) => (submitting = v)}
 		>
-			{#snippet children({ submitting })}
+			{#snippet children()}
 				<fieldset class="fieldset">
 					<legend class="fieldset-legend font-semibold">Pilih File Excel (.xlsx)</legend>
 					<input
@@ -109,31 +112,32 @@
 						{/if}
 					</label>
 				</fieldset>
-
-				<div class="mt-6 flex justify-end gap-2">
-					<button
-						class="btn btn-soft shadow-none"
-						type="button"
-						onclick={handleCancel}
-						disabled={submitting}
-					>
-						Batal
-					</button>
-					<button
-						class="btn btn-primary btn-soft shadow-none"
-						type="submit"
-						disabled={submitting || !hasFile}
-					>
-						{#if submitting}
-							<span class="loading loading-spinner"></span>
-						{:else}
-							<Icon name="import" />
-						{/if}
-						Import
-					</button>
-				</div>
 			{/snippet}
 		</FormEnhance>
+
+		<div class="modal-action">
+			<button
+				class="btn btn-soft shadow-none"
+				type="button"
+				onclick={handleCancel}
+				disabled={submitting}
+			>
+				Batal
+			</button>
+			<button
+				class="btn btn-primary btn-soft shadow-none"
+				type="submit"
+				form="form-import-tp"
+				disabled={submitting || !hasFile}
+			>
+				{#if submitting}
+					<span class="loading loading-spinner"></span>
+				{:else}
+					<Icon name="import" />
+				{/if}
+				Import
+			</button>
+		</div>
 	</div>
 	<form method="dialog" class="modal-backdrop">
 		<button onclick={handleCancel}>close</button>

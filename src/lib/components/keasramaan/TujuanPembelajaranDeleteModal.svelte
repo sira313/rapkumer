@@ -46,6 +46,7 @@
 			{/if}
 
 			<FormEnhance
+				id="form-delete-tp"
 				action="?/delete"
 				onsuccess={() => {
 					submitting = false;
@@ -53,25 +54,32 @@
 				}}
 				submitStateChange={(value) => (submitting = value)}
 			>
-				{#each deleteModalIds as id (id)}
-					<input name="ids" value={id} hidden />
-				{/each}
-
-				<div class="modal-action mt-6 flex gap-2">
-					<button class="btn btn-soft shadow-none" type="button" onclick={onClose}>
-						<Icon name="close" />
-						Batal
-					</button>
-					<button class="btn btn-error shadow-none" disabled={submitting || deleteModalDisabled}>
-						{#if submitting}
-							<div class="loading loading-spinner"></div>
-						{:else}
-							<Icon name="del" />
-						{/if}
-						Hapus
-					</button>
-				</div>
+				{#snippet children()}
+					{#each deleteModalIds as id (id)}
+						<input name="ids" value={id} hidden />
+					{/each}
+				{/snippet}
 			</FormEnhance>
+
+			<div class="modal-action mt-6 flex gap-2">
+				<button class="btn btn-soft shadow-none" type="button" onclick={onClose}>
+					<Icon name="close" />
+					Batal
+				</button>
+				<button
+					class="btn btn-error shadow-none"
+					type="submit"
+					form="form-delete-tp"
+					disabled={submitting || deleteModalDisabled}
+				>
+					{#if submitting}
+						<div class="loading loading-spinner"></div>
+					{:else}
+						<Icon name="del" />
+					{/if}
+					Hapus
+				</button>
+			</div>
 		</dialog>
 		<form
 			method="dialog"

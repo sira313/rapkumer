@@ -180,6 +180,7 @@
 			return;
 		}
 		bulkCatatan = '';
+		let actions: { submit: () => void };
 		showModal({
 			title: 'Isi Catatan Sekaligus',
 			body: BulkFillModal,
@@ -191,10 +192,19 @@
 				onCatatanChange: (value: string) => {
 					bulkCatatan = value;
 				},
-				onRequestClose: () => hideModal(),
 				onSuccess: async () => {
 					await handleBulkSuccess();
+				},
+				onAction: (a) => {
+					actions = a;
 				}
+			},
+			onPositive: {
+				label: 'Terapkan',
+				action: () => actions.submit()
+			},
+			onNegative: {
+				label: 'Batal'
 			},
 			dismissible: true,
 			onClose: handleBulkDialogClose

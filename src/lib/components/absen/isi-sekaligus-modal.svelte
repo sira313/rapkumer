@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { invalidate } from '$app/navigation';
-	import { hideModal } from '$lib/components/global-modal.svelte';
+	import { hideModal, updateModal } from '$lib/components/global-modal.svelte';
 	import { toast } from '$lib/components/toast.svelte';
 	import { searchQueryMarker } from '$lib/utils';
+	import { onMount } from 'svelte';
 
 	type MuridItem = {
 		id: number;
@@ -25,7 +26,6 @@
 	let searchTerm = $state('');
 	let selectedIds = $state<number[]>([]);
 	let keteranganMap = $state<Record<number, string>>({});
-	let submitting = $state(false);
 
 	$effect(() => {
 		if (step === 'pilih-murid') {
@@ -96,10 +96,24 @@
 	function pilihTidak() {
 		pilihanHadirSemua = 'tidak';
 		step = 'pilih-murid';
+		updateModal({
+			onPositive: { label: 'Simpan', action: () => submitSelected() },
+			onNeutral: { label: 'Kembali', action: () => goToStep1() },
+			onNegative: undefined
+		});
+	}
+
+	function goToStep1() {
+		step = 'pilih-mode';
+		pilihanHadirSemua = '';
+		updateModal({
+			onPositive: { label: 'Ya', action: () => submitHadirSemua() },
+			onNegative: { label: 'Tidak', action: () => pilihTidak() },
+			onNeutral: undefined
+		});
 	}
 
 	async function submitHadirSemua() {
-		submitting = true;
 		try {
 			const fd = new FormData();
 			fd.set('mode', 'hadir_semua');
@@ -114,13 +128,14 @@
 			await invalidate('app:absen');
 		} catch (e) {
 			toast(e instanceof Error ? e.message : 'Gagal menyimpan', 'error');
-		} finally {
-			submitting = false;
 		}
 	}
 
 	async function submitSelected() {
-		submitting = true;
+		if (selectedIds.length === 0) {
+			toast('Tidak ada murid yang dipilih', 'warning');
+			return;
+		}
 		try {
 			const entries = selectedIds.map((id) => ({
 				muridId: id,
@@ -140,36 +155,21 @@
 			await invalidate('app:absen');
 		} catch (e) {
 			toast(e instanceof Error ? e.message : 'Gagal menyimpan', 'error');
-		} finally {
-			submitting = false;
 		}
 	}
+
+	onMount(() => {
+		updateModal({
+			onPositive: { label: 'Ya', action: () => submitHadirSemua() },
+			onNegative: { label: 'Tidak', action: () => pilihTidak() },
+			onNeutral: undefined
+		});
+	});
 </script>
 
 {#if step === 'pilih-mode'}
 	<div class="flex flex-col gap-4">
 		<p class="text-base-content text-lg font-medium">Apakah hadir semua hari ini?</p>
-		<div class="flex gap-3">
-			<button
-				type="button"
-				class="btn btn-success btn-soft flex-1 shadow-none"
-				disabled={submitting}
-				onclick={submitHadirSemua}
-			>
-				{#if submitting}
-					<span class="loading loading-spinner loading-xs"></span>
-				{/if}
-				Ya
-			</button>
-			<button
-				type="button"
-				class="btn btn-error btn-soft flex-1 shadow-none"
-				disabled={submitting}
-				onclick={pilihTidak}
-			>
-				Tidak
-			</button>
-		</div>
 	</div>
 {:else}
 	<div class="flex flex-col gap-3">
@@ -233,31 +233,6 @@
 					{/each}
 				</tbody>
 			</table>
-		</div>
-
-		<div class="flex justify-end gap-2">
-			<button
-				type="button"
-				class="btn btn-soft shadow-none"
-				onclick={() => {
-					step = 'pilih-mode';
-					pilihanHadirSemua = '';
-				}}
-				disabled={submitting}
-			>
-				Kembali
-			</button>
-			<button
-				type="button"
-				class="btn btn-primary shadow-none"
-				disabled={submitting || selectedIds.length === 0}
-				onclick={submitSelected}
-			>
-				{#if submitting}
-					<span class="loading loading-spinner loading-xs"></span>
-				{/if}
-				Simpan
-			</button>
 		</div>
 	</div>
 {/if}

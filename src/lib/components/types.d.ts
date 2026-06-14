@@ -1,6 +1,7 @@
 interface ModalAction {
 	label: string;
 	icon?: IconName;
+	class?: string;
 	action?: (params: { close: () => void }) => MaybePromise<void>;
 }
 

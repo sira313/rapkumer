@@ -205,7 +205,7 @@
 			{/if}
 		</div>
 
-		<div class="mt-4 flex flex-col gap-2 sm:flex-row">
+		<div class="modal-action">
 			<button type="button" class="btn btn-soft shadow-none" onclick={close}>
 				<Icon name="left" />Batal
 			</button>

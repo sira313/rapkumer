@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { invalidate } from '$app/navigation';
-	import { hideModal } from '$lib/components/global-modal.svelte';
+	import { hideModal, setLoading } from '$lib/components/global-modal.svelte';
 	import { toast } from '$lib/components/toast.svelte';
 	import Icon from '$lib/components/icon.svelte';
 
@@ -17,6 +17,7 @@
 		tipePresensi?: string;
 		liburNasional?: string;
 		liburSemester?: string;
+		onAction?: (actions: { submit: () => Promise<void>; cancel: () => void }) => void;
 	}
 
 	let {
@@ -26,7 +27,8 @@
 		hariSekolah = 6,
 		tipePresensi = 'masuk_pulang',
 		liburNasional = '[]',
-		liburSemester = '[]'
+		liburSemester = '[]',
+		onAction
 	}: Props = $props();
 
 	let submitting = $state(false);
@@ -110,6 +112,7 @@
 		if (!validateBeforeSubmit()) return;
 
 		submitting = true;
+		setLoading(true);
 		const formData = new FormData();
 		formData.append('tahunAjaranId', String(tahunAjaranId));
 		formData.append('jamMasuk', jamMasukValue);
@@ -144,12 +147,17 @@
 			toast(message, 'error');
 		} finally {
 			submitting = false;
+			setLoading(false);
 		}
 	}
 
 	function handleCancel() {
 		hideModal();
 	}
+
+	$effect(() => {
+		onAction?.({ submit: handleSubmit, cancel: handleCancel });
+	});
 </script>
 
 <div class="not-prose flex flex-col gap-6">
@@ -297,31 +305,6 @@
 			<span class="text-sm">{validationError}</span>
 		</div>
 	{/if}
-
-	<div class="modal-action mt-2">
-		<button
-			type="button"
-			class="btn btn-soft gap-2 shadow-none"
-			onclick={handleCancel}
-			disabled={submitting}
-		>
-			<Icon name="close" />
-			<span>Batal</span>
-		</button>
-		<button
-			type="button"
-			class="btn btn-primary gap-2 shadow-none"
-			onclick={handleSubmit}
-			disabled={submitting || !!validationError}
-		>
-			{#if submitting}
-				<span class="loading loading-spinner loading-xs" aria-hidden="true"></span>
-			{:else}
-				<Icon name="save" />
-			{/if}
-			<span>Simpan</span>
-		</button>
-	</div>
 </div>
 
 <style>

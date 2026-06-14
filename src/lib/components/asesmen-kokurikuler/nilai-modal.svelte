@@ -48,6 +48,8 @@
 		onSuccess?.();
 	}
 
+	let submitting = $state(false);
+
 	function capitalizeSentence(value: string | null | undefined) {
 		if (!value) return '';
 		const trimmed = value.trimStart();
@@ -80,8 +82,14 @@
 				</select>
 			</label>
 
-			<FormEnhance {action} init={initValue} onsuccess={handleSuccess}>
-				{#snippet children({ submitting })}
+			<FormEnhance
+				id="form-nilai-kokurikuler"
+				{action}
+				init={initValue}
+				onsuccess={handleSuccess}
+				submitStateChange={(v) => (submitting = v)}
+			>
+				{#snippet children()}
 					<input type="hidden" name="muridId" value={murid.id} />
 					<input type="hidden" name="kokurikulerId" value={kokurikuler.id} />
 
@@ -104,23 +112,28 @@
 							</fieldset>
 						{/each}
 					</div>
-
-					<div class="modal-action mt-6 flex gap-2">
-						<button type="button" class="btn btn-soft shadow-none" onclick={onClose}>
-							<Icon name="close" />
-							Batal
-						</button>
-						<button class="btn btn-primary shadow-none" disabled={submitting}>
-							{#if submitting}
-								<span class="loading loading-spinner"></span>
-							{:else}
-								<Icon name="save" />
-							{/if}
-							Simpan
-						</button>
-					</div>
 				{/snippet}
 			</FormEnhance>
+
+			<div class="modal-action mt-6 flex gap-2">
+				<button type="button" class="btn btn-soft shadow-none" onclick={onClose}>
+					<Icon name="close" />
+					Batal
+				</button>
+				<button
+					class="btn btn-primary shadow-none"
+					type="submit"
+					form="form-nilai-kokurikuler"
+					disabled={submitting}
+				>
+					{#if submitting}
+						<span class="loading loading-spinner"></span>
+					{:else}
+						<Icon name="save" />
+					{/if}
+					Simpan
+				</button>
+			</div>
 		</div>
 		<form method="dialog" class="modal-backdrop">
 			<button
