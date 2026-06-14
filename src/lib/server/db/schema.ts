@@ -881,6 +881,8 @@ export const tablePresensiSettings = sqliteTable(
 		tipePresensi: text({ enum: ['masuk_pulang', 'masuk_saja'] })
 			.notNull()
 			.default('masuk_pulang'),
+		liburNasional: text().notNull().default('[]'),
+		liburSemester: text().notNull().default('[]'),
 		...audit
 	},
 	(table) => [unique().on(table.sekolahId)]

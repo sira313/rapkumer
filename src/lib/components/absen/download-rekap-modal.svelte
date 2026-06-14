@@ -20,35 +20,17 @@
 	const now = new Date();
 	let bulan = $state(now.getMonth() + 1);
 	let tahun = $state(now.getFullYear());
-	let liburDates = $state<string[]>([]);
-
 	let submitting = $state(false);
-
-	function addLiburDate() {
-		liburDates = [...liburDates, ''];
-	}
-
-	function removeLiburDate(index: number) {
-		liburDates = liburDates.filter((_, i) => i !== index);
-	}
-
-	function updateLiburDate(index: number, value: string) {
-		const next = [...liburDates];
-		next[index] = value;
-		liburDates = next;
-	}
 
 	async function handleDownload() {
 		submitting = true;
 		try {
-			const filteredLibur = liburDates.filter((d) => d.trim() !== '');
 			const response = await fetch('/api/absen/download-rekap', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					bulan,
-					tahun,
-					liburNasional: filteredLibur
+					tahun
 				})
 			});
 
@@ -105,38 +87,6 @@
 				max="2099"
 			/>
 		</label>
-	</div>
-
-	<div class="flex flex-col gap-2">
-		<div class="flex items-center justify-between">
-			<span class="fieldset-legend text-sm font-semibold">Tanggal Libur Nasional</span>
-			<button
-				type="button"
-				class="btn btn-soft btn-sm shadow-none"
-				onclick={addLiburDate}
-				disabled={submitting}
-			>
-				Tambah Tanggal
-			</button>
-		</div>
-		{#each liburDates as date, i (i)}
-			<div class="flex items-center gap-2">
-				<input
-					type="date"
-					class="input bg-base-200 dark:bg-base-300 w-full dark:border-none"
-					value={date}
-					onchange={(e) => updateLiburDate(i, (e.currentTarget as HTMLInputElement).value)}
-				/>
-				<button
-					type="button"
-					class="btn btn-soft btn-sm btn-error shadow-none"
-					onclick={() => removeLiburDate(i)}
-					disabled={submitting}
-				>
-					Hapus
-				</button>
-			</div>
-		{/each}
 	</div>
 
 	<div class="modal-action mt-2">

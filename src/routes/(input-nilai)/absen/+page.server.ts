@@ -447,6 +447,42 @@ export const actions = {
 		const jamPulang = formData.get('jamPulang')?.toString().trim() ?? '';
 		const hariSekolahRaw = formData.get('hariSekolah')?.toString().trim() ?? '';
 		const tipePresensi = formData.get('tipePresensi')?.toString().trim() ?? '';
+		const liburNasionalRaw = formData.get('liburNasional')?.toString() ?? '[]';
+
+		let liburNasionalParsed: string[] = [];
+		try {
+			const parsed = JSON.parse(liburNasionalRaw);
+			if (Array.isArray(parsed)) {
+				liburNasionalParsed = parsed.filter(
+					(d: unknown) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)
+				);
+			}
+		} catch {
+			// invalid JSON, use empty array
+		}
+		const liburNasional = JSON.stringify(liburNasionalParsed);
+
+		const liburSemesterRaw = formData.get('liburSemester')?.toString() ?? '[]';
+		let liburSemesterParsed: Array<{ start: string; end: string }> = [];
+		try {
+			const parsed = JSON.parse(liburSemesterRaw);
+			if (Array.isArray(parsed)) {
+				liburSemesterParsed = parsed.filter(
+					(d: unknown) =>
+						typeof d === 'object' &&
+						d !== null &&
+						'start' in d &&
+						'end' in d &&
+						/^\d{4}-\d{2}-\d{2}$/.test((d as { start: string }).start) &&
+						/^\d{4}-\d{2}-\d{2}$/.test((d as { end: string }).end) &&
+						(d as { start: string; end: string }).start <=
+							(d as { start: string; end: string }).end
+				) as Array<{ start: string; end: string }>;
+			}
+		} catch {
+			// invalid JSON, use empty array
+		}
+		const liburSemester = JSON.stringify(liburSemesterParsed);
 
 		const timeRegex = /^\d{2}:\d{2}$/;
 		if (!jamMasuk || !timeRegex.test(jamMasuk)) {
@@ -479,6 +515,8 @@ export const actions = {
 				jamPulang,
 				hariSekolah,
 				tipePresensi: tipePresensiEnum,
+				liburNasional,
+				liburSemester,
 				updatedAt: new Date().toISOString()
 			})
 			.onConflictDoUpdate({
@@ -488,6 +526,8 @@ export const actions = {
 					jamPulang,
 					hariSekolah,
 					tipePresensi: tipePresensiEnum,
+					liburNasional,
+					liburSemester,
 					updatedAt: new Date().toISOString()
 				}
 			});

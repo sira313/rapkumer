@@ -66,7 +66,6 @@ export async function POST({ cookies, locals, request }) {
 	const body = await request.json();
 	const bulan = Number(body.bulan);
 	const tahun = Number(body.tahun);
-	const liburNasionalRaw: string[] = body.liburNasional ?? [];
 
 	if (!Number.isInteger(bulan) || bulan < 1 || bulan > 12) {
 		throw error(400, 'Bulan tidak valid');
@@ -75,22 +74,88 @@ export async function POST({ cookies, locals, request }) {
 		throw error(400, 'Tahun tidak valid');
 	}
 
-	const liburNasional = liburNasionalRaw
-		.filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))
-		.map((d) => {
-			const [y, m, day] = d.split('-').map(Number);
-			return { tahun: y, bulanLibur: m, tanggal: d, day };
-		})
-		.filter((d) => d.tahun === tahun && d.bulanLibur === bulan);
-
-	const liburDates = new Set(liburNasional.map((d) => d.tanggal));
-
 	const daysInMonth = getDaysInMonth(tahun, bulan);
 
 	const presensiSettings = await db.query.tablePresensiSettings.findFirst({
 		where: eq(tablePresensiSettings.sekolahId, sekolahId)
 	});
 	const hariSekolah = presensiSettings?.hariSekolah ?? 6;
+
+	function expandRange(
+		start: string,
+		end: string
+	): Array<{ tahun: number; bulanLibur: number; tanggal: string; day: number }> {
+		const result: Array<{
+			tahun: number;
+			bulanLibur: number;
+			tanggal: string;
+			day: number;
+		}> = [];
+		const s = new Date(start + 'T00:00:00');
+		const e = new Date(end + 'T00:00:00');
+		const cur = new Date(s);
+		while (cur <= e) {
+			const y = cur.getFullYear();
+			const m = cur.getMonth() + 1;
+			const day = cur.getDate();
+			const tanggal = dateStr(y, m, day);
+			if (y === tahun && m === bulan) {
+				result.push({ tahun: y, bulanLibur: m, tanggal, day });
+			}
+			cur.setDate(cur.getDate() + 1);
+		}
+		return result;
+	}
+
+	let liburDates = new Set<string>();
+	let liburNasional: Array<{ tahun: number; bulanLibur: number; tanggal: string; day: number }> =
+		[];
+	if (presensiSettings?.liburNasional) {
+		try {
+			const parsed: string[] = JSON.parse(presensiSettings.liburNasional);
+			if (Array.isArray(parsed)) {
+				const filtered = parsed
+					.filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))
+					.map((d) => {
+						const [y, m, day] = d.split('-').map(Number);
+						return { tahun: y, bulanLibur: m, tanggal: d, day };
+					})
+					.filter((d) => d.tahun === tahun && d.bulanLibur === bulan);
+				liburNasional = filtered;
+				liburDates = new Set(filtered.map((d) => d.tanggal));
+			}
+		} catch {
+			// invalid JSON, ignore
+		}
+	}
+
+	if (presensiSettings?.liburSemester) {
+		try {
+			const parsed: Array<{ start: string; end: string }> = JSON.parse(
+				presensiSettings.liburSemester
+			);
+			if (Array.isArray(parsed)) {
+				for (const range of parsed) {
+					if (
+						typeof range?.start === 'string' &&
+						typeof range?.end === 'string' &&
+						/^\d{4}-\d{2}-\d{2}$/.test(range.start) &&
+						/^\d{4}-\d{2}-\d{2}$/.test(range.end)
+					) {
+						const expanded = expandRange(range.start, range.end);
+						for (const d of expanded) {
+							if (!liburDates.has(d.tanggal)) {
+								liburDates.add(d.tanggal);
+								liburNasional.push(d);
+							}
+						}
+					}
+				}
+			}
+		} catch {
+			// invalid JSON, ignore
+		}
+	}
 
 	const sekolahRecord = await db.query.tableSekolah.findFirst({
 		where: eq(tableSekolah.id, sekolahId),

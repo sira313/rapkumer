@@ -69,6 +69,8 @@
 		jamPulang: string;
 		hariSekolah: number;
 		tipePresensi: string;
+		liburNasional: string;
+		liburSemester: string;
 	};
 
 	type PageData = {
@@ -242,7 +244,9 @@
 				jamMasuk: settings?.jamMasuk ?? '07:30',
 				jamPulang: settings?.jamPulang ?? '15:00',
 				hariSekolah: settings?.hariSekolah ?? 6,
-				tipePresensi: settings?.tipePresensi ?? 'masuk_pulang'
+				tipePresensi: settings?.tipePresensi ?? 'masuk_pulang',
+				liburNasional: settings?.liburNasional ?? '[]',
+				liburSemester: settings?.liburSemester ?? '[]'
 			},
 			dismissible: false
 		});
