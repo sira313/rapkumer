@@ -82,15 +82,11 @@
 			if (res.ok) {
 				toast({ message: result.message, type: 'success' });
 				onscan?.();
-			} else if (res.status === 409) {
-				toast({ message: result.error, type: 'warning' });
 			} else {
 				toast({ message: result.error, type: 'warning' });
-				lastResult = null;
 			}
 		} catch {
 			toast({ message: 'Gagal terhubung ke server.', type: 'error' });
-			lastResult = null;
 		}
 		status = 'Arahkan QR code ke kamera';
 		processing = false;

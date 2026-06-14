@@ -6,6 +6,28 @@ import { ensureAbsensiSchema } from '$lib/server/db/ensure-absensi';
 import { ensurePresensiSettingsSchema } from '$lib/server/db/ensure-presensi-settings';
 import { cookieNames } from '$lib/utils';
 
+function parseTime(timeStr: string) {
+	const [h, m] = timeStr.split(':').map(Number);
+	return { hours: h, minutes: m };
+}
+
+function getDateTime(timeStr: string, baseDate: Date) {
+	const { hours, minutes } = parseTime(timeStr);
+	const dt = new Date(baseDate);
+	dt.setHours(hours, minutes, 0, 0);
+	return dt;
+}
+
+function addMinutes(date: Date, minutes: number) {
+	const dt = new Date(date);
+	dt.setMinutes(dt.getMinutes() + minutes);
+	return dt;
+}
+
+function formatTime(date: Date) {
+	return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}
+
 export const POST = (async ({ request, locals, cookies }) => {
 	if (!locals.user) {
 		return json({ error: 'Sesi tidak valid. Silakan login ulang.' }, { status: 401 });
@@ -61,17 +83,51 @@ export const POST = (async ({ request, locals, cookies }) => {
 		where: eq(tablePresensiSettings.sekolahId, sekolahId)
 	});
 
-	if (settings?.jamMasuk) {
-		const now = new Date();
-		const jam = String(now.getHours()).padStart(2, '0');
-		const menit = String(now.getMinutes()).padStart(2, '0');
-		const currentTime = `${jam}:${menit}`;
+	const now = new Date();
+	let isMorningWindow = false;
+	let isAfternoonWindow = false;
+	let morningEnd: Date | undefined;
+	let jamPulangThreshold: Date | undefined;
+	let afternoonStart: Date | undefined;
+	let afternoonEnd: Date | undefined;
 
-		if (currentTime < settings.jamMasuk) {
-			return json(
-				{ error: `Presensi belum dapat dimulai. Jam masuk: ${settings.jamMasuk}.` },
-				{ status: 403 }
-			);
+	if (settings?.jamMasuk) {
+		const jamMasukDate = getDateTime(settings.jamMasuk, now);
+		morningEnd = addMinutes(jamMasukDate, 60);
+
+		if (settings.tipePresensi === 'masuk_saja') {
+			if (now < jamMasukDate || now > morningEnd) {
+				return json(
+					{
+						error: `Presensi hanya tersedia dari ${settings.jamMasuk} sampai ${formatTime(morningEnd)}.`
+					},
+					{ status: 403 }
+				);
+			}
+			isMorningWindow = true;
+		} else if (settings.tipePresensi === 'masuk_pulang') {
+			if (!settings.jamPulang) {
+				return json(
+					{ error: 'Pengaturan jam pulang tidak tersedia untuk tipe presensi Masuk Pulang.' },
+					{ status: 500 }
+				);
+			}
+
+			jamPulangThreshold = getDateTime(settings.jamPulang, now);
+			afternoonStart = addMinutes(jamPulangThreshold, -15);
+			afternoonEnd = addMinutes(jamPulangThreshold, 30);
+
+			isMorningWindow = now >= jamMasukDate && now <= morningEnd;
+			isAfternoonWindow = now >= afternoonStart && now <= afternoonEnd;
+
+			if (!isMorningWindow && !isAfternoonWindow) {
+				return json(
+					{
+						error: `Presensi masuk: ${settings.jamMasuk}-${formatTime(morningEnd)}. Presensi pulang: ${formatTime(afternoonStart)}-${formatTime(afternoonEnd)}.`
+					},
+					{ status: 403 }
+				);
+			}
 		}
 	}
 
@@ -82,20 +138,62 @@ export const POST = (async ({ request, locals, cookies }) => {
 	const todayEnd = new Date();
 	todayEnd.setHours(23, 59, 59, 999);
 
-	const existing = await db
-		.select({ id: tableAbsensi.id })
-		.from(tableAbsensi)
-		.where(
-			and(
-				eq(tableAbsensi.muridId, murid.id),
-				sql`${tableAbsensi.waktu} >= ${todayStart.toISOString()}`,
-				sql`${tableAbsensi.waktu} <= ${todayEnd.toISOString()}`
-			)
-		)
-		.limit(1);
+	if (settings?.tipePresensi === 'masuk_pulang' && morningEnd && afternoonStart && afternoonEnd) {
+		if (isMorningWindow) {
+			const existing = await db
+				.select({ id: tableAbsensi.id })
+				.from(tableAbsensi)
+				.where(
+					and(
+						eq(tableAbsensi.muridId, murid.id),
+						sql`${tableAbsensi.waktu} >= ${todayStart.toISOString()}`,
+						sql`${tableAbsensi.waktu} <= ${morningEnd.toISOString()}`
+					)
+				)
+				.limit(1);
 
-	if (existing.length > 0) {
-		return json({ error: `${murid.nama} sudah melakukan absensi hari ini.` }, { status: 409 });
+			if (existing.length > 0) {
+				return json(
+					{ error: `${murid.nama} sudah melakukan absensi masuk hari ini.` },
+					{ status: 409 }
+				);
+			}
+		} else if (isAfternoonWindow) {
+			const existing = await db
+				.select({ id: tableAbsensi.id })
+				.from(tableAbsensi)
+				.where(
+					and(
+						eq(tableAbsensi.muridId, murid.id),
+						sql`${tableAbsensi.waktu} >= ${afternoonStart.toISOString()}`,
+						sql`${tableAbsensi.waktu} <= ${afternoonEnd.toISOString()}`
+					)
+				)
+				.limit(1);
+
+			if (existing.length > 0) {
+				return json(
+					{ error: `${murid.nama} sudah melakukan absensi pulang hari ini.` },
+					{ status: 409 }
+				);
+			}
+		}
+	} else {
+		const existing = await db
+			.select({ id: tableAbsensi.id })
+			.from(tableAbsensi)
+			.where(
+				and(
+					eq(tableAbsensi.muridId, murid.id),
+					sql`${tableAbsensi.waktu} >= ${todayStart.toISOString()}`,
+					sql`${tableAbsensi.waktu} <= ${todayEnd.toISOString()}`
+				)
+			)
+			.limit(1);
+
+		if (existing.length > 0) {
+			return json({ error: `${murid.nama} sudah melakukan absensi hari ini.` }, { status: 409 });
+		}
 	}
 
 	const waktu = new Date().toISOString();
