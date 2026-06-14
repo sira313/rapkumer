@@ -54,7 +54,9 @@
 	}
 
 	$effect(() => {
-		onAction?.({ submit: () => (document.getElementById(formId) as HTMLFormElement | null)?.requestSubmit() });
+		onAction?.({
+			submit: () => (document.getElementById(formId) as HTMLFormElement | null)?.requestSubmit()
+		});
 	});
 </script>
 

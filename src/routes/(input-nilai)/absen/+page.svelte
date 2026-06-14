@@ -359,6 +359,8 @@
 						<button
 							type="button"
 							class="w-full text-left"
+							disabled={!canEdit}
+							title={!canEdit ? 'Anda tidak memiliki izin untuk mengisi sekaligus' : ''}
 							onclick={() =>
 								showModal({
 									title: 'Isi Kehadiran Sekaligus',
@@ -406,17 +408,18 @@
 				>
 					<Icon name="repeat" />
 				</button>
-				{#if canEdit}
-					<button
-						type="button"
-						class="btn btn-soft btn-error rounded-l-none shadow-none"
-						aria-label="Hapus data presensi"
-						title="Hapus data presensi tanggal ini"
-						onclick={openDeleteConfirm}
-					>
-						<Icon name="del" />
-					</button>
-				{/if}
+				<button
+					type="button"
+					class="btn btn-soft btn-error rounded-l-none shadow-none"
+					aria-label="Hapus data presensi"
+					title={!canEdit
+						? 'Anda tidak memiliki izin untuk menghapus presensi'
+						: 'Hapus data presensi tanggal ini'}
+					onclick={openDeleteConfirm}
+					disabled={!canEdit}
+				>
+					<Icon name="del" />
+				</button>
 			</div>
 		</div>
 		<button
