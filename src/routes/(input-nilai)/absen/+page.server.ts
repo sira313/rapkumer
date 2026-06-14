@@ -1,5 +1,11 @@
 import db from '$lib/server/db';
-import { tableAbsensi, tableKetidakhadiranHarian, tableMurid } from '$lib/server/db/schema';
+import {
+	tableAbsensi,
+	tableKetidakhadiranHarian,
+	tableMurid,
+	tablePresensiSettings,
+	tableKelas
+} from '$lib/server/db/schema';
 import { ensureAbsensiSchema } from '$lib/server/db/ensure-absensi';
 import { ensureKetidakhadiranHarianSchema } from '$lib/server/db/ensure-ketidakhadiran-harian';
 import { ensurePresensiSettingsSchema } from '$lib/server/db/ensure-presensi-settings';
@@ -32,6 +38,34 @@ function isValidDate(s: string): boolean {
 	const date = new Date(y, m - 1, d);
 	return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d;
 }
+
+function getDaysInMonth(year: number, month: number) {
+	return new Date(year, month, 0).getDate();
+}
+
+function isSunday(year: number, month: number, day: number) {
+	return new Date(year, month - 1, day).getDay() === 0;
+}
+
+function isSaturday(year: number, month: number, day: number) {
+	return new Date(year, month - 1, day).getDay() === 6;
+}
+
+function dateStr(year: number, month: number, day: number) {
+	return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+type StatusPerDay = '' | 'H' | 'S' | 'I' | 'TK';
+
+type BulananRow = {
+	no: number;
+	nama: string;
+	statusPerDay: StatusPerDay[];
+	countS: number;
+	countI: number;
+	countTK: number;
+	countHadir: number;
+};
 
 type KehadiranRow = {
 	id: number;
@@ -70,6 +104,279 @@ export async function load({ parent, locals, url, depends }) {
 	const tanggalParam = url.searchParams.get('tanggal');
 	const tanggal = tanggalParam && isValidDate(tanggalParam) ? tanggalParam : todayDateString();
 
+	const mode = url.searchParams.get('mode') ?? 'harian';
+	const bulanParam = url.searchParams.get('bulan');
+	const tahunParam = url.searchParams.get('tahun');
+	const now = new Date();
+	const bulan = bulanParam ? Number(bulanParam) : now.getMonth() + 1;
+	const tahunQuery = tahunParam ? Number(tahunParam) : now.getFullYear();
+
+	if (mode === 'bulanan') {
+		const defaultBulanan = {
+			tableReady: true,
+			daftarMurid: [] as KehadiranRow[],
+			page: {
+				search,
+				currentPage: 1,
+				totalPages: 1,
+				totalItems: 0,
+				perPage: PER_PAGE
+			} as PageState,
+			totalMurid: 0,
+			muridCount: 0,
+			tanggal,
+			mode: 'bulanan' as const,
+			bulan,
+			tahun: tahunQuery,
+			daysInMonth: 0,
+			bulananRows: [] as BulananRow[],
+			redDays: [] as number[]
+		};
+
+		if (!sekolahId || !kelasAktif?.id) return defaultBulanan;
+
+		if (!Number.isInteger(bulan) || bulan < 1 || bulan > 12) return defaultBulanan;
+		if (!Number.isInteger(tahunQuery) || tahunQuery < 2000 || tahunQuery > 2099)
+			return defaultBulanan;
+
+		const [{ totalItems }] = await db
+			.select({ totalItems: sql<number>`count(*)` })
+			.from(tableMurid)
+			.where(
+				search
+					? and(
+							eq(tableMurid.sekolahId, sekolahId),
+							eq(tableMurid.kelasId, kelasAktif.id),
+							sql`${tableMurid.nama} LIKE ${'%' + search + '%'} COLLATE NOCASE`
+						)
+					: and(eq(tableMurid.sekolahId, sekolahId), eq(tableMurid.kelasId, kelasAktif.id))
+			);
+
+		const total = totalItems ?? 0;
+		const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
+		const currentPage = Math.min(Math.max(pageNumber, 1), totalPages);
+		const offset = (currentPage - 1) * PER_PAGE;
+
+		if (pageNumber !== currentPage) {
+			const params = new URLSearchParams(url.searchParams);
+			if (currentPage <= 1) {
+				params.delete('page');
+			} else {
+				params.set('page', String(currentPage));
+			}
+			throw redirect(303, `${url.pathname}${params.size ? `?${params}` : ''}`);
+		}
+
+		const [{ muridCount }] = await db
+			.select({ muridCount: sql<number>`count(*)` })
+			.from(tableMurid)
+			.where(and(eq(tableMurid.sekolahId, sekolahId), eq(tableMurid.kelasId, kelasAktif.id)));
+
+		const daysInMonth = getDaysInMonth(tahunQuery, bulan);
+		const monthStart = `${tahunQuery}-${String(bulan).padStart(2, '0')}-01`;
+		const monthEnd = `${tahunQuery}-${String(bulan).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
+
+		const baseFilter = and(
+			eq(tableMurid.sekolahId, sekolahId),
+			eq(tableMurid.kelasId, kelasAktif.id)
+		);
+		const searchFilter = search
+			? and(baseFilter, sql`${tableMurid.nama} LIKE ${'%' + search + '%'} COLLATE NOCASE`)
+			: baseFilter;
+
+		const semuaMurid = await db.query.tableMurid.findMany({
+			columns: { id: true, nama: true },
+			where: searchFilter,
+			orderBy: asc(tableMurid.nama),
+			limit: PER_PAGE,
+			offset
+		});
+
+		const muridIds = semuaMurid.map((m) => m.id);
+
+		// Fetch presensi settings for hariSekolah and libur dates
+		const kelasRecordTa = await db.query.tableKelas.findFirst({
+			columns: { tahunAjaranId: true },
+			where: eq(tableKelas.id, kelasAktif.id)
+		});
+		const tahunAjaranId = kelasRecordTa?.tahunAjaranId ?? null;
+		const presensiSettings = tahunAjaranId
+			? await db.query.tablePresensiSettings.findFirst({
+					where: and(
+						eq(tablePresensiSettings.sekolahId, sekolahId),
+						eq(tablePresensiSettings.tahunAjaranId, tahunAjaranId)
+					)
+				})
+			: await db.query.tablePresensiSettings.findFirst({
+					where: eq(tablePresensiSettings.sekolahId, sekolahId)
+				});
+		const hariSekolah = presensiSettings?.hariSekolah ?? 6;
+
+		// Build libur date set
+		let liburDates = new Set<string>();
+		if (presensiSettings?.liburNasional) {
+			try {
+				const parsed: string[] = JSON.parse(presensiSettings.liburNasional);
+				if (Array.isArray(parsed)) {
+					for (const d of parsed) {
+						if (/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+							const [y, m, day] = d.split('-').map(Number);
+							if (y === tahunQuery && m === bulan) {
+								liburDates.add(d);
+							}
+						}
+					}
+				}
+			} catch {
+				/* ignore */
+			}
+		}
+		if (presensiSettings?.liburSemester) {
+			try {
+				const parsed: Array<{ start: string; end: string }> = JSON.parse(
+					presensiSettings.liburSemester
+				);
+				if (Array.isArray(parsed)) {
+					for (const range of parsed) {
+						if (
+							range?.start &&
+							range?.end &&
+							/^\d{4}-\d{2}-\d{2}$/.test(range.start) &&
+							/^\d{4}-\d{2}-\d{2}$/.test(range.end)
+						) {
+							const s = new Date(range.start + 'T00:00:00');
+							const e = new Date(range.end + 'T00:00:00');
+							const cur = new Date(s);
+							while (cur <= e) {
+								const y = cur.getFullYear();
+								const m = cur.getMonth() + 1;
+								const day = cur.getDate();
+								const tgl = dateStr(y, m, day);
+								if (y === tahunQuery && m === bulan && !liburDates.has(tgl)) {
+									liburDates.add(tgl);
+								}
+								cur.setDate(cur.getDate() + 1);
+							}
+						}
+					}
+				}
+			} catch {
+				/* ignore */
+			}
+		}
+
+		// Compute red days (weekends + holidays)
+		const redDays: number[] = [];
+		for (let d = 1; d <= daysInMonth; d++) {
+			const isWeekend =
+				hariSekolah === 5
+					? isSaturday(tahunQuery, bulan, d) || isSunday(tahunQuery, bulan, d)
+					: isSunday(tahunQuery, bulan, d);
+			const tgl = dateStr(tahunQuery, bulan, d);
+			if (isWeekend || liburDates.has(tgl)) {
+				redDays.push(d);
+			}
+		}
+
+		// Fetch ketidakhadiran and absensi for the month
+		const allKetidakhadiran = await db.query.tableKetidakhadiranHarian.findMany({
+			columns: { muridId: true, tanggal: true, keterangan: true },
+			where: and(
+				inArray(tableKetidakhadiranHarian.muridId, muridIds),
+				sql`${tableKetidakhadiranHarian.tanggal} >= ${monthStart}`,
+				sql`${tableKetidakhadiranHarian.tanggal} <= ${monthEnd}`
+			)
+		});
+
+		const khMap = new Map<string, string | null>();
+		for (const kh of allKetidakhadiran) {
+			khMap.set(`${kh.muridId}:${kh.tanggal}`, kh.keterangan);
+		}
+
+		const monthStartISO = `${monthStart}T00:00:00.000Z`;
+		const monthEndISO = `${monthEnd}T23:59:59.999Z`;
+
+		const allAbsensi = await db.query.tableAbsensi.findMany({
+			columns: { muridId: true, waktu: true },
+			where: and(
+				inArray(tableAbsensi.muridId, muridIds),
+				sql`${tableAbsensi.waktu} >= ${monthStartISO}`,
+				sql`${tableAbsensi.waktu} <= ${monthEndISO}`
+			)
+		});
+
+		const absensiSet = new Set<string>();
+		for (const a of allAbsensi) {
+			absensiSet.add(`${a.muridId}:${a.waktu.slice(0, 10)}`);
+		}
+
+		function getStatus(muridId: number, day: number): StatusPerDay {
+			const tgl = dateStr(tahunQuery, bulan, day);
+			const keterangan = khMap.get(`${muridId}:${tgl}`);
+			if (keterangan !== undefined) {
+				if (keterangan === null) return 'H';
+				if (keterangan === 'sakit') return 'S';
+				if (keterangan === 'izin') return 'I';
+				if (keterangan === 'alfa') return 'TK';
+				return 'TK';
+			}
+			if (absensiSet.has(`${muridId}:${tgl}`)) return 'H';
+			return '';
+		}
+
+		const bulananRows: BulananRow[] = semuaMurid.map((murid, index) => {
+			let countS = 0;
+			let countI = 0;
+			let countTK = 0;
+			let countHadir = 0;
+			const statusPerDay: StatusPerDay[] = [];
+
+			for (let d = 1; d <= daysInMonth; d++) {
+				const status = getStatus(murid.id, d);
+				statusPerDay.push(status);
+				if (!redDays.includes(d)) {
+					if (status === 'S') countS++;
+					else if (status === 'I') countI++;
+					else if (status === 'TK') countTK++;
+					else if (status === 'H') countHadir++;
+				}
+			}
+
+			return {
+				no: index + 1,
+				nama: murid.nama,
+				statusPerDay,
+				countS,
+				countI,
+				countTK,
+				countHadir
+			};
+		});
+
+		return {
+			meta: { title: 'Kehadiran Murid' } satisfies PageMeta,
+			tableReady: true,
+			page: {
+				search,
+				currentPage,
+				totalPages,
+				totalItems: total,
+				perPage: PER_PAGE
+			} satisfies PageState,
+			daftarMurid: [],
+			semuaMurid: [],
+			totalMurid: total,
+			muridCount,
+			tanggal,
+			mode: 'bulanan' as const,
+			bulan,
+			tahun: tahunQuery,
+			daysInMonth,
+			bulananRows,
+			redDays
+		};
+	}
+
 	const defaultPage: PageState = {
 		search,
 		currentPage: 1,
@@ -85,7 +392,13 @@ export async function load({ parent, locals, url, depends }) {
 			page: defaultPage,
 			totalMurid: 0,
 			muridCount: 0,
-			tanggal
+			tanggal,
+			mode: 'harian' as const,
+			bulan: 0,
+			tahun: 0,
+			daysInMonth: 0,
+			bulananRows: [] as BulananRow[],
+			redDays: [] as number[]
 		};
 	}
 
@@ -237,7 +550,13 @@ export async function load({ parent, locals, url, depends }) {
 		semuaMurid,
 		totalMurid: total,
 		muridCount: muridCount ?? 0,
-		tanggal
+		tanggal,
+		mode: 'harian' as const,
+		bulan: 0,
+		tahun: 0,
+		daysInMonth: 0,
+		bulananRows: [] as BulananRow[],
+		redDays: [] as number[]
 	};
 }
 

@@ -453,6 +453,7 @@ export async function POST({ cookies, locals, request }) {
 		let countS = 0;
 		let countI = 0;
 		let countTK = 0;
+		let countH = 0;
 
 		for (let d = 1; d <= daysInMonth; d++) {
 			const col = 3 + d;
@@ -469,40 +470,16 @@ export async function POST({ cookies, locals, request }) {
 			const { status } = getStatus(murid.id, d);
 			if (status) {
 				cell.value = status;
-				if (status === 'S') countS++;
-				else if (status === 'I') countI++;
-				else if (status === 'TK') countTK++;
+				if (!isRedDay(d)) {
+					if (status === 'S') countS++;
+					else if (status === 'I') countI++;
+					else if (status === 'TK') countTK++;
+					else if (status === 'H') countH++;
+				}
 			}
 		}
 
-		const totalSchoolDays = (() => {
-			let count = 0;
-			for (let d = 1; d <= daysInMonth; d++) {
-				if (hariSekolah === 5 && (isSaturday(tahun, bulan, d) || isSunday(tahun, bulan, d)))
-					continue;
-				if (hariSekolah === 6 && isSunday(tahun, bulan, d)) continue;
-				count++;
-			}
-			return count;
-		})();
-
-		const liburOnSchoolDays = (() => {
-			let count = 0;
-			for (const ld of liburNasional) {
-				if (
-					hariSekolah === 5 &&
-					(isSaturday(tahun, bulan, ld.day) || isSunday(tahun, bulan, ld.day))
-				)
-					continue;
-				if (hariSekolah === 6 && isSunday(tahun, bulan, ld.day)) continue;
-				count++;
-			}
-			return count;
-		})();
-
-		const effectiveDays = totalSchoolDays - liburOnSchoolDays;
-
-		const jlh = Math.max(0, effectiveDays - countS - countI - countTK);
+		const jlh = countH;
 
 		const colS = summaryColStart;
 		const colI = summaryColStart + 1;

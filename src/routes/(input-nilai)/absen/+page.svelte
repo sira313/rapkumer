@@ -57,6 +57,18 @@
 		updatedAt: string | null;
 	};
 
+	type StatusPerDay = '' | 'H' | 'S' | 'I' | 'TK';
+
+	type BulananRow = {
+		no: number;
+		nama: string;
+		statusPerDay: StatusPerDay[];
+		countS: number;
+		countI: number;
+		countTK: number;
+		countHadir: number;
+	};
+
 	type PageState = {
 		search: string | null;
 		currentPage: number;
@@ -72,6 +84,12 @@
 		totalMurid: number;
 		muridCount: number;
 		tanggal: string;
+		mode: 'harian' | 'bulanan';
+		bulan: number;
+		tahun: number;
+		daysInMonth: number;
+		bulananRows: BulananRow[];
+		redDays: number[];
 	};
 
 	let { data }: { data: PageData } = $props();
@@ -239,18 +257,88 @@
 		return data.tanggal === `${y}-${m}-${day}`;
 	});
 
-	function viewDate() {
+	let selectedMode = $state(data.mode);
+	let selectedBulan = $state(data.mode === 'bulanan' ? data.bulan : new Date().getMonth() + 1);
+	let selectedTahun = $state(data.mode === 'bulanan' ? data.tahun : new Date().getFullYear());
+
+	$effect(() => {
+		selectedMode = data.mode;
+	});
+
+	$effect(() => {
+		if (data.mode === 'bulanan') {
+			selectedBulan = data.bulan;
+			selectedTahun = data.tahun;
+		}
+	});
+
+	function handleModeChange() {
 		void applyNavigation((params) => {
-			params.set('tanggal', selectedTanggal);
+			if (selectedMode === 'bulanan') {
+				params.set('mode', 'bulanan');
+				params.set('bulan', String(selectedBulan));
+				params.set('tahun', String(selectedTahun));
+				params.delete('tanggal');
+			} else {
+				params.delete('mode');
+				params.delete('bulan');
+				params.delete('tahun');
+			}
 			params.delete('page');
-			params.delete('q');
+			const cleaned = searchTerm.trim();
+			if (cleaned) {
+				params.set('q', cleaned);
+			} else {
+				params.delete('q');
+			}
 		});
+	}
+
+	function viewDate() {
+		if (data.mode === 'bulanan') {
+			void applyNavigation((params) => {
+				params.set('mode', 'bulanan');
+				params.set('bulan', String(selectedBulan));
+				params.set('tahun', String(selectedTahun));
+				params.delete('page');
+				params.delete('tanggal');
+				if (searchTerm.trim()) {
+					params.set('q', searchTerm.trim());
+				} else {
+					params.delete('q');
+				}
+			});
+		} else {
+			void applyNavigation((params) => {
+				params.set('tanggal', selectedTanggal);
+				params.delete('page');
+				params.delete('q');
+			});
+		}
 	}
 
 	function resetToToday() {
 		void applyNavigation((params) => {
 			params.delete('tanggal');
 			params.delete('page');
+			params.delete('q');
+		});
+	}
+
+	const isCurrentBulan = $derived.by(() => {
+		if (data.mode !== 'bulanan') return false;
+		const now = new Date();
+		return data.bulan === now.getMonth() + 1 && data.tahun === now.getFullYear();
+	});
+
+	function resetToCurrentBulan() {
+		const now = new Date();
+		void applyNavigation((params) => {
+			params.set('mode', 'bulanan');
+			params.set('bulan', String(now.getMonth() + 1));
+			params.set('tahun', String(now.getFullYear()));
+			params.delete('page');
+			params.delete('tanggal');
 			params.delete('q');
 		});
 	}
@@ -324,14 +412,19 @@
 	<div class="mb-4 flex items-start justify-between gap-2 max-sm:flex-col sm:flex-row">
 		<div>
 			<h2 class="text-xl font-bold">
-				Kehadiran murid{isToday ? ' hari Ini' : ''} -
-				<span class="text-primary">{waktuSekarang}</span>
+				{#if data.mode === 'bulanan'}
+					Kehadiran murid bulan -
+					<span class="text-primary">{bulanList[data.bulan - 1]} {data.tahun}</span>
+				{:else if isToday}
+					Kehadiran murid hari Ini -
+					<span class="text-primary">{waktuSekarang}</span>
+				{:else}
+					Kehadiran murid -
+					<span class="text-primary">{formatTanggal(data.tanggal)}</span>
+				{/if}
 			</h2>
 			{#if kelasAktifLabel}
 				<p class="text-base-content/80 block text-sm">{kelasAktifLabel}</p>
-			{/if}
-			{#if !isToday}
-				<p class="text-base-content/60 block text-sm">Menampilkan data tanggal {data.tanggal}</p>
 			{/if}
 		</div>
 		<div class="flex max-sm:w-full">
@@ -384,11 +477,29 @@
 	<div class="mb-4 flex items-start justify-between gap-2 max-sm:flex-col sm:flex-row">
 		<div class="flex flex-wrap items-center gap-2 max-sm:w-full">
 			<div class="flex flex-row max-sm:w-full">
-				<input
-					type="date"
-					class="input bg-base-200 dark:bg-base-300 w-full rounded-r-none max-sm:w-full dark:border-none"
-					bind:value={selectedTanggal}
-				/>
+				{#if data.mode === 'bulanan'}
+					<select
+						class="select bg-base-200 dark:bg-base-300 w-full rounded-r-none max-sm:w-full dark:border-none"
+						bind:value={selectedBulan}
+					>
+						{#each bulanList as nama, i (nama)}
+							<option value={i + 1}>{nama}</option>
+						{/each}
+					</select>
+					<input
+						type="number"
+						class="input bg-base-200 dark:bg-base-300 w-24 rounded-none max-sm:flex-1 dark:border-none"
+						bind:value={selectedTahun}
+						min="2000"
+						max="2099"
+					/>
+				{:else}
+					<input
+						type="date"
+						class="input bg-base-200 dark:bg-base-300 w-full rounded-r-none max-sm:w-full dark:border-none"
+						bind:value={selectedTanggal}
+					/>
+				{/if}
 				<button
 					type="button"
 					class="btn btn-soft rounded-none shadow-none"
@@ -401,10 +512,10 @@
 				<button
 					type="button"
 					class="btn btn-soft rounded-none shadow-none"
-					aria-label="Kembali ke hari ini"
-					title="Kembali ke hari ini"
-					onclick={resetToToday}
-					disabled={isToday}
+					aria-label={data.mode === 'bulanan' ? 'Kembali ke bulan ini' : 'Kembali ke hari ini'}
+					title={data.mode === 'bulanan' ? 'Kembali ke bulan ini' : 'Kembali ke hari ini'}
+					onclick={data.mode === 'bulanan' ? resetToCurrentBulan : resetToToday}
+					disabled={data.mode === 'bulanan' ? isCurrentBulan : isToday}
 				>
 					<Icon name="repeat" />
 				</button>
@@ -412,11 +523,13 @@
 					type="button"
 					class="btn btn-soft btn-error rounded-l-none shadow-none"
 					aria-label="Hapus data presensi"
-					title={!canEdit
-						? 'Anda tidak memiliki izin untuk menghapus presensi'
-						: 'Hapus data presensi tanggal ini'}
+					title={data.mode === 'bulanan'
+						? 'Tidak dapat menghapus dalam mode bulanan'
+						: !canEdit
+							? 'Anda tidak memiliki izin untuk menghapus presensi'
+							: 'Hapus data presensi tanggal ini'}
 					onclick={openDeleteConfirm}
-					disabled={!canEdit}
+					disabled={data.mode === 'bulanan' || !canEdit}
 				>
 					<Icon name="del" />
 				</button>
@@ -440,17 +553,30 @@
 		spellcheck="false"
 		onsubmit={submitSearch}
 	>
-		<label class="input bg-base-200 dark:bg-base-300 w-full dark:border-none">
-			<Icon name="search" />
-			<input
-				type="search"
-				name="q"
-				value={searchTerm}
-				placeholder="Cari nama murid..."
-				oninput={handleSearchInput}
-				autocomplete="off"
-			/>
-		</label>
+		<div class="join w-full">
+			<label class="input bg-base-200 dark:bg-base-300 join-item grow dark:border-none">
+				<Icon name="search" />
+				<input
+					type="search"
+					name="q"
+					value={searchTerm}
+					placeholder="Cari nama murid..."
+					oninput={handleSearchInput}
+					autocomplete="off"
+				/>
+			</label>
+			<select
+				class="select bg-base-200 dark:bg-base-300 join-item w-auto shrink dark:border-none"
+				value={selectedMode}
+				onchange={(e) => {
+					selectedMode = (e.currentTarget as HTMLSelectElement).value as 'harian' | 'bulanan';
+					handleModeChange();
+				}}
+			>
+				<option value="harian">Harian</option>
+				<option value="bulanan">Bulanan</option>
+			</select>
+		</div>
 	</form>
 
 	{#if !hasMurid}
@@ -462,6 +588,78 @@
 		<div class="alert alert-soft alert-info mt-6">
 			<Icon name="info" />
 			<span>Tidak ada murid yang cocok dengan pencarian.</span>
+		</div>
+	{:else if data.mode === 'bulanan'}
+		<div
+			class="bg-base-100 dark:bg-base-200 mt-4 overflow-x-auto rounded-md shadow-md dark:shadow-none"
+		>
+			<table class="border-base-200 table border text-xs sm:text-sm dark:border-none">
+				<thead>
+					<tr class="bg-base-200 dark:bg-base-300 text-base-content text-left font-bold">
+						<th
+							class="bg-base-200 dark:bg-base-300 sticky left-0 z-10 text-center"
+							style="width: 40px; min-width: 36px;">No</th
+						>
+						<th
+							class="bg-base-200 dark:bg-base-300 sticky left-[40px] z-10"
+							style="min-width: 140px;">Nama</th
+						>
+						{#each Array(data.daysInMonth) as _, i}
+							{@const isRed = data.redDays.includes(i + 1)}
+							<th
+								class="text-center {isRed ? 'text-error' : ''}"
+								style="width: 30px; min-width: 26px;">{i + 1}</th
+							>
+						{/each}
+						<th class="text-center" style="width: 34px; min-width: 30px;">S</th>
+						<th class="text-center" style="width: 34px; min-width: 30px;">I</th>
+						<th class="text-center" style="width: 34px; min-width: 30px;">TK</th>
+						<th class="text-center" style="width: 38px; min-width: 34px;">JLH</th>
+					</tr>
+				</thead>
+				<tbody>
+					{#each data.bulananRows as row (row.no)}
+						<tr class="hover:bg-base-200/30">
+							<td class="bg-base-100 dark:bg-base-200 sticky left-0 z-10 text-center">{row.no}</td>
+							<td class="bg-base-100 dark:bg-base-200 sticky left-[40px] z-10">{row.nama}</td>
+							{#each row.statusPerDay as status, i}
+								{@const isRed = data.redDays.includes(i + 1)}
+								<td class="text-center font-mono {isRed ? 'bg-error/5' : ''}">
+									{#if status === 'H'}
+										<span class="text-success font-bold">{status}</span>
+									{:else if status === 'S'}
+										<span class="text-warning font-bold">{status}</span>
+									{:else if status === 'I'}
+										<span class="text-info font-bold">{status}</span>
+									{:else if status === 'TK'}
+										<span class="text-error font-bold">{status}</span>
+									{:else}
+										<span class="text-base-content/20">-</span>
+									{/if}
+								</td>
+							{/each}
+							<td class="text-center font-bold">{row.countS || ''}</td>
+							<td class="text-center font-bold">{row.countI || ''}</td>
+							<td class="text-center font-bold">{row.countTK || ''}</td>
+							<td class="text-center font-bold">{row.countHadir || ''}</td>
+						</tr>
+					{/each}
+				</tbody>
+			</table>
+		</div>
+
+		<div class="join mt-4 sm:mx-auto">
+			{#each pages as pageNumber (pageNumber)}
+				<button
+					type="button"
+					class="join-item btn pointer-events-auto"
+					class:btn-active={pageNumber === currentPage}
+					onclick={() => handlePageClick(pageNumber)}
+					aria-current={pageNumber === currentPage ? 'page' : undefined}
+				>
+					{pageNumber}
+				</button>
+			{/each}
 		</div>
 	{:else}
 		<div
