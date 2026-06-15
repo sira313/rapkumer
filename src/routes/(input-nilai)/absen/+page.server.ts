@@ -2,25 +2,31 @@ import db from '$lib/server/db';
 import {
 	tableAbsensi,
 	tableKetidakhadiranHarian,
+	tableKetidakhadiranRapor,
 	tableMurid,
 	tablePresensiSettings,
-	tableKelas
+	tableKelas,
+	tableSemester,
+	tableTahunAjaran
 } from '$lib/server/db/schema';
 import { ensureAbsensiSchema } from '$lib/server/db/ensure-absensi';
 import { ensureKetidakhadiranHarianSchema } from '$lib/server/db/ensure-ketidakhadiran-harian';
+import { ensureKetidakhadiranRaporSchema } from '$lib/server/db/ensure-ketidakhadiran-rapor';
 import { ensurePresensiSettingsSchema } from '$lib/server/db/ensure-presensi-settings';
 import { fail, redirect } from '@sveltejs/kit';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 
 const PER_PAGE = 20;
 const TABLE_MISSING_MESSAGE =
-	'Tabel ketidakhadiran harian belum tersedia. Jalankan "pnpm db:push" untuk menerapkan migrasi terbaru.';
+	'Tabel yang diperlukan belum tersedia. Jalankan "pnpm db:push" untuk menerapkan migrasi terbaru.';
 
 function isTableMissingError(error: unknown) {
 	return (
 		error instanceof Error &&
 		error.message.includes('no such table') &&
-		(error.message.includes('ketidakhadiran_harian') || error.message.includes('absensi'))
+		(error.message.includes('ketidakhadiran_harian') ||
+			error.message.includes('ketidakhadiran_rapor') ||
+			error.message.includes('absensi'))
 	);
 }
 
@@ -67,6 +73,17 @@ type BulananRow = {
 	countHadir: number;
 };
 
+type RaporRow = {
+	id: number;
+	no: number;
+	nama: string;
+	hadir: number;
+	sakit: number;
+	izin: number;
+	alfa: number;
+	overridden: boolean;
+};
+
 type KehadiranRow = {
 	id: number;
 	no: number;
@@ -92,6 +109,7 @@ export async function load({ parent, locals, url, depends }) {
 	await ensurePresensiSettingsSchema();
 	await ensureAbsensiSchema();
 	await ensureKetidakhadiranHarianSchema();
+	await ensureKetidakhadiranRaporSchema();
 
 	const { kelasAktif, academicContext } = await parent();
 	const sekolahId = locals.sekolah?.id ?? null;
@@ -109,18 +127,20 @@ export async function load({ parent, locals, url, depends }) {
 	let presensiWarningMessage = '';
 	let presensiSettings: typeof tablePresensiSettings.$inferSelect | null = null;
 	if (sekolahId && kelasAktif?.id && tahunAjaranId) {
-		presensiSettings = await db.query.tablePresensiSettings.findFirst({
-			where: and(
-				eq(tablePresensiSettings.sekolahId, sekolahId),
-				eq(tablePresensiSettings.tahunAjaranId, tahunAjaranId)
-			)
-		}) ?? null;
+		presensiSettings =
+			(await db.query.tablePresensiSettings.findFirst({
+				where: and(
+					eq(tablePresensiSettings.sekolahId, sekolahId),
+					eq(tablePresensiSettings.tahunAjaranId, tahunAjaranId)
+				)
+			})) ?? null;
 
-		const activeTa = academicContext?.tahunAjaranList.find((ta) => ta.id === academicContext?.activeTahunAjaranId);
+		const activeTa = academicContext?.tahunAjaranList.find(
+			(ta) => ta.id === academicContext?.activeTahunAjaranId
+		);
 		const activeSem = activeTa?.semester.find((s) => s.id === academicContext?.activeSemesterId);
 		const tanggalMasuk = activeSem?.tanggalMasuk ?? null;
-		const activeSemesterLabel =
-			activeSem && activeTa ? `${activeSem.nama} (${activeTa.nama})` : '';
+		const activeSemesterLabel = activeSem && activeTa ? `${activeSem.nama} (${activeTa.nama})` : '';
 
 		const hasPresensiSettings = !!presensiSettings;
 		const hasTanggalMasuk = !!tanggalMasuk;
@@ -134,7 +154,8 @@ export async function load({ parent, locals, url, depends }) {
 		}
 	} else {
 		presensiReady = false;
-		presensiWarningMessage = 'Tidak dapat melakukan presensi karena pengaturan sekolah atau kelas belum lengkap.';
+		presensiWarningMessage =
+			'Tidak dapat melakukan presensi karena pengaturan sekolah atau kelas belum lengkap.';
 	}
 
 	const searchParam = url.searchParams.get('q');
@@ -241,14 +262,14 @@ export async function load({ parent, locals, url, depends }) {
 		const hariSekolah = presensiSettings?.hariSekolah ?? 6;
 
 		// Build libur date set
-		let liburDates = new Set<string>();
+		const liburDates = new Set<string>();
 		if (presensiSettings?.liburNasional) {
 			try {
 				const parsed: string[] = JSON.parse(presensiSettings.liburNasional);
 				if (Array.isArray(parsed)) {
 					for (const d of parsed) {
 						if (/^\d{4}-\d{2}-\d{2}$/.test(d)) {
-							const [y, m, day] = d.split('-').map(Number);
+							const [y, m] = d.split('-').map(Number);
 							if (y === tahunQuery && m === bulan) {
 								liburDates.add(d);
 							}
@@ -407,6 +428,313 @@ export async function load({ parent, locals, url, depends }) {
 		};
 	}
 
+	if (mode === 'rapor') {
+		const defaultRapor = {
+			tableReady: true,
+			daftarMurid: [] as KehadiranRow[],
+			page: {
+				search,
+				currentPage: 1,
+				totalPages: 1,
+				totalItems: 0,
+				perPage: PER_PAGE
+			} as PageState,
+			totalMurid: 0,
+			muridCount: 0,
+			tanggal,
+			mode: 'rapor' as const,
+			bulan: 0,
+			tahun: 0,
+			daysInMonth: 0,
+			bulananRows: [] as BulananRow[],
+			raporRows: [] as RaporRow[],
+			redDays: [] as number[],
+			tanggalMulaiRapor: '',
+			tanggalAkhirRapor: '',
+			presensiReady,
+			presensiWarningMessage
+		};
+
+		if (!sekolahId || !kelasAktif?.id) return defaultRapor;
+
+		const activeTa = academicContext?.tahunAjaranList.find(
+			(ta) => ta.id === academicContext?.activeTahunAjaranId
+		);
+		const activeSem = activeTa?.semester.find((s) => s.id === academicContext?.activeSemesterId);
+		const tanggalMulaiRapor = activeSem?.tanggalMasuk ?? null;
+		const tanggalAkhirRapor = activeSem?.tanggalBagiRaport ?? null;
+		const semesterId = academicContext?.activeSemesterId;
+
+		if (!tanggalMulaiRapor || !tanggalAkhirRapor || !semesterId) {
+			return {
+				...defaultRapor,
+				presensiReady: false,
+				presensiWarningMessage:
+					'Tidak dapat menampilkan rekap rapor. Atur tanggal masuk semester dan tanggal bagi rapor di halaman /rapor.'
+			};
+		}
+
+		if (!isValidDate(tanggalMulaiRapor) || !isValidDate(tanggalAkhirRapor)) {
+			return {
+				...defaultRapor,
+				presensiReady: false,
+				presensiWarningMessage: 'Format tanggal masuk atau tanggal bagi rapor tidak valid.'
+			};
+		}
+
+		const [{ totalItems }] = await db
+			.select({ totalItems: sql<number>`count(*)` })
+			.from(tableMurid)
+			.where(
+				search
+					? and(
+							eq(tableMurid.sekolahId, sekolahId),
+							eq(tableMurid.kelasId, kelasAktif.id),
+							sql`${tableMurid.nama} LIKE ${'%' + search + '%'} COLLATE NOCASE`
+						)
+					: and(eq(tableMurid.sekolahId, sekolahId), eq(tableMurid.kelasId, kelasAktif.id))
+			);
+
+		const total = totalItems ?? 0;
+		const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
+		const currentPage = Math.min(Math.max(pageNumber, 1), totalPages);
+		const offset = (currentPage - 1) * PER_PAGE;
+
+		if (pageNumber !== currentPage) {
+			const params = new URLSearchParams(url.searchParams);
+			if (currentPage <= 1) {
+				params.delete('page');
+			} else {
+				params.set('page', String(currentPage));
+			}
+			throw redirect(303, `${url.pathname}${params.size ? `?${params}` : ''}`);
+		}
+
+		const [{ muridCount }] = await db
+			.select({ muridCount: sql<number>`count(*)` })
+			.from(tableMurid)
+			.where(and(eq(tableMurid.sekolahId, sekolahId), eq(tableMurid.kelasId, kelasAktif.id)));
+
+		const baseFilter = and(
+			eq(tableMurid.sekolahId, sekolahId),
+			eq(tableMurid.kelasId, kelasAktif.id)
+		);
+		const searchFilter = search
+			? and(baseFilter, sql`${tableMurid.nama} LIKE ${'%' + search + '%'} COLLATE NOCASE`)
+			: baseFilter;
+
+		const semuaMurid = await db.query.tableMurid.findMany({
+			columns: { id: true, nama: true },
+			where: searchFilter,
+			orderBy: asc(tableMurid.nama),
+			limit: PER_PAGE,
+			offset
+		});
+
+		const muridIds = semuaMurid.map((m) => m.id);
+		if (muridIds.length === 0) {
+			return {
+				...defaultRapor,
+				page: { search, currentPage, totalPages, totalItems: total, perPage: PER_PAGE },
+				totalMurid: total,
+				muridCount,
+				tanggalMulaiRapor,
+				tanggalAkhirRapor
+			};
+		}
+
+		const hariSekolah = presensiSettings?.hariSekolah ?? 6;
+
+		// Build libur date set for the full range
+		const liburDates = new Set<string>();
+		const rangeStartDate = new Date(tanggalMulaiRapor + 'T00:00:00');
+		const rangeEndDate = new Date(tanggalAkhirRapor + 'T00:00:00');
+
+		if (presensiSettings?.liburNasional) {
+			try {
+				const parsed: string[] = JSON.parse(presensiSettings.liburNasional);
+				if (Array.isArray(parsed)) {
+					for (const d of parsed) {
+						if (/^\d{4}-\d{2}-\d{2}$/.test(d) && d >= tanggalMulaiRapor && d <= tanggalAkhirRapor) {
+							liburDates.add(d);
+						}
+					}
+				}
+			} catch {
+				/* ignore */
+			}
+		}
+		if (presensiSettings?.liburSemester) {
+			try {
+				const parsed: Array<{ start: string; end: string }> = JSON.parse(
+					presensiSettings.liburSemester
+				);
+				if (Array.isArray(parsed)) {
+					for (const range of parsed) {
+						if (
+							range?.start &&
+							range?.end &&
+							/^\d{4}-\d{2}-\d{2}$/.test(range.start) &&
+							/^\d{4}-\d{2}-\d{2}$/.test(range.end)
+						) {
+							const s = new Date(range.start + 'T00:00:00');
+							const e = new Date(range.end + 'T00:00:00');
+							const c = new Date(Math.max(s.getTime(), rangeStartDate.getTime()));
+							const rangeEnd = new Date(Math.min(e.getTime(), rangeEndDate.getTime()));
+							while (c <= rangeEnd) {
+								const tgl = dateStr(c.getFullYear(), c.getMonth() + 1, c.getDate());
+								if (!liburDates.has(tgl)) {
+									liburDates.add(tgl);
+								}
+								c.setDate(c.getDate() + 1);
+							}
+						}
+					}
+				}
+			} catch {
+				/* ignore */
+			}
+		}
+
+		// Generate all dates in range and compute red days
+		const allDates: string[] = [];
+		const redDaySet = new Set<string>();
+		const cur = new Date(rangeStartDate);
+		while (cur <= rangeEndDate) {
+			const y = cur.getFullYear();
+			const m = cur.getMonth() + 1;
+			const d = cur.getDate();
+			const tgl = dateStr(y, m, d);
+			allDates.push(tgl);
+
+			const isWeekend =
+				hariSekolah === 5 ? isSaturday(y, m, d) || isSunday(y, m, d) : isSunday(y, m, d);
+
+			if (isWeekend || liburDates.has(tgl)) {
+				redDaySet.add(tgl);
+			}
+
+			cur.setDate(cur.getDate() + 1);
+		}
+
+		// Fetch ketidakhadiran records for the range
+		const allKetidakhadiran = await db.query.tableKetidakhadiranHarian.findMany({
+			columns: { muridId: true, tanggal: true, keterangan: true },
+			where: and(
+				inArray(tableKetidakhadiranHarian.muridId, muridIds),
+				sql`${tableKetidakhadiranHarian.tanggal} >= ${tanggalMulaiRapor}`,
+				sql`${tableKetidakhadiranHarian.tanggal} <= ${tanggalAkhirRapor}`
+			)
+		});
+
+		const khMap = new Map<string, string | null>();
+		for (const kh of allKetidakhadiran) {
+			khMap.set(`${kh.muridId}:${kh.tanggal}`, kh.keterangan);
+		}
+
+		// Fetch absensi records for the range
+		const rangeStartISO = `${tanggalMulaiRapor}T00:00:00.000Z`;
+		const rangeEndISO = `${tanggalAkhirRapor}T23:59:59.999Z`;
+
+		const allAbsensi = await db.query.tableAbsensi.findMany({
+			columns: { muridId: true, waktu: true },
+			where: and(
+				inArray(tableAbsensi.muridId, muridIds),
+				sql`${tableAbsensi.waktu} >= ${rangeStartISO}`,
+				sql`${tableAbsensi.waktu} <= ${rangeEndISO}`
+			)
+		});
+
+		const absensiSet = new Set<string>();
+		for (const a of allAbsensi) {
+			absensiSet.add(`${a.muridId}:${a.waktu.slice(0, 10)}`);
+		}
+
+		// Fetch override records
+		const allOverrides = await db.query.tableKetidakhadiranRapor.findMany({
+			columns: { muridId: true, sakit: true, izin: true, alfa: true },
+			where: and(
+				inArray(tableKetidakhadiranRapor.muridId, muridIds),
+				eq(tableKetidakhadiranRapor.semesterId, semesterId)
+			)
+		});
+
+		const overrideMap = new Map<
+			number,
+			{ sakit: number | null; izin: number | null; alfa: number | null }
+		>();
+		for (const o of allOverrides) {
+			overrideMap.set(o.muridId, { sakit: o.sakit, izin: o.izin, alfa: o.alfa });
+		}
+
+		// Compute rapor rows
+		const raporRows: RaporRow[] = semuaMurid.map((murid, index) => {
+			let hadir = 0;
+			let sakit = 0;
+			let izin = 0;
+			let alfa = 0;
+
+			for (const tgl of allDates) {
+				if (redDaySet.has(tgl)) continue;
+
+				const keterangan = khMap.get(`${murid.id}:${tgl}`);
+				if (keterangan !== undefined) {
+					if (keterangan === null) hadir++;
+					else if (keterangan === 'sakit') sakit++;
+					else if (keterangan === 'izin') izin++;
+					else if (keterangan === 'alfa') alfa++;
+					else alfa++; // fallback unknown
+				} else if (absensiSet.has(`${murid.id}:${tgl}`)) {
+					hadir++;
+				} else {
+					alfa++; // fallback: no data = alfa
+				}
+			}
+
+			const override = overrideMap.get(murid.id);
+			const overridden = !!override;
+
+			return {
+				id: murid.id,
+				no: index + 1,
+				nama: murid.nama,
+				hadir,
+				sakit: override?.sakit ?? sakit,
+				izin: override?.izin ?? izin,
+				alfa: override?.alfa ?? alfa,
+				overridden
+			};
+		});
+
+		return {
+			meta: { title: 'Kehadiran Murid' } satisfies PageMeta,
+			tableReady: true,
+			page: {
+				search,
+				currentPage,
+				totalPages,
+				totalItems: total,
+				perPage: PER_PAGE
+			} satisfies PageState,
+			daftarMurid: [],
+			semuaMurid: [],
+			totalMurid: total,
+			muridCount,
+			tanggal,
+			mode: 'rapor' as const,
+			bulan: 0,
+			tahun: 0,
+			daysInMonth: 0,
+			bulananRows: [] as BulananRow[],
+			raporRows,
+			redDays: [] as number[],
+			tanggalMulaiRapor,
+			tanggalAkhirRapor,
+			presensiReady,
+			presensiWarningMessage
+		};
+	}
+
 	const defaultPage: PageState = {
 		search,
 		currentPage: 1,
@@ -428,7 +756,10 @@ export async function load({ parent, locals, url, depends }) {
 			tahun: 0,
 			daysInMonth: 0,
 			bulananRows: [] as BulananRow[],
+			raporRows: [] as RaporRow[],
 			redDays: [] as number[],
+			tanggalMulaiRapor: '',
+			tanggalAkhirRapor: '',
 			presensiReady,
 			presensiWarningMessage
 		};
@@ -588,7 +919,10 @@ export async function load({ parent, locals, url, depends }) {
 		tahun: 0,
 		daysInMonth: 0,
 		bulananRows: [] as BulananRow[],
+		raporRows: [] as RaporRow[],
 		redDays: [] as number[],
+		tanggalMulaiRapor: '',
+		tanggalAkhirRapor: '',
 		presensiReady,
 		presensiWarningMessage
 	};
@@ -834,5 +1168,155 @@ export const actions = {
 		}
 
 		return { message: 'Semua data presensi berhasil dihapus' };
+	},
+
+	updateRapor: async ({ request, locals }) => {
+		const sekolahId = locals.sekolah?.id ?? null;
+		if (!sekolahId) {
+			return fail(401, { fail: 'Sekolah tidak ditemukan' });
+		}
+
+		if (locals.user?.type === 'user' || locals.user?.type === 'wali_asuh') {
+			return fail(403, { fail: 'Anda tidak memiliki izin untuk mengubah data kehadiran' });
+		}
+
+		const activeTa = await db.query.tableTahunAjaran.findFirst({
+			where: and(eq(tableTahunAjaran.sekolahId, sekolahId), eq(tableTahunAjaran.isAktif, true))
+		});
+		if (!activeTa) return fail(400, { fail: 'Tahun ajaran aktif tidak ditemukan' });
+
+		const activeSemester = await db.query.tableSemester.findFirst({
+			where: and(eq(tableSemester.tahunAjaranId, activeTa.id), eq(tableSemester.isAktif, true))
+		});
+		if (!activeSemester) return fail(400, { fail: 'Semester aktif tidak ditemukan' });
+
+		const semesterId = activeSemester.id;
+
+		const formData = await request.formData();
+		const muridIdRaw = formData.get('muridId');
+
+		if (!muridIdRaw) {
+			return fail(400, { fail: 'Murid tidak ditemukan' });
+		}
+
+		const muridId = Number(muridIdRaw);
+		if (!Number.isInteger(muridId) || muridId <= 0) {
+			return fail(400, { fail: 'ID murid tidak valid' });
+		}
+
+		const sakitRaw = formData.get('sakit')?.toString().trim() ?? '';
+		const izinRaw = formData.get('izin')?.toString().trim() ?? '';
+		const alfaRaw = formData.get('alfa')?.toString().trim() ?? '';
+
+		const sakit = sakitRaw ? Number(sakitRaw) : null;
+		const izin = izinRaw ? Number(izinRaw) : null;
+		const alfa = alfaRaw ? Number(alfaRaw) : null;
+
+		if (
+			(sakit !== null && (!Number.isInteger(sakit) || sakit < 0)) ||
+			(izin !== null && (!Number.isInteger(izin) || izin < 0)) ||
+			(alfa !== null && (!Number.isInteger(alfa) || alfa < 0))
+		) {
+			return fail(400, { fail: 'Nilai tidak valid' });
+		}
+
+		const muridRecord = await db.query.tableMurid.findFirst({
+			columns: { id: true },
+			where: and(eq(tableMurid.id, muridId), eq(tableMurid.sekolahId, sekolahId))
+		});
+
+		if (!muridRecord) {
+			return fail(404, { fail: 'Murid tidak ditemukan atau bukan bagian dari sekolah ini' });
+		}
+
+		try {
+			await db
+				.insert(tableKetidakhadiranRapor)
+				.values({
+					muridId,
+					semesterId,
+					sakit,
+					izin,
+					alfa
+				})
+				.onConflictDoUpdate({
+					target: [tableKetidakhadiranRapor.muridId, tableKetidakhadiranRapor.semesterId],
+					set: {
+						sakit,
+						izin,
+						alfa,
+						updatedAt: new Date().toISOString()
+					}
+				});
+		} catch (error) {
+			if (isTableMissingError(error)) {
+				return fail(500, { fail: TABLE_MISSING_MESSAGE });
+			}
+			throw error;
+		}
+
+		return { message: 'Data kehadiran rapor berhasil diperbarui' };
+	},
+
+	resetRapor: async ({ request, locals }) => {
+		const sekolahId = locals.sekolah?.id ?? null;
+		if (!sekolahId) {
+			return fail(401, { fail: 'Sekolah tidak ditemukan' });
+		}
+
+		if (locals.user?.type === 'user' || locals.user?.type === 'wali_asuh') {
+			return fail(403, { fail: 'Anda tidak memiliki izin untuk mengubah data kehadiran' });
+		}
+
+		const activeTa = await db.query.tableTahunAjaran.findFirst({
+			where: and(eq(tableTahunAjaran.sekolahId, sekolahId), eq(tableTahunAjaran.isAktif, true))
+		});
+		if (!activeTa) return fail(400, { fail: 'Tahun ajaran aktif tidak ditemukan' });
+
+		const activeSemester = await db.query.tableSemester.findFirst({
+			where: and(eq(tableSemester.tahunAjaranId, activeTa.id), eq(tableSemester.isAktif, true))
+		});
+		if (!activeSemester) return fail(400, { fail: 'Semester aktif tidak ditemukan' });
+
+		const semesterId = activeSemester.id;
+
+		const formData = await request.formData();
+		const muridIdRaw = formData.get('muridId');
+
+		if (!muridIdRaw) {
+			return fail(400, { fail: 'Murid tidak ditemukan' });
+		}
+
+		const muridId = Number(muridIdRaw);
+		if (!Number.isInteger(muridId) || muridId <= 0) {
+			return fail(400, { fail: 'ID murid tidak valid' });
+		}
+
+		const muridRecord = await db.query.tableMurid.findFirst({
+			columns: { id: true },
+			where: and(eq(tableMurid.id, muridId), eq(tableMurid.sekolahId, sekolahId))
+		});
+
+		if (!muridRecord) {
+			return fail(404, { fail: 'Murid tidak ditemukan atau bukan bagian dari sekolah ini' });
+		}
+
+		try {
+			await db
+				.delete(tableKetidakhadiranRapor)
+				.where(
+					and(
+						eq(tableKetidakhadiranRapor.muridId, muridId),
+						eq(tableKetidakhadiranRapor.semesterId, semesterId)
+					)
+				);
+		} catch (error) {
+			if (isTableMissingError(error)) {
+				return fail(500, { fail: TABLE_MISSING_MESSAGE });
+			}
+			throw error;
+		}
+
+		return { message: 'Data kehadiran rapor berhasil direset' };
 	}
 };

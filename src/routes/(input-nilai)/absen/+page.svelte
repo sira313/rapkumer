@@ -69,6 +69,17 @@
 		countHadir: number;
 	};
 
+	type RaporRow = {
+		id: number;
+		no: number;
+		nama: string;
+		hadir: number;
+		sakit: number;
+		izin: number;
+		alfa: number;
+		overridden: boolean;
+	};
+
 	type PageState = {
 		search: string | null;
 		currentPage: number;
@@ -84,12 +95,15 @@
 		totalMurid: number;
 		muridCount: number;
 		tanggal: string;
-		mode: 'harian' | 'bulanan';
+		mode: 'harian' | 'bulanan' | 'rapor';
 		bulan: number;
 		tahun: number;
 		daysInMonth: number;
 		bulananRows: BulananRow[];
+		raporRows: RaporRow[];
 		redDays: number[];
+		tanggalMulaiRapor: string;
+		tanggalAkhirRapor: string;
 		presensiReady: boolean;
 		presensiWarningMessage: string;
 	};
@@ -122,6 +136,14 @@
 	});
 	let editingSubmitting = $state(false);
 
+	let raporEditingRowId = $state<number | null>(null);
+	let raporEditingValues = $state<{ sakit: number; izin: number; alfa: number }>({
+		sakit: 0,
+		izin: 0,
+		alfa: 0
+	});
+	let raporEditingSubmitting = $state(false);
+
 	$effect(() => {
 		if (searchTimer) return;
 		const latestSearchTerm = data.page.search ?? '';
@@ -133,6 +155,12 @@
 	$effect(() => {
 		if (editingRowId == null) {
 			editingValues = { keterangan: '' };
+		}
+	});
+
+	$effect(() => {
+		if (raporEditingRowId == null) {
+			raporEditingValues = { sakit: 0, izin: 0, alfa: 0 };
 		}
 	});
 
@@ -242,6 +270,28 @@
 		await invalidate('app:absen');
 	}
 
+	const raporEditingSaveDisabled = $derived.by(
+		() => raporEditingRowId == null || raporEditingSubmitting
+	);
+
+	function startRaporEdit(row: RaporRow) {
+		raporEditingRowId = row.id;
+		raporEditingValues = {
+			sakit: row.sakit,
+			izin: row.izin,
+			alfa: row.alfa
+		};
+	}
+
+	function cancelRaporEdit() {
+		raporEditingRowId = null;
+	}
+
+	async function handleRaporUpdateSuccess() {
+		raporEditingRowId = null;
+		await invalidate('app:absen');
+	}
+
 	const hasMurid = $derived.by(() => data.muridCount > 0);
 	const hasFilteredMurid = $derived.by(() => data.totalMurid > 0);
 
@@ -259,7 +309,7 @@
 		return data.tanggal === `${y}-${m}-${day}`;
 	});
 
-	let selectedMode = $state(data.mode);
+	let selectedMode = $state<'harian' | 'bulanan' | 'rapor'>(data.mode);
 	let selectedBulan = $state(data.mode === 'bulanan' ? data.bulan : new Date().getMonth() + 1);
 	let selectedTahun = $state(data.mode === 'bulanan' ? data.tahun : new Date().getFullYear());
 
@@ -280,6 +330,11 @@
 				params.set('mode', 'bulanan');
 				params.set('bulan', String(selectedBulan));
 				params.set('tahun', String(selectedTahun));
+				params.delete('tanggal');
+			} else if (selectedMode === 'rapor') {
+				params.set('mode', 'rapor');
+				params.delete('bulan');
+				params.delete('tahun');
 				params.delete('tanggal');
 			} else {
 				params.delete('mode');
@@ -310,6 +365,9 @@
 					params.delete('q');
 				}
 			});
+		} else if (data.mode === 'rapor') {
+			// No date navigation for rapor mode
+			return;
 		} else {
 			void applyNavigation((params) => {
 				params.set('tanggal', selectedTanggal);
@@ -440,6 +498,16 @@
 				{#if data.mode === 'bulanan'}
 					Kehadiran murid bulan -
 					<span class="text-primary">{bulanList[data.bulan - 1]} {data.tahun}</span>
+				{:else if data.mode === 'rapor'}
+					Rekap Kehadiran Rapor
+					{#if data.tanggalMulaiRapor && data.tanggalAkhirRapor}
+						-
+						<span class="text-primary"
+							>{formatTanggal(data.tanggalMulaiRapor)} - {formatTanggal(
+								data.tanggalAkhirRapor
+							)}</span
+						>
+					{/if}
 				{:else if isToday}
 					Kehadiran murid hari Ini -
 					<span class="text-primary">{waktuSekarang}</span>
@@ -452,56 +520,58 @@
 				<p class="text-base-content/80 block text-sm">{kelasAktifLabel}</p>
 			{/if}
 		</div>
-		<div class="flex max-sm:w-full">
-			<button
-				type="button"
-				class="btn btn-primary btn-soft flex-1 rounded-r-none shadow-none max-sm:flex-1"
-				onclick={openScanner}
-			>
-				<Icon name="grid" />
-				Scan QR
-			</button>
-			<div class="dropdown dropdown-end max-sm:flex-none">
+		{#if data.mode !== 'rapor'}
+			<div class="flex max-sm:w-full">
 				<button
 					type="button"
-					tabindex="0"
-					class="btn btn-primary btn-soft rounded-l-none shadow-none"
+					class="btn btn-primary btn-soft flex-1 rounded-r-none shadow-none max-sm:flex-1"
+					onclick={openScanner}
 				>
-					<Icon name="down" />
+					<Icon name="grid" />
+					Scan QR
 				</button>
-				<ul
-					tabindex="-1"
-					class="dropdown-content menu bg-base-100 border-base-300 z-50 mt-2 w-49 rounded-md border p-2 shadow-lg"
-				>
-					<li>
-						<button
-							type="button"
-							class="w-full text-left"
-							disabled={!canEdit}
-							title={!canEdit ? 'Anda tidak memiliki izin untuk mengisi sekaligus' : ''}
-							onclick={() => {
-								if (!data.presensiReady) {
-									presensiNotReady();
-									return;
-								}
-								showModal({
-									title: 'Isi Kehadiran Sekaligus',
-									body: IsiSekaligusModal,
-									bodyProps: {
-										daftarMurid: data.semuaMurid,
-										kelasId: kelasAktif?.id ?? undefined,
-										tanggal: data.tanggal
-									},
-									dismissible: true
-								});
-							}}
-						>
-							Isi Sekaligus
-						</button>
-					</li>
-				</ul>
+				<div class="dropdown dropdown-end max-sm:flex-none">
+					<button
+						type="button"
+						tabindex="0"
+						class="btn btn-primary btn-soft rounded-l-none shadow-none"
+					>
+						<Icon name="down" />
+					</button>
+					<ul
+						tabindex="-1"
+						class="dropdown-content menu bg-base-100 border-base-300 z-50 mt-2 w-49 rounded-md border p-2 shadow-lg"
+					>
+						<li>
+							<button
+								type="button"
+								class="w-full text-left"
+								disabled={!canEdit}
+								title={!canEdit ? 'Anda tidak memiliki izin untuk mengisi sekaligus' : ''}
+								onclick={() => {
+									if (!data.presensiReady) {
+										presensiNotReady();
+										return;
+									}
+									showModal({
+										title: 'Isi Kehadiran Sekaligus',
+										body: IsiSekaligusModal,
+										bodyProps: {
+											daftarMurid: data.semuaMurid,
+											kelasId: kelasAktif?.id ?? undefined,
+											tanggal: data.tanggal
+										},
+										dismissible: true
+									});
+								}}
+							>
+								Isi Sekaligus
+							</button>
+						</li>
+					</ul>
+				</div>
 			</div>
-		</div>
+		{/if}
 	</div>
 
 	<div class="mb-4 flex items-start justify-between gap-2 max-sm:flex-col sm:flex-row">
@@ -523,6 +593,14 @@
 						min="2000"
 						max="2099"
 					/>
+				{:else if data.mode === 'rapor'}
+					<span
+						class="input bg-base-200 dark:bg-base-300 flex w-full items-center rounded-r-none text-sm dark:border-none"
+					>
+						{data.tanggalMulaiRapor && data.tanggalAkhirRapor
+							? `${formatTanggal(data.tanggalMulaiRapor)} - ${formatTanggal(data.tanggalAkhirRapor)}`
+							: 'Rentang tanggal tidak tersedia'}
+					</span>
 				{:else}
 					<input
 						type="date"
@@ -536,6 +614,7 @@
 					aria-label="Lihat presensi"
 					title="Lihat presensi"
 					onclick={viewDate}
+					disabled={data.mode === 'rapor'}
 				>
 					<Icon name="eye" />
 				</button>
@@ -545,7 +624,11 @@
 					aria-label={data.mode === 'bulanan' ? 'Kembali ke bulan ini' : 'Kembali ke hari ini'}
 					title={data.mode === 'bulanan' ? 'Kembali ke bulan ini' : 'Kembali ke hari ini'}
 					onclick={data.mode === 'bulanan' ? resetToCurrentBulan : resetToToday}
-					disabled={data.mode === 'bulanan' ? isCurrentBulan : isToday}
+					disabled={data.mode === 'bulanan'
+						? isCurrentBulan
+						: data.mode === 'rapor'
+							? true
+							: isToday}
 				>
 					<Icon name="repeat" />
 				</button>
@@ -555,11 +638,13 @@
 					aria-label="Hapus data presensi"
 					title={data.mode === 'bulanan'
 						? 'Tidak dapat menghapus dalam mode bulanan'
-						: !canEdit
-							? 'Anda tidak memiliki izin untuk menghapus presensi'
-							: 'Hapus data presensi tanggal ini'}
+						: data.mode === 'rapor'
+							? 'Tidak dapat menghapus dalam mode rapor'
+							: !canEdit
+								? 'Anda tidak memiliki izin untuk menghapus presensi'
+								: 'Hapus data presensi tanggal ini'}
 					onclick={openDeleteConfirm}
-					disabled={data.mode === 'bulanan' || !canEdit}
+					disabled={data.mode === 'bulanan' || data.mode === 'rapor' || !canEdit}
 				>
 					<Icon name="del" />
 				</button>
@@ -599,12 +684,16 @@
 				class="select bg-base-200 dark:bg-base-300 join-item w-auto shrink dark:border-none"
 				value={selectedMode}
 				onchange={(e) => {
-					selectedMode = (e.currentTarget as HTMLSelectElement).value as 'harian' | 'bulanan';
+					selectedMode = (e.currentTarget as HTMLSelectElement).value as
+						| 'harian'
+						| 'bulanan'
+						| 'rapor';
 					handleModeChange();
 				}}
 			>
 				<option value="harian">Harian</option>
 				<option value="bulanan">Bulanan</option>
+				<option value="rapor">Rapor</option>
 			</select>
 		</div>
 	</form>
@@ -618,6 +707,18 @@
 		<div class="alert alert-soft alert-info mt-6">
 			<Icon name="info" />
 			<span>Tidak ada murid yang cocok dengan pencarian.</span>
+		</div>
+	{:else if data.mode === 'rapor' && !data.presensiReady && data.presensiWarningMessage}
+		<div class="alert alert-soft alert-warning mt-6">
+			<Icon name="alert" />
+			<span>{data.presensiWarningMessage}</span>
+		</div>
+	{:else if data.mode === 'rapor' && (!data.tanggalMulaiRapor || !data.tanggalAkhirRapor)}
+		<div class="alert alert-soft alert-warning mt-6">
+			<Icon name="alert" />
+			<span
+				>Tanggal masuk semester atau tanggal bagi rapor belum diatur. Atur di halaman /rapor.</span
+			>
 		</div>
 	{:else if data.mode === 'bulanan'}
 		<div
@@ -672,6 +773,178 @@
 							<td class="text-center font-bold">{row.countI || ''}</td>
 							<td class="text-center font-bold">{row.countTK || ''}</td>
 							<td class="text-center font-bold">{row.countHadir || ''}</td>
+						</tr>
+					{/each}
+				</tbody>
+			</table>
+		</div>
+
+		<div class="join mt-4 sm:mx-auto">
+			{#each pages as pageNumber (pageNumber)}
+				<button
+					type="button"
+					class="join-item btn pointer-events-auto"
+					class:btn-active={pageNumber === currentPage}
+					onclick={() => handlePageClick(pageNumber)}
+					aria-current={pageNumber === currentPage ? 'page' : undefined}
+				>
+					{pageNumber}
+				</button>
+			{/each}
+		</div>
+	{:else if data.mode === 'rapor'}
+		<div
+			class="bg-base-100 dark:bg-base-200 mt-4 overflow-x-auto rounded-md shadow-md dark:shadow-none"
+		>
+			<table class="border-base-200 table border dark:border-none">
+				<thead>
+					<tr class="bg-base-200 dark:bg-base-300 text-base-content text-left font-bold">
+						<th style="width: 50px; min-width: 40px;">No</th>
+						<th class="w-full" style="min-width: 160px;">Nama</th>
+						<th class="text-center" style="min-width: 80px;">Hadir</th>
+						<th class="text-center" style="min-width: 80px;">Sakit</th>
+						<th class="text-center" style="min-width: 80px;">Izin</th>
+						<th class="text-center" style="min-width: 80px;">Alfa</th>
+						<th class="text-center" style="min-width: 160px;">Aksi</th>
+					</tr>
+				</thead>
+				<tbody>
+					{#each data.raporRows as row (row.id)}
+						{@const isEditing = raporEditingRowId === row.id}
+						{@const updateFormId = `rapor-update-form-${row.id}`}
+						{@const resetFormId = `rapor-reset-form-${row.id}`}
+						<tr class={isEditing ? 'bg-base-200/40' : undefined}>
+							<td>{row.no}</td>
+							<td>{@html searchQueryMarker(data.page.search, row.nama)}</td>
+							<td class="text-center font-bold">{row.hadir || ''}</td>
+							<td class="text-center">
+								{#if isEditing}
+									<input
+										type="number"
+										class="input input-sm bg-base-200 dark:bg-base-300 w-16 text-center dark:border-none"
+										value={raporEditingValues.sakit}
+										onchange={(e) =>
+											(raporEditingValues = {
+												...raporEditingValues,
+												sakit: Number((e.currentTarget as HTMLInputElement).value)
+											})}
+										min="0"
+									/>
+								{:else}
+									{row.sakit || ''}
+								{/if}
+							</td>
+							<td class="text-center">
+								{#if isEditing}
+									<input
+										type="number"
+										class="input input-sm bg-base-200 dark:bg-base-300 w-16 text-center dark:border-none"
+										value={raporEditingValues.izin}
+										onchange={(e) =>
+											(raporEditingValues = {
+												...raporEditingValues,
+												izin: Number((e.currentTarget as HTMLInputElement).value)
+											})}
+										min="0"
+									/>
+								{:else}
+									{row.izin || ''}
+								{/if}
+							</td>
+							<td class="text-center">
+								{#if isEditing}
+									<input
+										type="number"
+										class="input input-sm bg-base-200 dark:bg-base-300 w-16 text-center dark:border-none"
+										value={raporEditingValues.alfa}
+										onchange={(e) =>
+											(raporEditingValues = {
+												...raporEditingValues,
+												alfa: Number((e.currentTarget as HTMLInputElement).value)
+											})}
+										min="0"
+									/>
+								{:else}
+									{row.alfa || ''}
+								{/if}
+							</td>
+							<td>
+								<div class="flex items-center justify-center gap-2">
+									{#if isEditing}
+										<FormEnhance
+											id={updateFormId}
+											action="?/updateRapor"
+											submitStateChange={(value) => (raporEditingSubmitting = value)}
+											onsuccess={handleRaporUpdateSuccess}
+											showToast
+										>
+											{#snippet children({ submitting })}
+												<input type="hidden" name="muridId" value={row.id} />
+												<input
+													type="hidden"
+													name="sakit"
+													value={raporEditingValues.sakit}
+													data-submitting={submitting ? '1' : '0'}
+												/>
+												<input type="hidden" name="izin" value={raporEditingValues.izin} />
+												<input type="hidden" name="alfa" value={raporEditingValues.alfa} />
+											{/snippet}
+										</FormEnhance>
+										<button
+											type="button"
+											class="btn btn-soft btn-sm btn-error shadow-none"
+											title="Batalkan"
+											onclick={cancelRaporEdit}
+											disabled={raporEditingSubmitting}
+										>
+											<Icon name="close" />
+										</button>
+										<button
+											type="submit"
+											class="btn btn-primary btn-sm shadow-none"
+											title="Simpan"
+											form={updateFormId}
+											disabled={raporEditingSaveDisabled}
+										>
+											{#if raporEditingSubmitting}
+												<span class="loading loading-spinner loading-xs" aria-hidden="true"></span>
+											{/if}
+											<Icon name="save" />
+										</button>
+									{:else}
+										<div class="flex flex-row">
+											<button
+												type="button"
+												class="btn btn-soft btn-sm rounded-r-none shadow-none"
+												onclick={() => startRaporEdit(row)}
+												disabled={!data.tableReady || !canEdit}
+												title={!canEdit
+													? 'Anda tidak memiliki izin untuk mengedit'
+													: 'Edit nilai ketidakhadiran'}
+											>
+												<Icon name="edit" />
+											</button>
+											<FormEnhance
+												id={resetFormId}
+												action="?/resetRapor"
+												onsuccess={handleRaporUpdateSuccess}
+												showToast
+											>
+												<input type="hidden" name="muridId" value={row.id} />
+											</FormEnhance>
+											<button
+												type="submit"
+												class="btn btn-soft btn-warning btn-sm rounded-l-none shadow-none"
+												title="Reset ke nilai asli"
+												form={resetFormId}
+												disabled={!data.tableReady || !canEdit || !row.overridden}
+											>
+												<Icon name="repeat" />
+											</button>
+										</div>
+									{/if}
+								</div>
+							</td>
 						</tr>
 					{/each}
 				</tbody>
@@ -820,6 +1093,10 @@
 
 <style>
 	:global(form[id^='kehadiran-form-']) {
+		display: contents;
+	}
+	:global(form[id^='rapor-update-form-']),
+	:global(form[id^='rapor-reset-form-']) {
 		display: contents;
 	}
 </style>

@@ -1045,3 +1045,34 @@ export const tableKetidakhadiranHarianRelations = relations(
 		})
 	})
 );
+
+export const tableKetidakhadiranRapor = sqliteTable(
+	'ketidakhadiran_rapor',
+	{
+		id: int().primaryKey({ autoIncrement: true }),
+		muridId: int()
+			.references(() => tableMurid.id, { onDelete: 'cascade' })
+			.notNull(),
+		semesterId: int()
+			.references(() => tableSemester.id, { onDelete: 'cascade' })
+			.notNull(),
+		sakit: int(),
+		izin: int(),
+		alfa: int(),
+		...audit
+	},
+	(table) => [
+		uniqueIndex('ketidakhadiran_rapor_murid_semester_idx').on(table.muridId, table.semesterId)
+	]
+);
+
+export const tableKetidakhadiranRaporRelations = relations(tableKetidakhadiranRapor, ({ one }) => ({
+	murid: one(tableMurid, {
+		fields: [tableKetidakhadiranRapor.muridId],
+		references: [tableMurid.id]
+	}),
+	semester: one(tableSemester, {
+		fields: [tableKetidakhadiranRapor.semesterId],
+		references: [tableSemester.id]
+	})
+}));
