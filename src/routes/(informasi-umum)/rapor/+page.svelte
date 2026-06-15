@@ -287,22 +287,24 @@
 				<FormEnhance action="?/switch" init={formInitSekolah} onsuccess={handleSwitchSuccess}>
 					{#snippet children({ submitting })}
 						<div class="flex flex-row">
-							<select
-								class="select bg-base-200 dark:bg-base-300 w-full rounded-r-none dark:border-none"
-								name="sekolahId"
-								bind:value={selectedSekolahId}
-								required
-								disabled={disabledSekolahActions || submitting || !canRaporManage}
-							>
-								<option value="" disabled>Pilih Sekolah</option>
-								{#if sekolahList.length === 0}
-									<option disabled value="">Belum ada data sekolah</option>
-								{:else}
-									{#each sekolahList as item (item.id)}
-										<option value={String(item.id)}>{item.nama}</option>
-									{/each}
-								{/if}
-							</select>
+							<div class="min-w-0 flex-1 overflow-hidden">
+								<select
+									class="select bg-base-200 dark:bg-base-300 w-full truncate rounded-r-none dark:border-none"
+									name="sekolahId"
+									bind:value={selectedSekolahId}
+									required
+									disabled={disabledSekolahActions || submitting || !canRaporManage}
+								>
+									<option value="" disabled>Pilih Sekolah</option>
+									{#if sekolahList.length === 0}
+										<option disabled value="">Belum ada data sekolah</option>
+									{:else}
+										{#each sekolahList as item (item.id)}
+											<option value={String(item.id)}>{item.nama}</option>
+										{/each}
+									{/if}
+								</select>
+							</div>
 							<button
 								class="btn btn-primary rounded-l-none shadow-none"
 								type="submit"
@@ -356,10 +358,10 @@
 						value={semesterGanjil ? String(semesterGanjil.id) : ''}
 					/>
 					<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-						<fieldset class="fieldset">
+						<fieldset class="fieldset overflow-hidden">
 							<legend class="fieldset-legend">Tahun Ajaran</legend>
 							<select
-								class="select bg-base-200 dark:bg-base-300 w-full dark:border-none"
+								class="select bg-base-200 dark:bg-base-300 w-full truncate dark:border-none"
 								name="tahunAjaranId"
 								bind:value={selectedTahunAjaranId}
 								required
@@ -375,10 +377,10 @@
 							</select>
 						</fieldset>
 
-						<fieldset class="fieldset">
+						<fieldset class="fieldset overflow-hidden">
 							<legend class="fieldset-legend">Semester</legend>
 							<select
-								class="select bg-base-200 dark:bg-base-300 w-full dark:border-none"
+								class="select bg-base-200 dark:bg-base-300 w-full truncate dark:border-none"
 								name="semesterId"
 								bind:value={selectedSemesterId}
 								required
@@ -485,9 +487,9 @@
 					</div>
 
 					<div class="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-between">
-						<div class="flex flex-wrap gap-2">
+						<div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
 							<button
-								class="btn btn-soft shadow-none"
+								class="btn btn-soft shadow-none max-sm:w-full"
 								type="submit"
 								formaction="?/copy-semester"
 								disabled={submitting || !canCopySemester || !canRaporManage}
@@ -501,7 +503,7 @@
 							</button>
 							<button
 								type="button"
-								class="btn {presensiBtnClass}"
+								class="btn {presensiBtnClass} max-sm:w-full"
 								onclick={openPresensiSettings}
 								disabled={!selectedTahunAjaranId || !canRaporManage}
 								aria-disabled={!canRaporManage}
@@ -512,7 +514,7 @@
 							</button>
 						</div>
 						<button
-							class="btn btn-primary shadow-none"
+							class="btn btn-primary shadow-none max-sm:w-full"
 							type="submit"
 							disabled={submitting || invalid || disabledSave || !canRaporManage}
 							aria-disabled={!canRaporManage}

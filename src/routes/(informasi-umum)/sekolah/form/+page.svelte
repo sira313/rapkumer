@@ -104,10 +104,10 @@
 			<div class="grid grid-cols-1 items-center gap-2 md:grid-cols-2">
 				<!-- Jenjang Pendidikan & Lokasi Tanda Tangan -->
 				<div class="grid grid-cols-1 gap-2 md:col-span-2 md:grid-cols-2 md:items-end">
-					<div class="fieldset">
+					<div class="fieldset overflow-hidden">
 						<legend class="fieldset-legend">Jenjang Pendidikan</legend>
 						<select
-							class="select bg-base-200 dark:bg-base-300 validator w-full border dark:border-none"
+							class="select bg-base-200 dark:bg-base-300 validator w-full truncate border dark:border-none"
 							name="jenjangPendidikan"
 							required
 							onchange={(e) => {
@@ -294,10 +294,10 @@
 				</div>
 
 				<!-- Kementrian -->
-				<div class="fieldset">
+				<div class="fieldset overflow-hidden">
 					<legend class="fieldset-legend">Pilih Naungan</legend>
 					<select
-						class="select bg-base-200 dark:bg-base-300 validator w-full border dark:border-none"
+						class="select bg-base-200 dark:bg-base-300 validator w-full truncate border dark:border-none"
 						name="naungan"
 						required
 					>
@@ -314,10 +314,10 @@
 				</div>
 
 				<!-- Status definitif plt -->
-				<div class="fieldset">
+				<div class="fieldset overflow-hidden">
 					<legend class="fieldset-legend">Status Kepala Sekolah</legend>
 					<select
-						class="select bg-base-200 dark:bg-base-300 validator w-full border dark:border-none"
+						class="select bg-base-200 dark:bg-base-300 validator w-full truncate border dark:border-none"
 						name="statusKepalaSekolah"
 						required
 					>
@@ -354,19 +354,19 @@
 			</div>
 
 			<!-- Back and Save -->
-			<div class="mt-6 flex justify-end gap-2">
+			<div class="mt-6 flex flex-col justify-end gap-2 sm:flex-row">
 				{#if !data.isInit}
-					<a class="btn btn-soft shadow-none" href="/sekolah" aria-label="kembali">
+					<a class="btn btn-soft shadow-none sm:w-auto" href="/sekolah" aria-label="kembali">
 						<Icon name="left" />
 						Kembali
 					</a>
 				{/if}
 
-				<button type="button" class="btn btn-soft shadow-none" onclick={handleImportDb}>
+				<button type="button" class="btn btn-soft shadow-none sm:w-auto" onclick={handleImportDb}>
 					<Icon name="import" />
 					Import DB
 				</button>
-				<button class="btn btn-primary shadow-none" disabled={submitting}>
+				<button class="btn btn-primary shadow-none sm:w-auto" disabled={submitting}>
 					{#if submitting}
 						<span class="loading loading-spinner"></span>
 					{/if}

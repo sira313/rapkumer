@@ -12,16 +12,16 @@
 		placeholder="Nama"
 	/>
 </td>
-<td>
-	<select class="select select-sm w-full" bind:value={newValues[id].type}>
+<td class="overflow-hidden">
+	<select class="select select-sm w-full truncate" bind:value={newValues[id].type}>
 		<option value="admin">Admin</option>
 		<option value="wali_kelas">Wali Kelas</option>
 		<option value="wali_asuh">Wali Asuh</option>
 		<option value="user">User</option>
 	</select>
 </td>
-<td>
-	<select class="select select-sm w-full" bind:value={newValues[id].mataPelajaranId}>
+<td class="overflow-hidden">
+	<select class="select select-sm w-full truncate" bind:value={newValues[id].mataPelajaranId}>
 		{#each mataPelajaran as m (m.id)}
 			<option value={m.id}>{m.nama}</option>
 		{/each}

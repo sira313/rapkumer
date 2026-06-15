@@ -22,12 +22,12 @@
 	});
 </script>
 
-<fieldset class="fieldset">
+<fieldset class="fieldset overflow-hidden">
 	<legend class="fieldset-legend">Pilih Agama</legend>
 
 	<select
 		id={selectId}
-		class="select dark:bg-base-200 w-full dark:border-none"
+		class="select dark:bg-base-200 w-full truncate dark:border-none"
 		bind:value={selectedKey}
 		aria-label="Pilih agama"
 	>

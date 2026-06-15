@@ -73,11 +73,14 @@
 			<p class="text-base-content/80 mt-1 text-sm">
 				Ananda <span class="font-semibold">{murid.nama}</span>
 			</p>
-			<label class="form-control mt-4">
+			<label class="form-control mt-4 overflow-hidden">
 				<span class="label-text text-base-content/80 text-sm font-semibold">
 					Kegiatan Kokurikuler
 				</span>
-				<select class="select bg-base-200 dark:bg-base-300 mt-2 w-full dark:border-none" disabled>
+				<select
+					class="select bg-base-200 dark:bg-base-300 mt-2 w-full truncate dark:border-none"
+					disabled
+				>
 					<option>{capitalizeSentence(kokurikuler.tujuan)}</option>
 				</select>
 			</label>
@@ -95,12 +98,12 @@
 
 					<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
 						{#each kokurikuler.dimensi as dim (dim.key)}
-							<fieldset class="fieldset">
+							<fieldset class="fieldset overflow-hidden">
 								<legend class="fieldset-legend text-base-content/80 text-sm font-semibold">
 									{dim.label}
 								</legend>
 								<select
-									class="select bg-base-200 dark:bg-base-300 w-full dark:border-none"
+									class="select bg-base-200 dark:bg-base-300 w-full truncate dark:border-none"
 									name={`nilai.${dim.key}`}
 									aria-label={`Nilai ${dim.label}`}
 								>

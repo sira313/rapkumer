@@ -578,14 +578,16 @@
 		<div class="flex flex-wrap items-center gap-2 max-sm:w-full">
 			<div class="flex flex-row max-sm:w-full">
 				{#if data.mode === 'bulanan'}
-					<select
-						class="select bg-base-200 dark:bg-base-300 w-full rounded-r-none max-sm:w-full dark:border-none"
-						bind:value={selectedBulan}
-					>
-						{#each bulanList as nama, i (nama)}
-							<option value={i + 1}>{nama}</option>
-						{/each}
-					</select>
+					<div class="min-w-0 flex-1 overflow-hidden">
+						<select
+							class="select bg-base-200 dark:bg-base-300 w-full truncate rounded-r-none max-sm:w-full dark:border-none"
+							bind:value={selectedBulan}
+						>
+							{#each bulanList as nama, i (nama)}
+								<option value={i + 1}>{nama}</option>
+							{/each}
+						</select>
+					</div>
 					<input
 						type="number"
 						class="input bg-base-200 dark:bg-base-300 w-24 rounded-none max-sm:flex-1 dark:border-none"
@@ -668,7 +670,7 @@
 		spellcheck="false"
 		onsubmit={submitSearch}
 	>
-		<div class="join w-full">
+		<div class="join w-full overflow-hidden">
 			<label class="input bg-base-200 dark:bg-base-300 join-item grow dark:border-none">
 				<Icon name="search" />
 				<input
@@ -681,8 +683,9 @@
 				/>
 			</label>
 			<select
-				class="select bg-base-200 dark:bg-base-300 join-item w-auto shrink dark:border-none"
+				class="select bg-base-200 dark:bg-base-300 join-item w-auto shrink truncate dark:border-none"
 				value={selectedMode}
+				title="Pilih mode presensi"
 				onchange={(e) => {
 					selectedMode = (e.currentTarget as HTMLSelectElement).value as
 						| 'harian'
@@ -994,10 +997,10 @@
 									{murid.hadir ? 'Hadir' : 'Tidak hadir'}
 								</span>
 							</td>
-							<td class="text-center">
+							<td class="overflow-hidden text-center">
 								{#if isEditing}
 									<select
-										class="select select-sm bg-base-200 dark:bg-base-300 w-full text-center dark:border-none"
+										class="select select-sm bg-base-200 dark:bg-base-300 w-full truncate text-center dark:border-none"
 										value={editingValues.keterangan}
 										onchange={(event) =>
 											(editingValues = {

@@ -786,7 +786,7 @@
 </script>
 
 <button
-	class="btn btn-primary btn-soft shadow-none"
+	class="btn btn-primary btn-soft shadow-none max-sm:w-full"
 	on:click={downloadLeger}
 	title="Download Leger (Excel)"><Icon name="download" />Download Leger (.xlsx)</button
 >

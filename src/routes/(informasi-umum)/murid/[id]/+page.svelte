@@ -281,12 +281,11 @@
 	</div>
 </div>
 
-<div class="mt-4 flex flex-col gap-2 sm:flex-row">
+<div class="mt-4 flex flex-row justify-between gap-2">
 	<a class="btn btn-soft shadow-none" href="/murid">
 		<Icon name="close" />
 		Tutup
 	</a>
-	<div class="flex-1"></div>
 
 	{#if canEdit}
 		<a

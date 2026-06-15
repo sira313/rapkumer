@@ -245,7 +245,7 @@
 				</p>
 			{/if}
 		</div>
-		<div class="flex flex-row">
+		<div class="flex flex-row max-sm:w-full">
 			{#if anySelected}
 				<button
 					type="button"
@@ -259,7 +259,7 @@
 				</button>
 			{:else}
 				<button
-					class="btn btn-soft rounded-r-none shadow-none"
+					class="btn btn-soft rounded-r-none shadow-none max-sm:flex-1"
 					disabled={!canManage || !canEdit}
 					onclick={toggleAddRow}
 					title={!canEdit ? 'Anda tidak memiliki izin untuk menambah' : ''}

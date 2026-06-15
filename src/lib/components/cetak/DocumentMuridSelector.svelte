@@ -81,9 +81,9 @@
 </script>
 
 <div class="mb-2 flex flex-col gap-2 sm:flex-row">
-	<div class="min-w-0 flex-1">
+	<div class="min-w-0 flex-1 overflow-hidden">
 		<select
-			class="select bg-base-200 w-full min-w-0 dark:border-none"
+			class="select bg-base-200 w-full min-w-0 truncate dark:border-none"
 			bind:value={selectedDocument}
 			title="Pilih dokumen yang ingin dipreview"
 		>
@@ -94,9 +94,9 @@
 		</select>
 	</div>
 	{#if isPiagamSelected}
-		<div class="min-w-0 flex-1">
+		<div class="min-w-0 flex-1 overflow-hidden">
 			<select
-				class="select bg-base-200 w-full max-w-30 min-w-0 dark:border-none"
+				class="select bg-base-200 w-full min-w-0 truncate dark:border-none"
 				bind:value={selectedTemplate}
 				title="Pilih template piagam"
 			>
@@ -106,9 +106,9 @@
 		</div>
 	{/if}
 	{#if selectedDocument === 'rapor'}
-		<div class="min-w-0 flex-1">
+		<div class="min-w-0 flex-1 overflow-hidden">
 			<select
-				class="select bg-base-200 w-full min-w-0 dark:border-none"
+				class="select bg-base-200 w-full min-w-0 truncate dark:border-none"
 				bind:value={selectedRaporPeriode}
 				title="Pilih periode rapor"
 			>
@@ -119,9 +119,9 @@
 		</div>
 	{/if}
 	{#if isPiagamSelected}
-		<div class="min-w-0 flex-1">
+		<div class="min-w-0 flex-1 overflow-hidden">
 			<select
-				class="select bg-base-200 w-full min-w-0 dark:border-none"
+				class="select bg-base-200 w-full min-w-0 truncate dark:border-none"
 				bind:value={selectedMuridId}
 				title="Pilih peringkat piagam yang ingin dipreview"
 				disabled={!hasPiagamRankingOptions}
@@ -135,7 +135,7 @@
 	{:else}
 		<div class="min-w-0 flex-1 overflow-hidden">
 			<select
-				class="select bg-base-200 w-full min-w-0 dark:border-none"
+				class="select bg-base-200 w-full min-w-0 truncate dark:border-none"
 				bind:value={selectedMuridId}
 				title="Pilih murid yang ingin dipreview dokumennya"
 				disabled={!hasMurid}

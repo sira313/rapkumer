@@ -17,7 +17,7 @@
 	}
 </script>
 
-<label class="w-full md:max-w-80">
+<label class="w-full overflow-hidden md:max-w-80">
 	<span class="sr-only">Pilih Matev Keasramaan</span>
 	<select
 		class="select bg-base-200 w-full truncate dark:border-none"

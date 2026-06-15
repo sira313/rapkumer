@@ -144,7 +144,7 @@
 {/if}
 
 <div class="card bg-base-100 rounded-lg border border-none p-4 shadow-md">
-	<div class="mb-4 flex justify-between">
+	<div class="mb-4 flex flex-col gap-2 sm:flex-row sm:justify-between">
 		<div>
 			<h2 class="text-xl font-bold">Rekapitulasi Nilai Akhir</h2>
 			{#if kelasAktifLabel}

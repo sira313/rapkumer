@@ -85,10 +85,10 @@
 						</fieldset>
 
 						<!-- Kelas -->
-						<fieldset class="fieldset flex-1">
+						<fieldset class="fieldset flex-1 overflow-hidden">
 							<legend class="fieldset-legend">Kelas</legend>
 							<select
-								class="select bg-base-200 dark:bg-base-300 dark:border-none"
+								class="select bg-base-200 dark:bg-base-300 w-full truncate dark:border-none"
 								title="Pilih kelas"
 								name="kelasId"
 								required
@@ -130,10 +130,10 @@
 					</div>
 					<div class="flex flex-col gap-2 sm:flex-row">
 						<!-- Jenis Kelamin -->
-						<fieldset class="fieldset flex-1">
+						<fieldset class="fieldset flex-1 overflow-hidden">
 							<legend class="fieldset-legend">Jenis Kelamin</legend>
 							<select
-								class="select validator bg-base-200 dark:bg-base-300 w-full dark:border-none"
+								class="select validator bg-base-200 dark:bg-base-300 w-full truncate dark:border-none"
 								name="jenisKelamin"
 								required
 							>
@@ -409,15 +409,12 @@
 				</div>
 			</div>
 		</div>
-		<div class="border-base-200 mt-4 flex flex-col gap-2 sm:flex-row">
-			<button class="btn btn-soft shadow-none" type="button" onclick={() => history.back()}>
-				<Icon name="close-sm" />
-				Batal
-			</button>
-
+		<div
+			class="border-base-200 mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end"
+		>
 			{#if invalid}
 				<button
-					class="btn btn-primary shadow-none"
+					class="btn btn-primary shadow-none max-sm:w-full"
 					type="button"
 					onclick={() => (activeTab = (activeTab + 1) % totalTabs)}
 				>
@@ -426,24 +423,31 @@
 				</button>
 			{/if}
 
-			<div
-				class="tooltip tooltip-left tooltip-error sm:ml-auto {data.murid?.id}"
-				data-tip={submitting || invalid
-					? 'Ada data lain yang belum terisi, mohon periksa terlebih dahulu!'
-					: ''}
-			>
-				<button
-					class="btn shadow-none {data.murid?.id ? 'btn-secondary' : 'btn-primary'}"
-					type="submit"
-					disabled={submitting || invalid}
-				>
-					{#if submitting}
-						<span class="loading loading-spinner"></span>
-					{:else}
-						<Icon name="save" />
-					{/if}
-					Simpan
+			<div class="flex flex-row justify-between gap-2 max-sm:w-full sm:ml-2">
+				<button class="btn btn-soft shadow-none" type="button" onclick={() => history.back()}>
+					<Icon name="close-sm" />
+					Batal
 				</button>
+
+				<div
+					class="tooltip tooltip-left tooltip-error {data.murid?.id}"
+					data-tip={submitting || invalid
+						? 'Ada data lain yang belum terisi, mohon periksa terlebih dahulu!'
+						: ''}
+				>
+					<button
+						class="btn shadow-none {data.murid?.id ? 'btn-secondary' : 'btn-primary'}"
+						type="submit"
+						disabled={submitting || invalid}
+					>
+						{#if submitting}
+							<span class="loading loading-spinner"></span>
+						{:else}
+							<Icon name="save" />
+						{/if}
+						Simpan
+					</button>
+				</div>
 			</div>
 		</div>
 	{/snippet}

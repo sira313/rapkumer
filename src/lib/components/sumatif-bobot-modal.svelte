@@ -206,7 +206,7 @@
 		</div>
 
 		<div class="modal-action">
-			<button type="button" class="btn btn-soft shadow-none" onclick={close}>
+			<button type="button" class="btn btn-soft shadow-none max-sm:me-auto" onclick={close}>
 				<Icon name="left" />Batal
 			</button>
 			<button

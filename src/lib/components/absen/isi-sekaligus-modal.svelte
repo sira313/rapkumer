@@ -215,10 +215,10 @@
 								/>
 							</td>
 							<td>{@html searchQueryMarker(searchTerm, murid.nama)}</td>
-							<td class="text-center">
+							<td class="overflow-hidden text-center">
 								{#if checked}
 									<select
-										class="select select-sm bg-base-200 dark:bg-base-300 w-full text-center dark:border-none"
+										class="select select-sm bg-base-200 dark:bg-base-300 w-full truncate text-center dark:border-none"
 										value={keteranganMap[murid.id] || 'alfa'}
 										onchange={(e) =>
 											setKeterangan(murid.id, (e.currentTarget as HTMLSelectElement).value)}

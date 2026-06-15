@@ -231,7 +231,7 @@
 		</div>
 		<button
 			type="button"
-			class="btn btn-primary btn-soft gap-2 self-start shadow-none sm:self-center"
+			class="btn btn-primary btn-soft gap-2 self-start shadow-none max-sm:w-full sm:self-center"
 			onclick={openBulkDialog}
 			disabled={!bulkTargetCount || editingRowId !== null || !canEdit}
 			title={!canEdit

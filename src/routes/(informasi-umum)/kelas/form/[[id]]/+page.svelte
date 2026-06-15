@@ -60,10 +60,10 @@
 				</div>
 
 				<!-- Fase -->
-				<div class="fieldset">
+				<div class="fieldset overflow-hidden">
 					<legend class="fieldset-legend">Fase</legend>
 					<select
-						class="select bg-base-200 dark:bg-base-300 w-full dark:border-none"
+						class="select bg-base-200 dark:bg-base-300 w-full truncate dark:border-none"
 						title="Pilih tingkat pendidikan"
 						name="fase"
 						disabled={!data.tingkatOptions?.length}

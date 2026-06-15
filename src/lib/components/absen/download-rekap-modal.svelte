@@ -70,10 +70,10 @@
 
 <div class="not-prose flex flex-col gap-6">
 	<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-		<label class="fieldset flex flex-col gap-1">
+		<label class="fieldset flex flex-col gap-1 overflow-hidden">
 			<span class="fieldset-legend text-sm font-semibold">Bulan</span>
 			<select
-				class="select bg-base-200 dark:bg-base-300 w-full dark:border-none"
+				class="select bg-base-200 dark:bg-base-300 w-full truncate dark:border-none"
 				bind:value={bulan}
 			>
 				{#each bulanList as nama, i (nama)}

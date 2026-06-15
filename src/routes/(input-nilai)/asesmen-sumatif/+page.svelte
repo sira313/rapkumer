@@ -584,10 +584,10 @@
 				</p>
 			{/if}
 		</div>
-		<div class="flex items-center gap-2">
+		<div class="flex items-center gap-2 max-sm:w-full">
 			<button
 				type="button"
-				class="btn btn-soft shadow-none"
+				class="btn btn-soft shadow-none max-sm:flex-1"
 				onclick={openBobotModal}
 				disabled={!canEdit}
 				title={!canEdit ? 'Anda tidak memiliki izin untuk mengatur bobot' : ''}
@@ -599,9 +599,9 @@
 	</div>
 
 	<div class="flex flex-col justify-between gap-2 sm:flex-row sm:flex-wrap">
-		<form class="w-full sm:max-w-80 md:max-w-80" method="get" use:autoSubmit>
+		<form class="w-full overflow-hidden sm:max-w-80 md:max-w-80" method="get" use:autoSubmit>
 			<select
-				class="select bg-base-200 w-full dark:border-none"
+				class="select bg-base-200 w-full truncate dark:border-none"
 				title="Pilih mata pelajaran"
 				name="mapel_id"
 				bind:value={selectedMapelValue}

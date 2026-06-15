@@ -202,11 +202,11 @@
 			<h3 class="mb-3 text-lg font-bold">Tambah Pengguna</h3>
 			<div class="flex-1 space-y-3 overflow-y-auto px-1">
 				<!-- Sekolah -->
-				<fieldset class="fieldset">
+				<fieldset class="fieldset overflow-hidden">
 					<legend class="fieldset-legend">Sekolah</legend>
 					<select
 						id="add-user-sekolah"
-						class="select dark:bg-base-200 w-full dark:border-none"
+						class="select dark:bg-base-200 w-full truncate dark:border-none"
 						bind:value={sekolahId}
 						onchange={() => {
 							kelasIds.clear();

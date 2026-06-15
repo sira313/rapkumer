@@ -310,7 +310,7 @@
 	/>
 
 	<div class="flex flex-col items-center gap-2 sm:flex-row">
-		<label class="w-full md:max-w-80">
+		<label class="w-full overflow-hidden md:max-w-80">
 			<span class="sr-only">Pilih ekstrakurikuler</span>
 			<select
 				class="select bg-base-200 w-full truncate dark:border-none"

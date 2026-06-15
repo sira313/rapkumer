@@ -311,10 +311,10 @@
 					Hapus
 				</button>
 			{:else}
-				<div class="mt-2 flex sm:mt-0">
+				<div class="mt-2 flex max-sm:w-full sm:mt-0">
 					{#if canEdit}
 						<a
-							class="btn btn-soft rounded-r-none shadow-none"
+							class="btn btn-soft rounded-r-none shadow-none max-sm:flex-1"
 							href="/murid/form"
 							use:modalRoute={'add-murid'}
 						>
@@ -324,7 +324,7 @@
 					{:else}
 						<button
 							type="button"
-							class="btn btn-disabled rounded-r-none shadow-none"
+							class="btn btn-disabled rounded-r-none shadow-none max-sm:flex-1"
 							disabled
 							title="Anda tidak memiliki izin untuk menambah murid"
 						>
