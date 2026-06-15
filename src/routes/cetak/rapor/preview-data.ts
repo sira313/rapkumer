@@ -39,6 +39,7 @@ import {
 	fallbackTempat,
 	getLogoSrc as getBgLogoSrc
 } from '$lib/server/pdf/preview-utils';
+import { computeRaporAttendance } from '$lib/server/pdf/attendance-utils';
 
 const LOCALE_ID = 'id-ID';
 
@@ -158,7 +159,6 @@ export async function getRaporPreviewPayload({ locals, url }: RaporContext) {
 				}
 			},
 			semester: true,
-			kehadiran: true,
 			catatanWali: true,
 			keputusan: {
 				columns: {
@@ -552,6 +552,13 @@ export async function getRaporPreviewPayload({ locals, url }: RaporContext) {
 				})
 			: null);
 
+	const semesterData = murid.kelas?.semester ?? murid.semester;
+	const tahunAjaranData = murid.kelas?.tahunAjaran;
+	const computedKehadiran =
+		semesterData?.id && tahunAjaranData?.id
+			? await computeRaporAttendance(sekolah.id, tahunAjaranData.id, murid.id, semesterData)
+			: { sakit: 0, izin: 0, alfa: 0 };
+
 	const raporData: RaporPrintData = {
 		sekolah: {
 			nama: sekolah.nama,
@@ -590,9 +597,9 @@ export async function getRaporPreviewPayload({ locals, url }: RaporContext) {
 		hasKokurikuler,
 		ekstrakurikuler,
 		ketidakhadiran: {
-			sakit: murid.kehadiran?.sakit ?? 0,
-			izin: murid.kehadiran?.izin ?? 0,
-			tanpaKeterangan: murid.kehadiran?.alfa ?? 0
+			sakit: computedKehadiran.sakit,
+			izin: computedKehadiran.izin,
+			tanpaKeterangan: computedKehadiran.alfa
 		},
 		catatanWali: murid.catatanWali?.catatan?.trim() ?? '',
 		tanggapanOrangTua: '',

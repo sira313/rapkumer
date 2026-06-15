@@ -22,6 +22,7 @@ import {
 	getLogoSrc
 } from '$lib/server/pdf/preview-utils';
 import { parseTPMode } from '$lib/rapor-params';
+import { computeRaporAttendance } from '$lib/server/pdf/attendance-utils';
 
 export type KeasramaanContext = {
 	locals: App.Locals;
@@ -236,8 +237,7 @@ export async function getKeasramaanPreviewPayload({ locals, url }: KeasramaanCon
 					tahunAjaran: true,
 					semester: true
 				}
-			},
-			kehadiran: true
+			}
 		}
 	});
 
@@ -455,6 +455,16 @@ export async function getKeasramaanPreviewPayload({ locals, url }: KeasramaanCon
 
 	const logoSrc = await getLogoSrc(sekolah.id);
 
+	const computedKehadiran =
+		kelasData.semester?.id && kelasData.tahunAjaran?.id
+			? await computeRaporAttendance(
+					sekolah.id,
+					kelasData.tahunAjaran.id,
+					murid.id,
+					kelasData.semester
+				)
+			: { sakit: 0, izin: 0, alfa: 0 };
+
 	const keasramaanData: KeasramaanPrintData = {
 		sekolah: {
 			nama: sekolah.nama,
@@ -496,9 +506,9 @@ export async function getKeasramaanPreviewPayload({ locals, url }: KeasramaanCon
 			tanggal: ttdTanggal
 		},
 		kehadiran: {
-			sakit: murid.kehadiran?.sakit ?? 0,
-			izin: murid.kehadiran?.izin ?? 0,
-			alfa: murid.kehadiran?.alfa ?? 0
+			sakit: computedKehadiran.sakit,
+			izin: computedKehadiran.izin,
+			alfa: computedKehadiran.alfa
 		},
 		keasramaanRows: finalRows
 	};
