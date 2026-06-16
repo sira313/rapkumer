@@ -53,4 +53,10 @@ export async function ensureJadwalBellSchema() {
 	} catch {
 		// column already exists
 	}
+
+	try {
+		await db.$client.execute(`ALTER TABLE bell_sounds ADD COLUMN tts_message TEXT`);
+	} catch {
+		// column already exists
+	}
 }

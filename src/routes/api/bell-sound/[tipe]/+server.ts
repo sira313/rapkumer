@@ -34,7 +34,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	}
 
 	const tipe = params.tipe;
-	const allowedTypes = ['upacara', 'istirahat', 'pergantian', 'custom'];
+	const allowedTypes = ['upacara', 'istirahat', 'pergantian', 'custom', 'masuk'];
 	if (!allowedTypes.includes(tipe)) error(400, 'Tipe sound tidak valid');
 
 	const formData = await request.formData();

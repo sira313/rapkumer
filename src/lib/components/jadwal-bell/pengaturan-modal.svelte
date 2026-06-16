@@ -9,7 +9,7 @@
 		durasiIstirahat?: number;
 		durasiUpacara?: number;
 		jamMulai?: string;
-		bellSounds?: Array<{ tipe: string; fileName: string }>;
+		bellSounds?: Array<{ tipe: string; fileName: string; ttsMessage?: string | null }>;
 		onAction?: (actions: { submit: () => Promise<void>; cancel: () => void }) => void;
 	}
 
@@ -30,9 +30,29 @@
 
 	let uploadingTipe = $state<string | null>(null);
 	let playingTipe = $state<string | null>(null);
+	let editingTipe = $state<string | null>(null);
+	let editingText = $state('');
+
+	const defaultTtsMessages: Record<string, string> = {
+		upacara: 'Upacara bendera akan segera dimulai, mohon bersiap di lapangan.',
+		istirahat: 'Waktunya beristirahat. Silahkan nikmati waktu istirahat anda.',
+		pergantian: 'Satu jam pelajaran telah berlalu.',
+		masuk: 'Jam pelajaran telah dimulai, silahkan berbaris sebelum masuk ke kelas masing-masing.'
+	};
+
+	let ttsMessages = $state<Record<string, string>>({ ...defaultTtsMessages });
+
+	$effect(() => {
+		const msgs: Record<string, string> = { ...defaultTtsMessages };
+		for (const s of bellSounds) {
+			if (s.ttsMessage) msgs[s.tipe] = s.ttsMessage;
+		}
+		Object.assign(ttsMessages, msgs);
+	});
 
 	const soundTipes = [
 		{ tipe: 'upacara', label: 'Upacara' },
+		{ tipe: 'masuk', label: 'Masuk' },
 		{ tipe: 'istirahat', label: 'Istirahat' },
 		{ tipe: 'pergantian', label: 'Pergantian Jam' },
 		{ tipe: 'custom', label: 'Bell' }
@@ -150,15 +170,11 @@
 		} catch {
 			// fallback
 		}
-		const messages: Record<string, string> = {
-			upacara: 'Upacara bendera akan segera dimulai, mohon bersiap di lapangan.',
-			istirahat: 'Waktunya beristirahat. Silahkan nikmati waktu istirahat anda.',
-			pergantian: 'Satu jam pelajaran telah berlalu.'
-		};
-		if (messages[tipe] && 'speechSynthesis' in window) {
+		const msg = ttsMessages[tipe];
+		if (msg && 'speechSynthesis' in window) {
 			try {
 				speechSynthesis.cancel();
-				const u = new SpeechSynthesisUtterance(messages[tipe]);
+				const u = new SpeechSynthesisUtterance(msg);
 				u.lang = 'id-ID';
 				speechSynthesis.speak(u);
 			} catch {
@@ -169,8 +185,10 @@
 
 	async function handlePlaySound(tipe: string) {
 		playingTipe = tipe;
-		await playBellSound();
+		const bellPromise = playBellSound();
+		await new Promise((r) => setTimeout(r, 1500));
 		await playTipeSound(tipe);
+		await bellPromise;
 		playingTipe = null;
 	}
 
@@ -186,6 +204,43 @@
 		} catch (e) {
 			toast(e instanceof Error ? e.message : 'Gagal hapus sound', 'error');
 		}
+	}
+
+	function handleEditTTS(tipe: string) {
+		editingText = ttsMessages[tipe] ?? '';
+		editingTipe = tipe;
+	}
+
+	async function handleSaveTTS() {
+		if (!editingTipe) return;
+		const trimmed = editingText.trim();
+		try {
+			const fd = new FormData();
+			fd.append('tipe', editingTipe);
+			fd.append('message', trimmed);
+			const res = await fetch('?/saveTts', { method: 'POST', body: fd });
+			if (!res.ok) {
+				const err = await res.json().catch(() => ({ fail: 'Gagal menyimpan teks' }));
+				throw new Error(err.fail ?? `Error ${res.status}`);
+			}
+			ttsMessages[editingTipe] = trimmed || defaultTtsMessages[editingTipe] || '';
+			toast(trimmed ? 'Teks berhasil disimpan' : 'Teks dikembalikan ke default', 'success');
+		} catch (e) {
+			toast(e instanceof Error ? e.message : 'Gagal menyimpan teks', 'error');
+		}
+		editingTipe = null;
+		editingText = '';
+	}
+
+	function handleResetTTS() {
+		if (editingTipe && defaultTtsMessages[editingTipe]) {
+			editingText = defaultTtsMessages[editingTipe];
+		}
+	}
+
+	function handleCancelEditTTS() {
+		editingTipe = null;
+		editingText = '';
 	}
 
 	async function handleSubmit() {
@@ -284,9 +339,9 @@
 			Upload file MP3. Maksimal 2MB per file. Jika sound tidak tersedia, akan menggunakan speech
 			synthesis browser.
 		</p>
-		<div class="flex flex-col gap-3">
+		<div class="flex flex-col gap-1">
 			{#each soundTipes as { tipe, label } (tipe)}
-				<div class="bg-base-200/50 flex items-center justify-between gap-3 rounded-md p-3">
+				<div class="bg-base-200/50 flex items-center justify-between gap-3 rounded-md p-2">
 					<div class="flex flex-col gap-0.5">
 						<span class="text-sm font-medium">{label}</span>
 						{#if getSoundFileName(tipe)}
@@ -295,20 +350,35 @@
 							<span class="text-base-content/40 text-xs">Belum ada file</span>
 						{/if}
 					</div>
-					<div class="flex items-center gap-2">
-						<button
-							type="button"
-							class="btn btn-ghost btn-sm text-success shadow-none"
-							onclick={() => handlePlaySound(tipe)}
-							disabled={submitting || playingTipe !== null}
-							aria-label="Test sound {label}"
-						>
-							{#if playingTipe === tipe}
-								<span class="loading loading-spinner loading-sm"></span>
-							{:else}
-								<Icon name="play" />
+					<div class="flex items-center gap-1">
+						<div class="join">
+							{#if tipe !== 'custom'}
+								<button
+									type="button"
+									class="btn btn-soft btn-sm shadow-none join-item"
+									onclick={() => handleEditTTS(tipe)}
+									disabled={submitting}
+									aria-label="Edit teks {label}"
+								>
+									<Icon name="edit" />
+									Text
+								</button>
 							{/if}
-						</button>
+							<button
+								type="button"
+								class="btn btn-soft btn-sm shadow-none join-item"
+								onclick={() => handleUploadSound(tipe)}
+								disabled={submitting || uploadingTipe !== null}
+							>
+								{#if uploadingTipe === tipe}
+									<span class="loading loading-spinner loading-sm"></span>
+									Uploading…
+								{:else}
+									<Icon name="import" />
+									Upload
+								{/if}
+							</button>
+						</div>
 						{#if getSoundFileName(tipe)}
 							<button
 								type="button"
@@ -322,16 +392,15 @@
 						{/if}
 						<button
 							type="button"
-							class="btn btn-soft btn-sm shadow-none"
-							onclick={() => handleUploadSound(tipe)}
-							disabled={submitting || uploadingTipe !== null}
+							class="btn btn-ghost btn-sm text-success shadow-none"
+							onclick={() => handlePlaySound(tipe)}
+							disabled={submitting || playingTipe !== null}
+							aria-label="Test sound {label}"
 						>
-							{#if uploadingTipe === tipe}
+							{#if playingTipe === tipe}
 								<span class="loading loading-spinner loading-sm"></span>
-								Uploading…
 							{:else}
-								<Icon name="import" />
-								Upload
+								<Icon name="play" />
 							{/if}
 						</button>
 					</div>
@@ -340,3 +409,32 @@
 		</div>
 	</fieldset>
 </div>
+
+{#if editingTipe}
+	<div class="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+		<div class="modal-box flex max-h-[80vh] w-full max-w-lg flex-col">
+			<h3 class="text-lg font-bold">Edit Teks To Speech</h3>
+			<p class="text-base-content/70 mb-3 text-sm">
+                Teks ini akan digunakan sebagai fallback ketika file sound tidak tersedia.
+            </p>
+			<textarea
+				class="textarea textarea-bordered bg-base-200 h-32 w-full resize-none"
+				bind:value={editingText}
+				disabled={submitting}
+			></textarea>
+			<div class="modal-action justify-between">
+				<button type="button" class="btn btn-soft btn-warning shadow-none" onclick={handleResetTTS}>
+					Reset
+				</button>
+				<div class="flex gap-2">
+					<button type="button" class="btn btn-soft shadow-none" onclick={handleCancelEditTTS}>
+						Batal
+					</button>
+					<button type="button" class="btn btn-primary shadow-none" onclick={handleSaveTTS}>
+						Simpan
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+{/if}

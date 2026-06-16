@@ -1120,6 +1120,7 @@ export const tableBellSounds = sqliteTable(
 		fileName: text().notNull(),
 		fileData: blob({ mode: 'buffer' }).$type<ArrayBuffer>(),
 		mimeType: text().notNull().default('audio/mpeg'),
+		ttsMessage: text(),
 		...audit
 	},
 	(table) => [uniqueIndex('bell_sounds_sekolah_tipe_idx').on(table.sekolahId, table.tipe)]

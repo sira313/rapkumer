@@ -262,6 +262,53 @@ export const actions: Actions = {
 		return { message: 'Jadwal berhasil disimpan' };
 	},
 
+	saveTts: async ({ request, locals }) => {
+		const sekolahId = locals.sekolah?.id;
+		if (!sekolahId) return fail(401, { fail: 'Sekolah tidak ditemukan' });
+
+		if (locals.user?.type === 'user' || locals.user?.type === 'wali_asuh') {
+			return fail(403, { fail: 'Anda tidak memiliki izin' });
+		}
+
+		const formData = await request.formData();
+		const tipe = formData.get('tipe')?.toString().trim();
+		const message = formData.get('message')?.toString().trim();
+
+		const allowedTypes = ['upacara', 'istirahat', 'pergantian', 'masuk'];
+		if (!tipe || !allowedTypes.includes(tipe)) return fail(400, { fail: 'Tipe tidak valid' });
+
+		if (message && message.length > 500) return fail(400, { fail: 'Teks terlalu panjang, maksimal 500 karakter' });
+
+		await ensureJadwalBellSchema();
+
+		const existing = await db.query.tableBellSounds.findFirst({
+			where: and(eq(tableBellSounds.sekolahId, sekolahId), eq(tableBellSounds.tipe, tipe))
+		});
+
+		const ttsMessage = message || null;
+
+		if (existing) {
+			await db
+				.update(tableBellSounds)
+				.set({ ttsMessage, updatedAt: new Date().toISOString() })
+				.where(
+					and(eq(tableBellSounds.sekolahId, sekolahId), eq(tableBellSounds.tipe, tipe))
+				);
+		} else {
+			if (!ttsMessage) return { message: 'Tidak ada perubahan' };
+			await db.insert(tableBellSounds).values({
+				sekolahId,
+				tipe,
+				fileName: '',
+				mimeType: 'audio/mpeg',
+				ttsMessage,
+				updatedAt: new Date().toISOString()
+			});
+		}
+
+		return { message: 'Teks berhasil disimpan' };
+	},
+
 	toggleBell: async ({ request, locals }) => {
 		const sekolahId = locals.sekolah?.id;
 		if (!sekolahId) return fail(401, { fail: 'Sekolah tidak ditemukan' });
