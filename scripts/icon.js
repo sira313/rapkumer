@@ -28,7 +28,7 @@ async function run_watcher() {
 			timer = setTimeout(generate_types, 700);
 		}
 	} catch (err) {
-		if (err.name === 'AbortError') {
+		if (err instanceof Error && err.name === 'AbortError') {
 			console.log('\nIcon type-gen aborted gracefully.');
 		} else {
 			console.error('\nIcon type-gen error:', err);

@@ -29,12 +29,13 @@
 	let jamMulaiValue = $state(jamMulai);
 
 	let uploadingTipe = $state<string | null>(null);
+	let playingTipe = $state<string | null>(null);
 
 	const soundTipes = [
-		{ tipe: 'upacara', label: 'Upacara Bendera' },
+		{ tipe: 'upacara', label: 'Upacara' },
 		{ tipe: 'istirahat', label: 'Istirahat' },
 		{ tipe: 'pergantian', label: 'Pergantian Jam' },
-		{ tipe: 'custom', label: 'Sound Custom' }
+		{ tipe: 'custom', label: 'Bell' }
 	];
 
 	function getSoundFileName(tipe: string): string | undefined {
@@ -70,6 +71,107 @@
 			}
 		};
 		input.click();
+	}
+
+	async function playUrl(url: string): Promise<void> {
+		return new Promise((resolve, reject) => {
+			const audio = new Audio(url);
+			const timeout = setTimeout(() => {
+				URL.revokeObjectURL(url);
+				reject(new Error('timeout'));
+			}, 10_000);
+			audio.onended = () => {
+				clearTimeout(timeout);
+				URL.revokeObjectURL(url);
+				resolve();
+			};
+			audio.onerror = () => {
+				clearTimeout(timeout);
+				URL.revokeObjectURL(url);
+				reject();
+			};
+			audio.play().catch((e) => {
+				clearTimeout(timeout);
+				URL.revokeObjectURL(url);
+				reject(e);
+			});
+		});
+	}
+
+	async function playBellSound(): Promise<boolean> {
+		try {
+			const controller = new AbortController();
+			const timeout = setTimeout(() => controller.abort(), 10_000);
+			const res = await fetch('/api/bell-sound/custom', { signal: controller.signal });
+			clearTimeout(timeout);
+			if (res.ok) {
+				const blob = await res.blob();
+				await playUrl(URL.createObjectURL(blob));
+				return true;
+			}
+		} catch {
+			// fallback
+		}
+		try {
+			const audio = new Audio('/universfield-new-notification.mp3');
+			await new Promise<void>((resolve, reject) => {
+				const timeout = setTimeout(() => reject(new Error('timeout')), 10_000);
+				audio.onended = () => {
+					clearTimeout(timeout);
+					resolve();
+				};
+				audio.onerror = () => {
+					clearTimeout(timeout);
+					reject();
+				};
+				audio.play().catch((e) => {
+					clearTimeout(timeout);
+					reject(e);
+				});
+			});
+			return true;
+		} catch {
+			return false;
+		}
+	}
+
+	async function playTipeSound(tipe: string): Promise<void> {
+		if (tipe === 'custom') return;
+		try {
+			const controller = new AbortController();
+			const timeout = setTimeout(() => controller.abort(), 10_000);
+			const res = await fetch(`/api/bell-sound/${tipe}`, { signal: controller.signal });
+			clearTimeout(timeout);
+			if (res.ok) {
+				const blob = await res.blob();
+				await playUrl(URL.createObjectURL(blob));
+				return;
+			}
+		} catch {
+			// fallback
+		}
+		const messages: Record<string, string> = {
+			upacara: 'Upacara bendera akan segera dimulai, mohon bersiap di lapangan.',
+			istirahat: 'Waktunya beristirahat. Silahkan nikmati waktu istirahat anda.',
+			pergantian: 'Satu jam pelajaran telah berlalu.'
+		};
+		if (messages[tipe] && 'speechSynthesis' in window) {
+			try {
+				speechSynthesis.cancel();
+				const u = new SpeechSynthesisUtterance(messages[tipe]);
+				u.lang = 'id-ID';
+				speechSynthesis.speak(u);
+			} catch {
+				// silently ignore
+			}
+		}
+	}
+
+	async function handlePlaySound(tipe: string) {
+		playingTipe = tipe;
+		await playBellSound();
+		await playTipeSound(tipe);
+		playingTipe = null;
 	}
 
 	async function handleDeleteSound(tipe: string) {
@@ -194,6 +296,19 @@
 						{/if}
 					</div>
 					<div class="flex items-center gap-2">
+						<button
+							type="button"
+							class="btn btn-ghost btn-sm text-success shadow-none"
+							onclick={() => handlePlaySound(tipe)}
+							disabled={submitting || playingTipe !== null}
+							aria-label="Test sound {label}"
+						>
+							{#if playingTipe === tipe}
+								<span class="loading loading-spinner loading-sm"></span>
+							{:else}
+								<Icon name="play" />
+							{/if}
+						</button>
 						{#if getSoundFileName(tipe)}
 							<button
 								type="button"

@@ -57,12 +57,12 @@
 
 {#if modalShown}
 	<dialog bind:this={modal} class="modal" oncancel={clearModal} onclose={clearModal}>
-		<div class="modal-box sm:w-full sm:max-w-2xl">
+		<div class="modal-box sm:w-full sm:max-w-2xl flex max-h-[85vh] flex-col">
 			{#if modalProps.title}
-				<h3 class="text-lg font-bold">{modalProps.title}</h3>
+				<h3 class="text-lg font-bold shrink-0">{modalProps.title}</h3>
 			{/if}
 
-			<div class="w-full max-w-none py-4">
+			<div class="w-full max-w-none min-h-0 flex-1 overflow-y-auto py-4">
 				{#if typeof modalProps.body === 'function'}
 					<modalProps.body {...(modalProps.bodyProps ?? {})} />
 				{:else if typeof modalProps.body === 'string'}
@@ -71,7 +71,7 @@
 			</div>
 
 			{#if modalProps.onPositive || modalProps.onNeutral || modalProps.onNegative}
-				<div class="modal-action">
+				<div class="modal-action shrink-0">
 					{#if modalProps.onNegative}
 						<button
 							class="btn {modalProps.onNegative.class ?? 'btn-soft'} gap-2 shadow-none"
