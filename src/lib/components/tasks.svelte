@@ -17,7 +17,7 @@
 
 	const wrapperClass = $derived(
 		variant === 'sidebar'
-			? 'card bg-base-100 mb-6 hidden max-h-100 min-h-80 max-w-70 min-w-70 shadow-md xl:block'
+			? 'card bg-base-100 mb-4 hidden max-h-100 min-h-80 max-w-70 min-w-70 shadow-md xl:block'
 			: 'card bg-base-100 shadow-md w-full'
 	);
 

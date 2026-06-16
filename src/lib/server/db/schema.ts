@@ -1076,3 +1076,76 @@ export const tableKetidakhadiranRaporRelations = relations(tableKetidakhadiranRa
 		references: [tableSemester.id]
 	})
 }));
+
+export const tableBellSettings = sqliteTable(
+	'bell_settings',
+	{
+		id: int().primaryKey({ autoIncrement: true }),
+		sekolahId: int()
+			.notNull()
+			.references(() => tableSekolah.id),
+		jamPelajaranMenit: int().notNull().default(35),
+		durasiIstirahat: int().notNull().default(30),
+		durasiUpacara: int().notNull().default(70),
+		jamMulai: text().notNull().default('07:00'),
+		isActive: int().notNull().default(0),
+		...audit
+	},
+	(table) => [uniqueIndex('bell_settings_sekolah_idx').on(table.sekolahId)]
+);
+
+export const tableKegiatanCustom = sqliteTable(
+	'kegiatan_custom',
+	{
+		id: int().primaryKey({ autoIncrement: true }),
+		sekolahId: int()
+			.notNull()
+			.references(() => tableSekolah.id),
+		nama: text().notNull(),
+		kode: text().notNull(),
+		durasi: int(),
+		...audit
+	},
+	(table) => [uniqueIndex('kegiatan_custom_sekolah_kode_idx').on(table.sekolahId, table.kode)]
+);
+
+export const tableBellSounds = sqliteTable(
+	'bell_sounds',
+	{
+		id: int().primaryKey({ autoIncrement: true }),
+		sekolahId: int()
+			.notNull()
+			.references(() => tableSekolah.id),
+		tipe: text().notNull(),
+		fileName: text().notNull(),
+		fileData: blob({ mode: 'buffer' }).$type<ArrayBuffer>(),
+		mimeType: text().notNull().default('audio/mpeg'),
+		...audit
+	},
+	(table) => [uniqueIndex('bell_sounds_sekolah_tipe_idx').on(table.sekolahId, table.tipe)]
+);
+
+export const tableJadwalPelajaran = sqliteTable(
+	'jadwal_pelajaran',
+	{
+		id: int().primaryKey({ autoIncrement: true }),
+		sekolahId: int()
+			.notNull()
+			.references(() => tableSekolah.id),
+		hari: text().notNull(),
+		jamKe: int().notNull(),
+		kodeKegiatan: text().notNull(),
+		kelasId: int()
+			.notNull()
+			.references(() => tableKelas.id),
+		...audit
+	},
+	(table) => [
+		uniqueIndex('jadwal_pelajaran_uniq_idx').on(
+			table.sekolahId,
+			table.hari,
+			table.jamKe,
+			table.kelasId
+		)
+	]
+);

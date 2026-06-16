@@ -1,12 +1,14 @@
 <script lang="ts" module>
 	let modal = $state<HTMLDialogElement | null>(null);
 	type ModalState = ModalProps<Record<string, unknown>>;
-	let modalProps = $state<ModalState | null>(null);
+	let modalProps = $state<ModalState>({ body: '' } as ModalState);
+	let modalShown = $state(false);
 	let isLoading = $state(false);
 
 	function clearModal() {
 		const handler = modalProps?.onClose;
-		modalProps = null;
+		modalProps = { body: '' } as ModalState;
+		modalShown = false;
 		isLoading = false;
 		handler?.();
 	}
@@ -15,6 +17,7 @@
 		props: ModalProps<BodyProps>
 	) {
 		modalProps = props as ModalState;
+		modalShown = true;
 		isLoading = false;
 		requestAnimationFrame(() => modal?.showModal());
 	}
@@ -22,13 +25,14 @@
 	export function updateModal<BodyProps extends Record<string, unknown>>(
 		props: Partial<ModalProps<BodyProps>>
 	) {
-		if (!modalProps) return;
+		if (!props) return;
 		const nextBodyProps = props.bodyProps
 			? {
-					...(modalProps.bodyProps ?? {}),
-					...((props.bodyProps as Record<string, unknown>) ?? {})
-				}
+				...(modalProps.bodyProps ?? {}),
+				...((props.bodyProps as Record<string, unknown>) ?? {})
+			}
 			: modalProps.bodyProps;
+		if (nextBodyProps === undefined || nextBodyProps === null) return;
 		modalProps = {
 			...modalProps,
 			...(props as Partial<ModalState>),
@@ -51,78 +55,81 @@
 	import Icon from '$lib/components/icon.svelte';
 </script>
 
-{#if modalProps}
-	{@const props = modalProps}
+{#if modalShown}
 	<dialog bind:this={modal} class="modal" oncancel={clearModal} onclose={clearModal}>
 		<div class="modal-box sm:w-full sm:max-w-2xl">
-			{#if props.title}
-				<h3 class="text-lg font-bold">{props.title}</h3>
+			{#if modalProps.title}
+				<h3 class="text-lg font-bold">{modalProps.title}</h3>
 			{/if}
 
 			<div class="w-full max-w-none py-4">
-				{#if typeof props.body == 'string'}
-					{@html props.body}
-				{:else}
-					{@const BodyComponent = props.body as ModalBodyComponent}
-					<BodyComponent {...props.bodyProps ?? {}} />
+				{#if typeof modalProps.body === 'function'}
+					<modalProps.body {...(modalProps.bodyProps ?? {})} />
+				{:else if typeof modalProps.body === 'string'}
+					{@html modalProps.body}
 				{/if}
 			</div>
 
-			{#if props.onPositive || props.onNeutral || props.onNegative}
+			{#if modalProps.onPositive || modalProps.onNeutral || modalProps.onNegative}
 				<div class="modal-action">
-					{#if props.onNegative}
+					{#if modalProps.onNegative}
 						<button
-							class="btn {props.onNegative.class ?? 'btn-soft'} gap-2 shadow-none"
+							class="btn {modalProps.onNegative.class ?? 'btn-soft'} gap-2 shadow-none"
 							type="button"
 							onclick={() => {
-								if (props.onNegative?.action) {
-									props.onNegative.action({ close: hideModal });
+								if (modalProps?.onNegative?.action) {
+									modalProps.onNegative.action({ close: hideModal });
 								} else {
 									hideModal();
 								}
 							}}
 						>
-							{#if props.onNegative.icon}
-								<Icon name={props.onNegative.icon} />
+							{#if modalProps.onNegative.icon}
+								<Icon name={modalProps.onNegative.icon} />
 							{/if}
-							{props.onNegative.label}
+							{modalProps.onNegative.label}
 						</button>
 					{/if}
 
-					{#if props.onNeutral}
+					{#if modalProps.onNeutral}
 						<button
-							class="btn {props.onNeutral.class ?? ''} gap-2 shadow-none"
+							class="btn {modalProps.onNeutral.class ?? ''} gap-2 shadow-none"
 							type="button"
 							onclick={() => {
-								if (props.onNeutral?.action) {
-									props.onNeutral.action({ close: hideModal });
+								if (modalProps?.onNeutral?.action) {
+									modalProps.onNeutral.action({ close: hideModal });
 								} else {
 									hideModal();
 								}
 							}}
 						>
-							{#if props.onNeutral.icon}
-								<Icon name={props.onNeutral.icon} />
+							{#if modalProps.onNeutral.icon}
+								<Icon name={modalProps.onNeutral.icon} />
 							{/if}
-							{props.onNeutral.label}
+							{modalProps.onNeutral.label}
 						</button>
 					{/if}
 
-					{#if props.onPositive}
+					{#if modalProps.onPositive}
 						<button
-							class="btn {props.onPositive.class ?? 'btn-primary'} gap-2 shadow-none"
+							class="btn {modalProps.onPositive.class ?? 'btn-primary'} gap-2 shadow-none"
 							type="button"
 							disabled={isLoading}
 							onclick={() => {
-								if (props.onPositive?.action) {
+								if (modalProps?.onPositive?.action) {
+									const actionFn = modalProps.onPositive.action;
+									const closeFn = hideModal;
 									setLoading(true);
-									Promise.resolve(props.onPositive.action({ close: hideModal }))
-										.catch(() => {
-											// error handling done in action
-										})
-										.finally(() => {
-											setLoading(false);
-										});
+									try {
+										const result = actionFn({ close: closeFn });
+										Promise.resolve(result)
+											.catch(() => {})
+											.finally(() => {
+												if (modalShown) setLoading(false);
+											});
+									} catch {
+										setLoading(false);
+									}
 								} else {
 									hideModal();
 								}
@@ -130,16 +137,16 @@
 						>
 							{#if isLoading}
 								<span class="loading loading-spinner loading-sm"></span>
-							{:else if props.onPositive.icon}
-								<Icon name={props.onPositive.icon} />
+							{:else if modalProps.onPositive.icon}
+								<Icon name={modalProps.onPositive.icon} />
 							{/if}
-							{props.onPositive.label}
+							{modalProps.onPositive.label}
 						</button>
 					{/if}
 				</div>
 			{/if}
 		</div>
-		{#if props.dismissible}
+		{#if modalProps.dismissible}
 			<form method="dialog" class="modal-backdrop">
 				<button>close</button>
 			</form>

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import FormEnhance from '$lib/components/form-enhance.svelte';
 	import Icon from '$lib/components/icon.svelte';
+	import { resolve } from '$app/paths';
 	import type { PageData } from './$types';
 
 	type TahunAjaranRow = typeof import('$lib/server/db/schema').tableTahunAjaran.$inferSelect;
@@ -512,6 +513,13 @@
 								<Icon name="gear" />
 								Pengaturan Presensi
 							</button>
+							<a
+								href={resolve('/rapor/jadwal-pelajaran')}
+								class="btn btn-soft shadow-none max-sm:w-full"
+							>
+								<Icon name="table" />
+								Jadwal dan Bell
+							</a>
 						</div>
 						<button
 							class="btn btn-primary shadow-none max-sm:w-full"

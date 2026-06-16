@@ -9,7 +9,8 @@ export const appMenuItems: MenuItem[] = [
 			},
 			{
 				title: 'Data Rapor',
-				path: '/rapor'
+				path: '/rapor',
+				tags: ['jadwal', 'bell', 'sound']
 			},
 			{
 				title: 'Data Kelas',

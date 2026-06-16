@@ -81,7 +81,7 @@
 </div>
 
 <button
-	class="btn btn-soft shadow-none sm:hidden w-full mb-2"
+	class="btn btn-soft mb-2 w-full shadow-none sm:hidden"
 	type="button"
 	onclick={() => onBack?.()}
 >
@@ -90,7 +90,7 @@
 </button>
 
 <button
-	class="btn btn-soft w-full shadow-none sm:hidden mb-2"
+	class="btn btn-soft mb-2 w-full shadow-none sm:hidden"
 	type="button"
 	onclick={() => onOpenImport && onOpenImport()}
 	disabled={isImportDisabled}

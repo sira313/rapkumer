@@ -1,12 +1,17 @@
 <script lang="ts">
 	/* eslint-disable svelte/no-navigation-without-resolve -- layout contains many intentional href links for navigation */
 	import { page } from '$app/state';
-	import GlobalModal from '$lib/components/global-modal.svelte';
+	import { invalidate } from '$app/navigation';
+	import GlobalModal, { showModal } from '$lib/components/global-modal.svelte';
 	import Icon from '$lib/components/icon.svelte';
 	import Menu from '$lib/components/menu.svelte';
 	import Navbar from '$lib/components/navbar.svelte';
 	import Task from '$lib/components/tasks.svelte';
+	import KodeKegiatan from '$lib/components/jadwal-bell/kode-kegiatan.svelte';
+	import TambahKegiatanModal from '$lib/components/jadwal-bell/tambah-kegiatan-modal.svelte';
 	import Toast, { toast } from '$lib/components/toast.svelte';
+	import { jadwalIsEditing } from '$lib/stores/jadwal-edit';
+	import { get } from 'svelte/store';
 
 	import NavIndicator from '$lib/components/nav-indicator.svelte';
 	import ScrollToTop from '$lib/components/scroll-to-top.svelte';
@@ -18,6 +23,54 @@
 	let stoppingServer = $state(false);
 	let loggingOut = $state(false);
 	const isLoginPage = $derived(page.url.pathname === '/login');
+	let isJadwalPage = $derived(page.url.pathname === '/rapor/jadwal-pelajaran');
+	const jadwalCanManage = $derived(
+		((page.data.user as { permissions?: string[] })?.permissions ?? []).includes('rapor_manage')
+	);
+
+	async function handleHapusKegiatan(kode: string) {
+		if (!jadwalCanManage || !get(jadwalIsEditing)) return;
+		const formData = new FormData();
+		formData.append('kode', kode);
+
+		try {
+			const res = await fetch('?/hapusKegiatan', {
+				method: 'POST',
+				body: formData,
+				redirect: 'error'
+			});
+
+			if (!res.ok) {
+				const err = await res.json().catch(() => ({ fail: 'Gagal menghapus kegiatan' }));
+				throw new Error(err.fail ?? `Error ${res.status}`);
+			}
+
+			toast('Kegiatan berhasil dihapus', 'success');
+			await invalidate('app:jadwal-bell');
+		} catch (e) {
+			toast(e instanceof Error ? e.message : 'Gagal menghapus kegiatan', 'error');
+		}
+	}
+
+	function openEditKegiatan(kegiatan: { kode: string; nama: string; durasi: number | null }) {
+		let actions: { submit: () => Promise<void>; cancel: () => void };
+		showModal({
+			title: 'Edit Kegiatan',
+			body: TambahKegiatanModal,
+			bodyProps: {
+				onAction: (a: typeof actions) => {
+					actions = a;
+				},
+				existingKegiatan: kegiatan
+			},
+			onPositive: {
+				label: 'Simpan',
+				action: () => actions!.submit()
+			},
+			onNegative: { label: 'Batal' },
+			dismissible: false
+		});
+	}
 
 	const readonlyRoutes = [
 		'/murid',
@@ -152,6 +205,25 @@
 						</div>
 						<div class="sticky top-4 self-start">
 							<Task variant="sidebar" />
+							{#if isJadwalPage && page.data.daftarKodeMapel}
+								<section
+									class="card bg-base-100 hidden max-w-70 min-w-70 rounded-lg border border-none p-4 shadow-md xl:block"
+								>
+									<h3 class="mb-3 text-sm font-bold">Kode Kegiatan</h3>
+									<KodeKegiatan
+										kodeMapel={page.data.daftarKodeMapel as string[]}
+										kodeTambahan={['UPB', 'IST', 'PLG']}
+										kegiatanCustom={(page.data.kegiatanCustom as Array<{
+											kode: string;
+											nama: string;
+											durasi: number | null;
+										}>) ?? []}
+										canManage={jadwalCanManage && $jadwalIsEditing}
+										onHapusKegiatan={handleHapusKegiatan}
+										onEditKegiatan={openEditKegiatan}
+									/>
+								</section>
+							{/if}
 						</div>
 					</div>
 				</div>
