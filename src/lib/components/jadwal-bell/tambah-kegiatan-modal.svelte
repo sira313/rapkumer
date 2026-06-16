@@ -78,8 +78,8 @@
 </script>
 
 <div class="not-prose flex flex-col gap-4">
-	<label class="fieldset flex flex-col gap-1">
-		<span class="fieldset-legend text-sm font-semibold">Nama Kegiatan</span>
+	<fieldset class="fieldset">
+		<legend class="fieldset-legend">Nama Kegiatan</legend>
 		<input
 			type="text"
 			class="input bg-base-200 dark:bg-base-300 w-full dark:border-none"
@@ -87,36 +87,32 @@
 			placeholder="Contoh: Literasi, Senam Pagi"
 			disabled={submitting}
 		/>
-	</label>
-	<label class="fieldset flex flex-col gap-1">
-		<span class="fieldset-legend text-sm font-semibold">Kode</span>
-		<input
-			type="text"
-			class="input bg-base-200 dark:bg-base-300 w-full uppercase dark:border-none"
-			bind:value={kode}
-			oninput={normalizeKode}
-			placeholder="Contoh: LIT, SP"
-			maxlength={10}
-			disabled={submitting}
-		/>
-		<p class="text-base-content/70 mt-1 text-xs">
-			Kode akan otomatis dikapitalisasi. Maksimal 10 karakter.
-		</p>
-	</label>
-	<label class="fieldset flex flex-col gap-1">
-		<span class="fieldset-legend text-sm font-semibold">
-			Durasi (menit)
-			<span class="text-base-content/50 text-xs font-normal">
-				— opsional, kosongkan jika sama dengan 1 jam pelajaran</span
-			>
-		</span>
-		<input
-			type="number"
-			class="input bg-base-200 dark:bg-base-300 w-full dark:border-none"
-			bind:value={durasi}
-			placeholder="Contoh: 20"
-			min="1"
-			disabled={submitting}
-		/>
-	</label>
+	</fieldset>
+	<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+		<fieldset class="fieldset min-w-0">
+			<legend class="fieldset-legend">Kode</legend>
+			<input
+				type="text"
+				class="input bg-base-200 dark:bg-base-300 w-full uppercase dark:border-none"
+				bind:value={kode}
+				oninput={normalizeKode}
+				placeholder="Contoh: LIT, SP"
+				maxlength={10}
+				disabled={submitting}
+			/>
+			<label class="label text-wrap">Kode akan otomatis dikapitalisasi. Maksimal 10 karakter.</label>
+		</fieldset>
+		<fieldset class="fieldset min-w-0">
+			<legend class="fieldset-legend">Durasi (menit)</legend>
+			<input
+				type="number"
+				class="input bg-base-200 dark:bg-base-300 w-full dark:border-none"
+				bind:value={durasi}
+				placeholder="Contoh: 20"
+				min="1"
+				disabled={submitting}
+			/>
+			<label class="label text-wrap">— opsional, kosongkan jika sama dengan 1 jam pelajaran</label>
+		</fieldset>
+	</div>
 </div>

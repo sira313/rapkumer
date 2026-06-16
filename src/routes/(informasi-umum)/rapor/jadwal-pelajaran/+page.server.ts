@@ -69,6 +69,7 @@ export const load: PageServerLoad = async ({ locals, depends }) => {
 	const daftarKodeMapel = [...new Set(daftarMapel.map((m) => m.kode).filter(Boolean))] as string[];
 
 	return {
+		meta: { title: 'Jadwal Pelajaran & Bell Sekolah' },
 		bellSettings,
 		kegiatanCustom,
 		jadwalPelajaran,

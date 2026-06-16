@@ -1,6 +1,23 @@
 <script lang="ts">
 	import Icon from '$lib/components/icon.svelte';
 
+	const badgeColors = [
+		'badge-neutral',
+		'badge-primary',
+		'badge-secondary',
+		'badge-accent',
+		'badge-info',
+		'badge-success',
+		'badge-warning',
+		'badge-error'
+	];
+
+	const kodeTambahanColor: Record<string, string> = {
+		UPB: 'badge-warning',
+		IST: 'badge-success',
+		PLG: 'badge-error'
+	};
+
 	let {
 		kodeMapel,
 		kodeTambahan,
@@ -19,6 +36,17 @@
 		onDrag?: () => void;
 	} = $props();
 
+	let kodeColorMap = $state<Record<string, string>>({});
+	$effect(() => {
+		void kodeMapel;
+		const shuffled = [...badgeColors].sort(() => Math.random() - 0.5);
+		const map: Record<string, string> = {};
+		kodeMapel.forEach((kode, i) => {
+			map[kode] = shuffled[i % shuffled.length];
+		});
+		kodeColorMap = map;
+	});
+
 	function handleDragStart(e: DragEvent, kode: string) {
 		onDrag?.();
 		const dt = e.dataTransfer;
@@ -34,7 +62,7 @@
 		<span
 			role="button"
 			tabindex="-1"
-			class="badge badge-primary badge-soft cursor-grab"
+			class="badge {kodeColorMap[kode] ?? 'badge-primary'} badge-soft cursor-grab"
 			draggable="true"
 			ondragstart={(e) => handleDragStart(e, kode)}
 		>
@@ -45,7 +73,7 @@
 		<span
 			role="button"
 			tabindex="-1"
-			class="badge badge-info badge-soft cursor-grab"
+			class="badge {kodeTambahanColor[kode] ?? 'badge-info'} badge-soft cursor-grab"
 			draggable="true"
 			ondragstart={(e) => handleDragStart(e, kode)}
 		>

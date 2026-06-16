@@ -53,6 +53,15 @@
 		new Map(kegiatanCustom.map((k) => [k.kode, (k as { durasi: number | null }).durasi]))
 	);
 
+	const kodeNamaMap = $derived(
+		new Map<string, string>([
+			['UPB', 'Upacara'],
+			['IST', 'Istirahat'],
+			['PLG', 'Pulang'],
+			...kegiatanCustom.map((k) => [k.kode, k.nama] as [string, string])
+		])
+	);
+
 	const badgeColors = [
 		'badge-neutral',
 		'badge-primary',
@@ -75,8 +84,12 @@
 		const shuffled = [...badgeColors].sort(() => Math.random() - 0.5);
 		let i = 0;
 		for (const kode of allKodes) {
-			if (kode === 'UPB' || kode === 'IST' || kode === 'PLG') {
-				map[kode] = 'badge-info';
+			if (kode === 'UPB') {
+				map[kode] = 'badge-warning';
+			} else if (kode === 'IST') {
+				map[kode] = 'badge-success';
+			} else if (kode === 'PLG') {
+				map[kode] = 'badge-error';
 			} else {
 				map[kode] = shuffled[i % shuffled.length];
 				i++;
@@ -752,34 +765,26 @@
 <div class="grid grid-cols-1 gap-6">
 	<section class="card bg-base-100 rounded-lg border border-none p-6 shadow-md" bind:this={cardEl}>
 		<div class="space-y-6">
-			<div class="flex items-start justify-between gap-3">
-				<div>
-					<h1 class="text-2xl font-bold">Jadwal Pelajaran & Bell Sekolah</h1>
-					<p class="text-base-content/70 text-sm">
-						Kelola jadwal pelajaran dan sistem bell otomatis.
-					</p>
-				</div>
-				{#if isEditing}
-					<button
-						type="button"
-						class="btn btn-soft btn-warning shadow-none"
-						onclick={() => {
-							editing = {};
-							dirty = false;
-							isEditing = false;
-						}}
-					>
-						<Icon name="close" />
-						Batal
-					</button>
-				{:else}
-					<a href="/rapor" class="btn btn-soft shrink-0 shadow-none">
-						<Icon name="left" /> Kembali
-					</a>
-				{/if}
-			</div>
 			<div class="flex flex-wrap items-center justify-between gap-2">
 				<div class="flex flex-wrap items-center gap-2">
+					{#if isEditing}
+						<button
+							type="button"
+							class="btn btn-soft btn-warning shadow-none"
+							onclick={() => {
+								editing = {};
+								dirty = false;
+								isEditing = false;
+							}}
+						>
+							<Icon name="close" />
+							Batal
+						</button>
+					{:else}
+						<a href="/rapor" class="btn btn-soft shadow-none">
+							<Icon name="left" /> Kembali
+						</a>
+					{/if}
 					<button
 						type="button"
 						class="btn btn-soft btn-sm shadow-none lg:hidden"
@@ -793,9 +798,9 @@
 						type="button"
 						class="btn btn-soft shadow-none"
 						onclick={openPengaturan}
-						disabled={!canManage}
-						aria-disabled={!canManage}
-						title={!canManage ? 'Anda tidak memiliki izin' : ''}
+						disabled={!canManage || isEditing}
+						aria-disabled={!canManage || isEditing}
+						title={!canManage || isEditing ? 'Anda tidak memiliki izin' : ''}
 					>
 						<Icon name="gear" />
 						Pengaturan
@@ -810,9 +815,9 @@
 							type="button"
 							class="btn btn-soft shadow-none"
 							onclick={openTambahKegiatan}
-							disabled={!canManage}
-							aria-disabled={!canManage}
-							title={!canManage ? 'Anda tidak memiliki izin' : ''}
+							disabled={!canManage || isEditing}
+							aria-disabled={!canManage || isEditing}
+							title={!canManage || isEditing ? 'Anda tidak memiliki izin' : ''}
 						>
 							<Icon name="plus" />
 							Tambah Kegiatan
@@ -943,7 +948,7 @@
 															class="badge {badgeColorMap[allSame ?? ''] ??
 																'badge-primary'} join-item badge-soft grow"
 														>
-															{allSame}
+															{kodeNamaMap.get(allSame!) ?? allSame}
 														</span>
 														<button
 															type="button"
@@ -959,7 +964,7 @@
 														class="badge {badgeColorMap[allSame ?? ''] ??
 															'badge-primary'} badge-soft w-full"
 													>
-														{allSame}
+														{kodeNamaMap.get(allSame!) ?? allSame}
 													</span>
 												{/if}
 											</div>
@@ -995,7 +1000,7 @@
 																class="badge {badgeColorMap[kode] ??
 																	'badge-primary'} join-item badge-soft text-xs"
 															>
-																{kode}
+																{kodeNamaMap.get(kode) ?? kode}
 															</span>
 															<button
 																type="button"
@@ -1012,7 +1017,7 @@
 												{:else if kode}
 													<span
 														class="badge {badgeColorMap[kode] ??
-															'badge-primary'} badge-soft text-xs">{kode}</span
+															'badge-primary'} badge-soft text-xs">{kodeNamaMap.get(kode) ?? kode}</span
 													>
 												{:else}
 													<span class="text-base-content/30 text-xs">—</span>
