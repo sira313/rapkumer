@@ -4,6 +4,7 @@ import {
 	tableAsesmenEkstrakurikuler,
 	tableAsesmenSumatif,
 	tableAsesmenKokurikuler,
+	tableBellSettings,
 	tableEkstrakurikuler,
 	tableKokurikuler,
 	tableKehadiranMurid,
@@ -271,8 +272,16 @@ export async function load(event) {
 		};
 	}
 
+	const bellRow = sekolahId
+		? await db.query.tableBellSettings.findFirst({
+				columns: { isActive: true },
+				where: eq(tableBellSettings.sekolahId, sekolahId)
+			})
+		: null;
+
 	return {
 		...parentData,
-		statistikDashboard
+		statistikDashboard,
+		bellActive: bellRow?.isActive === 1
 	};
 }

@@ -88,7 +88,7 @@
 			disabled={submitting}
 		/>
 	</fieldset>
-	<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+	<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 		<fieldset class="fieldset min-w-0">
 			<legend class="fieldset-legend">Kode</legend>
 			<input
@@ -100,7 +100,8 @@
 				maxlength={10}
 				disabled={submitting}
 			/>
-			<label class="label text-wrap">Kode akan otomatis dikapitalisasi. Maksimal 10 karakter.</label>
+			<label class="label text-wrap">Kode akan otomatis dikapitalisasi. Maksimal 10 karakter.</label
+			>
 		</fieldset>
 		<fieldset class="fieldset min-w-0">
 			<legend class="fieldset-legend">Durasi (menit)</legend>

@@ -28,9 +28,9 @@
 		if (!props) return;
 		const nextBodyProps = props.bodyProps
 			? {
-				...(modalProps.bodyProps ?? {}),
-				...((props.bodyProps as Record<string, unknown>) ?? {})
-			}
+					...(modalProps.bodyProps ?? {}),
+					...((props.bodyProps as Record<string, unknown>) ?? {})
+				}
 			: modalProps.bodyProps;
 		if (nextBodyProps === undefined || nextBodyProps === null) return;
 		modalProps = {
@@ -57,14 +57,14 @@
 
 {#if modalShown}
 	<dialog bind:this={modal} class="modal" oncancel={clearModal} onclose={clearModal}>
-		<div class="modal-box sm:w-full sm:max-w-2xl flex max-h-[85vh] flex-col">
+		<div class="modal-box flex max-h-[85vh] flex-col sm:w-full sm:max-w-2xl">
 			{#if modalProps.title}
-				<h3 class="text-lg font-bold shrink-0">{modalProps.title}</h3>
+				<h3 class="shrink-0 text-lg font-bold">{modalProps.title}</h3>
 			{/if}
 
-			<div class="w-full max-w-none min-h-0 flex-1 overflow-y-auto py-4">
+			<div class="min-h-0 w-full max-w-none flex-1 overflow-y-auto py-4">
 				{#if typeof modalProps.body === 'function'}
-					<modalProps.body {...(modalProps.bodyProps ?? {})} />
+					<modalProps.body {...modalProps.bodyProps ?? {}} />
 				{:else if typeof modalProps.body === 'string'}
 					{@html modalProps.body}
 				{/if}

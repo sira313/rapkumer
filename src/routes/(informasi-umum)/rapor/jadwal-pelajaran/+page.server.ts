@@ -274,10 +274,11 @@ export const actions: Actions = {
 		const tipe = formData.get('tipe')?.toString().trim();
 		const message = formData.get('message')?.toString().trim();
 
-		const allowedTypes = ['upacara', 'istirahat', 'pergantian', 'masuk'];
+		const allowedTypes = ['upacara', 'istirahat', 'pergantian', 'masuk', 'pulang'];
 		if (!tipe || !allowedTypes.includes(tipe)) return fail(400, { fail: 'Tipe tidak valid' });
 
-		if (message && message.length > 500) return fail(400, { fail: 'Teks terlalu panjang, maksimal 500 karakter' });
+		if (message && message.length > 500)
+			return fail(400, { fail: 'Teks terlalu panjang, maksimal 500 karakter' });
 
 		await ensureJadwalBellSchema();
 
@@ -291,9 +292,7 @@ export const actions: Actions = {
 			await db
 				.update(tableBellSounds)
 				.set({ ttsMessage, updatedAt: new Date().toISOString() })
-				.where(
-					and(eq(tableBellSounds.sekolahId, sekolahId), eq(tableBellSounds.tipe, tipe))
-				);
+				.where(and(eq(tableBellSounds.sekolahId, sekolahId), eq(tableBellSounds.tipe, tipe)));
 		} else {
 			if (!ttsMessage) return { message: 'Tidak ada perubahan' };
 			await db.insert(tableBellSounds).values({

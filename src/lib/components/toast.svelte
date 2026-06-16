@@ -1,5 +1,5 @@
 <script lang="ts" module>
-	type ToastInstance = Toast & { id: string };
+	type ToastInstance = Toast & { id: string; _timer?: ReturnType<typeof setTimeout> };
 
 	export const toasts = $state<ToastInstance[]>([]);
 
@@ -32,6 +32,8 @@
 	export function dismissToast(id: string) {
 		const targetIndex = toasts.findIndex((item) => item.id === id);
 		if (targetIndex > -1) {
+			const item = toasts[targetIndex];
+			if (item._timer) clearTimeout(item._timer);
 			toasts.splice(targetIndex, 1);
 		}
 	}
@@ -40,8 +42,6 @@
 <script lang="ts">
 	import { flip } from 'svelte/animate';
 	import Icon from './icon.svelte';
-
-	let interact = $state(false);
 
 	const autoCloseAfter = 2; // seconds
 	const typesMaps: Record<
@@ -79,11 +79,10 @@
 	}
 
 	$effect(() => {
-		if (!toasts.length || interact) return;
-		const nextClosable = toasts.find((item) => !item.persist);
-		if (!nextClosable) return;
-		const timer = setTimeout(() => close(nextClosable.id), autoCloseAfter * 1000);
-		return () => clearTimeout(timer);
+		for (const t of toasts) {
+			if (t._timer || t.persist) continue;
+			t._timer = setTimeout(() => close(t.id), autoCloseAfter * 1000);
+		}
 	});
 </script>
 
@@ -94,10 +93,6 @@
 			animate:flip={{ duration: 200, delay: 80 }}
 			class="alert relative {config.alertClass}"
 			role="alert"
-			onmouseover={() => (interact = true)}
-			onfocus={() => (interact = true)}
-			onmouseleave={() => (interact = false)}
-			onblur={() => (interact = false)}
 		>
 			<span class="flex h-9 w-9 items-center justify-center {config.iconClass}">
 				<Icon name={config.icon} class="h-5 w-5" />

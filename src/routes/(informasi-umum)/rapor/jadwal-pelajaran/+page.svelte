@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onDestroy, onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { invalidate } from '$app/navigation';
 	import { showModal } from '$lib/components/global-modal.svelte';
@@ -409,29 +410,44 @@
 
 	let bellActive = $state(bellSettings?.isActive === 1);
 
-	async function toggleBell() {
+	function startBell() {
+		_lastTriggeredPeriod = new Set();
+		_lastPergantianPeriod = new Set();
+		if (_bellTimer) clearInterval(_bellTimer);
+		_bellTimer = setInterval(tickBell, 15000);
+	}
+
+	function stopBell() {
+		if (_bellTimer) {
+			clearInterval(_bellTimer);
+			_bellTimer = null;
+		}
+		_lastTriggeredPeriod = new Set();
+		_lastPergantianPeriod = new Set();
+	}
+
+	function toggleBell() {
 		if (!canManage) return;
 		const next = !bellActive;
+		bellActive = next;
+
+		if (next) startBell();
+		else stopBell();
+
+		toast(next ? 'Bell sistem diaktifkan' : 'Bell sistem dinonaktifkan', 'success');
+
 		const formData = new FormData();
 		formData.append('isActive', next ? '1' : '0');
-
-		try {
-			const res = await fetch('?/toggleBell', {
-				method: 'POST',
-				body: formData,
-				redirect: 'error'
+		fetch('?/toggleBell', { method: 'POST', body: formData, redirect: 'error' })
+			.then((res) => {
+				if (!res.ok) throw new Error();
+			})
+			.catch(() => {
+				bellActive = !next;
+				if (next) stopBell();
+				else startBell();
+				toast('Gagal menyimpan status bell', 'error');
 			});
-
-			if (!res.ok) {
-				const err = await res.json().catch(() => ({ fail: 'Gagal toggle bell' }));
-				throw new Error(err.fail ?? `Error ${res.status}`);
-			}
-
-			bellActive = next;
-			toast(next ? 'Bell sistem diaktifkan' : 'Bell sistem dinonaktifkan', 'success');
-		} catch (e) {
-			toast(e instanceof Error ? e.message : 'Gagal toggle bell', 'error');
-		}
 	}
 
 	async function handleSaveJadwal() {
@@ -545,9 +561,132 @@
 		}
 	}
 
-	// Bell monitoring
-	let lastTriggeredPeriod = $state(new Set<string>());
-	let bellInterval = $state<ReturnType<typeof setInterval> | null>(null);
+	const defaultTtsMessages: Record<string, string> = {
+		upacara: 'Upacara bendera akan segera dimulai, mohon bersiap di lapangan.',
+		istirahat: 'Waktunya beristirahat. Silahkan nikmati waktu istirahat anda.',
+		pergantian: 'Satu jam pelajaran telah berlalu.',
+		masuk: 'Jam pelajaran telah dimulai, silahkan berbaris sebelum masuk ke kelas masing-masing.',
+		pulang: 'Pelajaran telah selesai, waktunya pulang.'
+	};
+
+	const ttsMessageMap = $derived(new Map(bellSounds.map((s) => [s.tipe, s.ttsMessage])));
+
+	function getTtsMessage(tipe: string): string {
+		return ttsMessageMap.get(tipe) ?? defaultTtsMessages[tipe] ?? 'Bell berbunyi.';
+	}
+
+	function playAudioOnce(url: string): Promise<void> {
+		return new Promise((resolve, reject) => {
+			const audio = new Audio(url);
+			const timeout = setTimeout(() => {
+				URL.revokeObjectURL(url);
+				reject(new Error('timeout'));
+			}, 10_000);
+			audio.onended = () => {
+				clearTimeout(timeout);
+				URL.revokeObjectURL(url);
+				resolve();
+			};
+			audio.onerror = () => {
+				clearTimeout(timeout);
+				URL.revokeObjectURL(url);
+				reject();
+			};
+			audio.play().catch((e) => {
+				clearTimeout(timeout);
+				URL.revokeObjectURL(url);
+				reject(e);
+			});
+		});
+	}
+
+	function playBellSound(): Promise<boolean> {
+		return fetch('/api/bell-sound/custom')
+			.then((res) => (res.ok ? res.blob() : Promise.reject()))
+			.then((blob) => playAudioOnce(URL.createObjectURL(blob)).then(() => true))
+			.catch(() => {
+				try {
+					const audio = new Audio('/universfield-new-notification.mp3');
+					return new Promise<boolean>((resolve) => {
+						audio.onended = () => resolve(true);
+						audio.onerror = () => resolve(false);
+						audio.play().then(() => {}).catch(() => resolve(false));
+					});
+				} catch {
+					return Promise.resolve(false);
+				}
+			});
+	}
+
+	function playTipeSound(tipe: string) {
+		fetch(`/api/bell-sound/${tipe}`)
+			.then((res) => {
+				if (!res.ok) throw new Error();
+				return res.blob();
+			})
+			.then((blob) => playAudioOnce(URL.createObjectURL(blob)))
+			.catch(() => {
+				const msg = getTtsMessage(tipe);
+				if (msg) speak(msg);
+			});
+	}
+
+	let _lastSpeak = 0;
+	function speak(text: string) {
+		if (!('speechSynthesis' in window)) return;
+		const now = Date.now();
+		if (now - _lastSpeak < 500) return;
+		_lastSpeak = now;
+		speechSynthesis.cancel();
+		const u = new SpeechSynthesisUtterance(text);
+		u.lang = 'id-ID';
+		speechSynthesis.speak(u);
+	}
+
+	function playSoundForKode(kode: string, today?: string, jamKe?: number) {
+		let tipe: string | null = null;
+		let customText: string | null = null;
+
+		if (kode === 'UPB') {
+			tipe = 'upacara';
+		} else if (kode === 'IST') {
+			tipe = 'istirahat';
+		} else if (kode === 'PLG') {
+			tipe = 'pulang';
+		} else if (kegiatanCustom.some((k) => k.kode === kode)) {
+			customText = kegiatanCustom.find((k) => k.kode === kode)?.nama ?? kode;
+		} else if (daftarKodeMapel.includes(kode)) {
+			tipe = today && jamKe && isFirstSubjectPeriod(today, jamKe) ? 'masuk' : 'pergantian';
+		} else {
+			tipe = 'pergantian';
+		}
+
+		playBellSound();
+		if (customText) {
+			setTimeout(() => speak(`Waktunya ${customText}.`), 1500);
+		} else if (tipe) {
+			setTimeout(() => playTipeSound(tipe), 1500);
+		}
+	}
+
+	function isSubjectCode(kode: string): boolean {
+		return daftarKodeMapel.includes(kode);
+	}
+
+	function isFirstSubjectPeriod(today: string, currentJamKe: number): boolean {
+		for (let j = 1; j < currentJamKe; j++) {
+			const codes = kelasTerurut.map((k) => getKode(today, j, k.id));
+			for (const c of codes) {
+				if (c && daftarKodeMapel.includes(c)) return false;
+			}
+		}
+		return true;
+	}
+
+	// Bell monitoring — pure DOM, no $state/$effect involvement
+	let _lastTriggeredPeriod = new Set<string>();
+	let _lastPergantianPeriod = new Set<string>();
+	let _bellTimer: ReturnType<typeof setInterval> | null = null;
 	const dayNameMap: Record<number, string> = {
 		1: 'senin',
 		2: 'selasa',
@@ -557,39 +696,16 @@
 		6: 'sabtu'
 	};
 
-	async function playBellSound(kode: string) {
-		const tipeMap: Record<string, string> = {
-			UPB: 'upacara',
-			IST: 'istirahat',
-			PLG: 'pulang'
-		};
-		const tipe = tipeMap[kode] ?? 'pergantian';
+	onMount(() => {
+		if (bellActive) startBell();
+	});
 
-		try {
-			const res = await fetch(`/api/bell-sound/${tipe}`);
-			if (res.ok) {
-				const blob = await res.blob();
-				const url = URL.createObjectURL(blob);
-				const audio = new Audio(url);
-				await audio.play();
-				return;
-			}
-		} catch {
-			// fallback to speech synthesis
+	onDestroy(() => {
+		if (_bellTimer) {
+			clearInterval(_bellTimer);
+			_bellTimer = null;
 		}
-
-		if ('speechSynthesis' in window) {
-			const messages: Record<string, string> = {
-				upacara: 'Upacara bendera akan segera dimulai, mohon bersiap di lapangan.',
-				istirahat: 'Waktu istirahat, silahkan beristirahat.',
-				pulang: 'Waktunya pulang, terima kasih.',
-				pergantian: 'Jam pelajaran telah dimulai, silahkan berbaris di depan kelas masing-masing!'
-			};
-			const u = new SpeechSynthesisUtterance(messages[tipe] ?? 'Bell berbunyi.');
-			u.lang = 'id-ID';
-			speechSynthesis.speak(u);
-		}
-	}
+	});
 
 	function handleDrop(e: DragEvent, hari: string, jamKe: number, kelasId?: number) {
 		e.preventDefault();
@@ -709,53 +825,53 @@
 		return hariLabel[hari] ?? hari.charAt(0).toUpperCase() + hari.slice(1);
 	}
 
-	$effect(() => {
-		if (bellActive) {
-			if (bellInterval) clearInterval(bellInterval);
-			lastTriggeredPeriod = new Set();
-			bellInterval = setInterval(() => {
-				const now = new Date();
-				const today = dayNameMap[now.getDay()];
-				if (!today) return;
-				const currentMinutes = now.getHours() * 60 + now.getMinutes();
+	function tickBell() {
+		const now = new Date();
+		const today = dayNameMap[now.getDay()];
+		if (!today) return;
+		const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
-				for (let jamKe = 1; jamKe <= maxJam; jamKe++) {
-					const allSame = isAllSame(today, jamKe);
-					if (!allSame) continue;
-					const waktu = computeWaktu(today, jamKe);
-					if (!waktu) continue;
-					const startMinutes = timeToMinutes(waktu.start);
-					const endMinutes = timeToMinutes(waktu.end);
-					const dateStr = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
-					const key = `${dateStr}-${today}-${jamKe}`;
-
-					if (
-						currentMinutes >= startMinutes &&
-						currentMinutes < endMinutes &&
-						!lastTriggeredPeriod.has(key)
-					) {
-						lastTriggeredPeriod = new Set(lastTriggeredPeriod).add(key);
-						playBellSound(allSame);
-					}
-					if (currentMinutes >= endMinutes && lastTriggeredPeriod.has(key)) {
-						const next = new Set(lastTriggeredPeriod);
-						next.delete(key);
-						lastTriggeredPeriod = next;
-					}
-				}
-			}, 15000);
-		} else {
-			if (bellInterval) {
-				clearInterval(bellInterval);
-				bellInterval = null;
+		for (let jamKe = 1; jamKe <= maxJam; jamKe++) {
+			let kode: string | null = isAllSame(today, jamKe);
+			if (!kode) {
+				const firstNonEmpty = kelasTerurut
+					.map((k) => getKode(today, jamKe, k.id))
+					.find(Boolean);
+				if (!firstNonEmpty) continue;
+				kode = firstNonEmpty;
 			}
-			lastTriggeredPeriod = new Set();
-		}
+			const waktu = computeWaktu(today, jamKe);
+			if (!waktu) continue;
+			const startMinutes = timeToMinutes(waktu.start);
+			const endMinutes = timeToMinutes(waktu.end);
+			const dateStr = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
+			const key = `${dateStr}-${today}-${jamKe}`;
 
-		return () => {
-			if (bellInterval) clearInterval(bellInterval);
-		};
-	});
+			if (
+				currentMinutes >= startMinutes &&
+				currentMinutes < endMinutes &&
+				!_lastTriggeredPeriod.has(key)
+			) {
+				_lastTriggeredPeriod.add(key);
+				playSoundForKode(kode, today, jamKe);
+			}
+
+			if (
+				currentMinutes >= endMinutes &&
+				_lastTriggeredPeriod.has(key) &&
+				!_lastPergantianPeriod.has(key)
+			) {
+				_lastPergantianPeriod.add(key);
+				if (isSubjectCode(kode)) {
+					playTipeSound('pergantian');
+				}
+			}
+
+			if (currentMinutes >= endMinutes && _lastTriggeredPeriod.has(key)) {
+				_lastTriggeredPeriod.delete(key);
+			}
+		}
+	}
 </script>
 
 <svelte:head>
@@ -1017,7 +1133,8 @@
 												{:else if kode}
 													<span
 														class="badge {badgeColorMap[kode] ??
-															'badge-primary'} badge-soft text-xs">{kodeNamaMap.get(kode) ?? kode}</span
+															'badge-primary'} badge-soft text-xs"
+														>{kodeNamaMap.get(kode) ?? kode}</span
 													>
 												{:else}
 													<span class="text-base-content/30 text-xs">—</span>

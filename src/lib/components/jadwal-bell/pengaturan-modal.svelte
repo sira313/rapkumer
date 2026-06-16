@@ -37,7 +37,8 @@
 		upacara: 'Upacara bendera akan segera dimulai, mohon bersiap di lapangan.',
 		istirahat: 'Waktunya beristirahat. Silahkan nikmati waktu istirahat anda.',
 		pergantian: 'Satu jam pelajaran telah berlalu.',
-		masuk: 'Jam pelajaran telah dimulai, silahkan berbaris sebelum masuk ke kelas masing-masing.'
+		masuk: 'Jam pelajaran telah dimulai, silahkan berbaris sebelum masuk ke kelas masing-masing.',
+		pulang: 'Pelajaran telah selesai, waktunya pulang.'
 	};
 
 	let ttsMessages = $state<Record<string, string>>({ ...defaultTtsMessages });
@@ -55,6 +56,7 @@
 		{ tipe: 'masuk', label: 'Masuk' },
 		{ tipe: 'istirahat', label: 'Istirahat' },
 		{ tipe: 'pergantian', label: 'Pergantian Jam' },
+		{ tipe: 'pulang', label: 'Pulang' },
 		{ tipe: 'custom', label: 'Bell' }
 	];
 
@@ -355,7 +357,7 @@
 							{#if tipe !== 'custom'}
 								<button
 									type="button"
-									class="btn btn-soft btn-sm shadow-none join-item"
+									class="btn btn-soft btn-sm join-item shadow-none"
 									onclick={() => handleEditTTS(tipe)}
 									disabled={submitting}
 									aria-label="Edit teks {label}"
@@ -366,7 +368,7 @@
 							{/if}
 							<button
 								type="button"
-								class="btn btn-soft btn-sm shadow-none join-item"
+								class="btn btn-soft btn-sm join-item shadow-none"
 								onclick={() => handleUploadSound(tipe)}
 								disabled={submitting || uploadingTipe !== null}
 							>
@@ -415,8 +417,8 @@
 		<div class="modal-box flex max-h-[80vh] w-full max-w-lg flex-col">
 			<h3 class="text-lg font-bold">Edit Teks To Speech</h3>
 			<p class="text-base-content/70 mb-3 text-sm">
-                Teks ini akan digunakan sebagai fallback ketika file sound tidak tersedia.
-            </p>
+				Teks ini akan digunakan sebagai fallback ketika file sound tidak tersedia.
+			</p>
 			<textarea
 				class="textarea textarea-bordered bg-base-200 h-32 w-full resize-none"
 				bind:value={editingText}

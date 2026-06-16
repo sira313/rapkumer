@@ -24,6 +24,7 @@
 		"version": "node scripts/update-version.mjs",
 		"check": "svelte-kit sync && node scripts/svelte-check-wrapper.mjs",
 		"check:watch": "svelte-kit sync && node scripts/svelte-check-wrapper.mjs --watch",
+		"tes-bell": "node scripts/test-bell.mjs",
 		"format": "prettier --write .",
 		"lint": "prettier --check . && eslint .",
 		"prod": "node scripts/cleanup-db.mjs && node scripts/prod-unsigned.mjs",
