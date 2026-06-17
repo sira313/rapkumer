@@ -902,10 +902,17 @@
 			if (
 				currentMinutes >= startMinutes &&
 				currentMinutes < endMinutes &&
-				!_lastTriggeredPeriod.has(key)
+				!_lastTriggeredPeriod.has(key) &&
+				currentMinutes - startMinutes < 1
 			) {
 				_lastTriggeredPeriod.add(key);
 				playSoundForKode(kode, today, jamKe);
+			} else if (
+				currentMinutes >= startMinutes &&
+				currentMinutes < endMinutes &&
+				!_lastTriggeredPeriod.has(key)
+			) {
+				_lastTriggeredPeriod.add(key);
 			}
 
 			if (
