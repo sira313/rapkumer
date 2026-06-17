@@ -97,7 +97,7 @@
 				{#if isNew}
 					Tambah Sekolah Baru
 				{:else}
-					Formulir Isian Data Sekolah
+					Formulir Isian Identitas Sekolah
 				{/if}
 			</h2>
 

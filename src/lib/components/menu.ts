@@ -4,7 +4,7 @@ export const appMenuItems: MenuItem[] = [
 		icon: 'chart',
 		subMenu: [
 			{
-				title: 'Data Sekolah',
+				title: 'Identitas Sekolah',
 				path: '/sekolah'
 			},
 			{
