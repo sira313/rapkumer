@@ -681,7 +681,7 @@ export const load: PageServerLoad = async ({ locals, depends }) => {
 	depends('app:akademik');
 
 	const meta: PageMeta = {
-		title: 'Manajemen Akademik',
+		title: 'Akademik',
 		description: 'Kelola sekolah aktif, tahun ajaran, semester, presensi, dan jadwal pelajaran.'
 	};
 

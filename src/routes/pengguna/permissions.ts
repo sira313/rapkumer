@@ -28,8 +28,8 @@ export const groupedUserPermissions = {
 		description: 'Server'
 	},
 	rapor: {
-		values: [['manage', 'Kelola Manajemen Akademik']],
-		description: 'Manajemen Akademik'
+		values: [['manage', 'Kelola Akademik']],
+		description: 'Akademik'
 	},
 	kelas: {
 		values: [
