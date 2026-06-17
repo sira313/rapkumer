@@ -100,7 +100,8 @@
 				maxlength={10}
 				disabled={submitting}
 			/>
-			<label class="label text-wrap">Kode akan otomatis dikapitalisasi. Maksimal 10 karakter.</label
+			<label class="label w-full text-wrap"
+				>Kode akan otomatis dikapitalisasi. Maksimal 10 karakter.</label
 			>
 		</fieldset>
 		<fieldset class="fieldset min-w-0">
@@ -113,7 +114,9 @@
 				min="1"
 				disabled={submitting}
 			/>
-			<label class="label text-wrap">— opsional, kosongkan jika sama dengan 1 jam pelajaran</label>
+			<label class="label w-full text-wrap"
+				>— opsional, kosongkan jika sama dengan 1 jam pelajaran</label
+			>
 		</fieldset>
 	</div>
 </div>

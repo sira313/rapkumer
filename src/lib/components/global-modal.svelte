@@ -153,3 +153,10 @@
 		{/if}
 	</dialog>
 {/if}
+
+<style>
+	:global(.modal input:focus),
+	:global(.modal input:focus-visible) {
+		outline-offset: -2px;
+	}
+</style>

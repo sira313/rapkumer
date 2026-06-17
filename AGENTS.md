@@ -73,6 +73,11 @@ pnpm format                  # prettier --write . (tabs, single quotes, no trail
 - `scripts/prepare-windows.mjs` downloads `vc_redist.x64.exe` to `dist/windows/`.
 - Build on Linux via Wine: install InnoSetup 7+, then `wine ISCC.exe installer/raporkumer.iss`. Run `pnpm build` first.
 
+## Gotchas
+
+- **DaisyUI `.fieldset` has `padding: 0`** — inputs are flush against container edge. Inside a scrollable container (`overflow-y: auto`), the focus outline (`outline-offset: 2px`) gets clipped. Fix: `global-modal.svelte` overrides `outline-offset: -2px` via `:global(.modal input:focus)`.
+- **Disabled buttons** with `title` for tooltip use `aria-disabled` alongside `disabled` (project convention).
+
 ## Quality
 
 - Run `pnpm lint` then `pnpm check` before committing.

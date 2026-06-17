@@ -2,6 +2,7 @@
 	import FormEnhance from '$lib/components/form-enhance.svelte';
 	import Icon from '$lib/components/icon.svelte';
 	import { resolve } from '$app/paths';
+	import { goto } from '$app/navigation';
 	import type { PageData } from './$types';
 
 	type TahunAjaranRow = typeof import('$lib/server/db/schema').tableTahunAjaran.$inferSelect;
@@ -271,6 +272,16 @@
 	let presensiBtnClass = $derived(
 		hasPresensiSettings ? 'btn-success shadow-none' : 'btn-error shadow-none'
 	);
+
+	const presensiJadwalReady = $derived(
+		hasPresensiSettings && !!selectedSemesterRecord?.tanggalMasuk
+	);
+
+	function openJadwalBell() {
+		goto(resolve('/akademik/jadwal-pelajaran'));
+	}
+
+	const jadwalBellDisabled = $derived(!presensiJadwalReady || !canRaporManage);
 </script>
 
 <div class="grid grid-cols-1 gap-6">
@@ -513,13 +524,21 @@
 								<Icon name="gear" />
 								Pengaturan Presensi
 							</button>
-							<a
-								href={resolve('/akademik/jadwal-pelajaran')}
+							<button
+								type="button"
 								class="btn btn-soft shadow-none max-sm:w-full"
+								onclick={openJadwalBell}
+								disabled={jadwalBellDisabled}
+								aria-disabled={jadwalBellDisabled}
+								title={!presensiJadwalReady
+									? 'Atur presensi dan tanggal masuk semester terlebih dahulu'
+									: !canRaporManage
+										? 'Anda tidak memiliki izin'
+										: ''}
 							>
 								<Icon name="table" />
 								Jadwal dan Bell
-							</a>
+							</button>
 						</div>
 						<button
 							class="btn btn-primary shadow-none max-sm:w-full"
