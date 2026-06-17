@@ -30,7 +30,7 @@ if (!timeRegex.test(time)) {
 const [h, m] = time.split(':').map(Number);
 const currentMinutes = h * 60 + m;
 
-const schools = await db.execute("SELECT id FROM sekolah LIMIT 1");
+const schools = await db.execute('SELECT id FROM sekolah LIMIT 1');
 if (schools.rows.length === 0) {
 	console.error('Tidak ada data sekolah.');
 	await db.close();
@@ -51,7 +51,7 @@ function minutesToTime(mins) {
 
 // === Load data ===
 const bellRow = await db.execute(
-	"SELECT jam_pelajaran_menit, durasi_istirahat, durasi_upacara, jam_mulai FROM bell_settings WHERE sekolah_id = ?",
+	'SELECT jam_pelajaran_menit, durasi_istirahat, durasi_upacara, jam_mulai FROM bell_settings WHERE sekolah_id = ?',
 	[sekolahId]
 );
 const bell = bellRow.rows[0] ?? {};
@@ -61,7 +61,7 @@ const durasiUpacara = Number(bell.durasi_upacara ?? 70);
 const jamMulai = String(bell.jam_mulai ?? '07:00');
 
 const presensiRow = await db.execute(
-	"SELECT jam_pulang FROM presensi_settings WHERE sekolah_id = ?",
+	'SELECT jam_pulang FROM presensi_settings WHERE sekolah_id = ?',
 	[sekolahId]
 );
 const jamPulang = String(presensiRow.rows[0]?.jam_pulang ?? '15:00');
@@ -71,19 +71,19 @@ const rawMax = (jamPulangMinutes - jamMulaiMinutes) / jamPelajaranMenit;
 const maxJamFromTime = Math.max(1, Math.ceil(rawMax));
 
 const kelasRows = await db.execute(
-	"SELECT id, nama FROM kelas WHERE sekolah_id = ? ORDER BY nama",
+	'SELECT id, nama FROM kelas WHERE sekolah_id = ? ORDER BY nama',
 	[sekolahId]
 );
-const kelasTerurut = kelasRows.rows.map(r => ({ id: Number(r.id), nama: String(r.nama) }));
+const kelasTerurut = kelasRows.rows.map((r) => ({ id: Number(r.id), nama: String(r.nama) }));
 
 const mapelRows = await db.execute(
 	"SELECT DISTINCT kode FROM mata_pelajaran WHERE kelas_id IN (SELECT id FROM kelas WHERE sekolah_id = ?) AND kode IS NOT NULL AND kode != ''",
 	[sekolahId]
 );
-const daftarKodeMapel = new Set(mapelRows.rows.map(r => String(r.kode)));
+const daftarKodeMapel = new Set(mapelRows.rows.map((r) => String(r.kode)));
 
 const jadwalRows = await db.execute(
-	"SELECT hari, jam_ke, kode_kegiatan, kelas_id FROM jadwal_pelajaran WHERE sekolah_id = ?",
+	'SELECT hari, jam_ke, kode_kegiatan, kelas_id FROM jadwal_pelajaran WHERE sekolah_id = ?',
 	[sekolahId]
 );
 const jadwalMatrix = {};
@@ -98,15 +98,17 @@ for (const row of jadwalRows.rows) {
 }
 
 const customRows = await db.execute(
-	"SELECT kode, nama, durasi FROM kegiatan_custom WHERE sekolah_id = ?",
+	'SELECT kode, nama, durasi FROM kegiatan_custom WHERE sekolah_id = ?',
 	[sekolahId]
 );
-const kegiatanCustom = customRows.rows.map(r => ({
+const kegiatanCustom = customRows.rows.map((r) => ({
 	kode: String(r.kode),
 	nama: String(r.nama),
 	durasi: r.durasi != null ? Number(r.durasi) : null
 }));
-const customDurationMap = new Map(kegiatanCustom.filter(k => k.durasi != null).map(k => [k.kode, k.durasi]));
+const customDurationMap = new Map(
+	kegiatanCustom.filter((k) => k.durasi != null).map((k) => [k.kode, k.durasi])
+);
 
 const maxJamFromData = (() => {
 	let m = 0;
@@ -134,13 +136,13 @@ function computeWaktu(today, jamKe) {
 	const ds = jadwalMatrix[today] ?? {};
 	let current = jamMulaiMinutes;
 	for (let prev = 1; prev < jamKe; prev++) {
-		const codes = kelasTerurut.map(k => ds[prev]?.[k.id] ?? '');
+		const codes = kelasTerurut.map((k) => ds[prev]?.[k.id] ?? '');
 		const unique = [...new Set(codes.filter(Boolean))];
 		let dur = jamPelajaranMenit;
 		if (unique.length === 1) dur = getDurasiKode(unique[0], dur);
 		current += dur;
 	}
-	const codes = kelasTerurut.map(k => ds[jamKe]?.[k.id] ?? '');
+	const codes = kelasTerurut.map((k) => ds[jamKe]?.[k.id] ?? '');
 	const unique = [...new Set(codes.filter(Boolean))];
 	let dur = jamPelajaranMenit;
 	if (unique.length === 1) dur = getDurasiKode(unique[0], dur);
@@ -148,7 +150,7 @@ function computeWaktu(today, jamKe) {
 }
 
 function isAllSame(today, jamKe) {
-	const codes = kelasTerurut.map(k => jadwalMatrix[today]?.[jamKe]?.[k.id] ?? '');
+	const codes = kelasTerurut.map((k) => jadwalMatrix[today]?.[jamKe]?.[k.id] ?? '');
 	const unique = [...new Set(codes.filter(Boolean))];
 	if (unique.length === 1) return unique[0];
 	return null;
@@ -160,7 +162,7 @@ function isSubjectCode(kode) {
 
 function isFirstSubjectPeriod(today, currentJamKe) {
 	for (let j = 1; j < currentJamKe; j++) {
-		const codes = kelasTerurut.map(k => jadwalMatrix[today]?.[j]?.[k.id] ?? '');
+		const codes = kelasTerurut.map((k) => jadwalMatrix[today]?.[j]?.[k.id] ?? '');
 		for (const c of codes) {
 			if (c && isSubjectCode(c)) return false;
 		}
@@ -169,10 +171,15 @@ function isFirstSubjectPeriod(today, currentJamKe) {
 }
 
 function getSoundType(kode, today, jamKe) {
+	if (jamKe > 1) {
+		const prevKode = isAllSame(today, jamKe - 1);
+		if (prevKode === 'IST') return 'selesai_istirahat';
+	}
 	if (kode === 'UPB') return 'upacara';
 	if (kode === 'IST') return 'istirahat';
 	if (kode === 'PLG') return 'pulang';
-	if (kegiatanCustom.some(k => k.kode === kode)) return `TTS: Waktunya ${kegiatanCustom.find(k => k.kode === kode).nama}.`;
+	if (kegiatanCustom.some((k) => k.kode === kode))
+		return `TTS: Waktunya ${kegiatanCustom.find((k) => k.kode === kode).nama}.`;
 	if (isSubjectCode(kode)) {
 		return isFirstSubjectPeriod(today, jamKe) ? 'masuk' : 'pergantian';
 	}
@@ -185,11 +192,13 @@ const nowStr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 
 console.log(`\n=== SIMULASI BELL ===`);
 console.log(`Hari: ${today}, Waktu: ${nowStr} (${currentMinutes} menit)`);
-console.log(`Pengaturan: jamMulai=${jamMulai}, jamPelajaran=${jamPelajaranMenit}menit, durasiUpacara=${durasiUpacara}menit, durasiIstirahat=${durasiIstirahat}menit, maxJam=${maxJam}`);
-console.log(`Kelas: ${kelasTerurut.map(k => k.nama).join(', ')}`);
+console.log(
+	`Pengaturan: jamMulai=${jamMulai}, jamPelajaran=${jamPelajaranMenit}menit, durasiUpacara=${durasiUpacara}menit, durasiIstirahat=${durasiIstirahat}menit, maxJam=${maxJam}`
+);
+console.log(`Kelas: ${kelasTerurut.map((k) => k.nama).join(', ')}`);
 console.log(`Kode Mapel: ${[...daftarKodeMapel].join(', ')}`);
 if (kegiatanCustom.length > 0) {
-	console.log(`Kegiatan Custom: ${kegiatanCustom.map(k => `${k.kode}(${k.nama})`).join(', ')}`);
+	console.log(`Kegiatan Custom: ${kegiatanCustom.map((k) => `${k.kode}(${k.nama})`).join(', ')}`);
 }
 
 console.log(`\n--- Pengecekan tiap jamKe ---`);
@@ -199,7 +208,7 @@ for (let jamKe = 1; jamKe <= maxJam; jamKe++) {
 	let kode = isAllSame(today, jamKe);
 	if (!kode) {
 		const firstNonEmpty = kelasTerurut
-			.map(k => jadwalMatrix[today]?.[jamKe]?.[k.id] ?? '')
+			.map((k) => jadwalMatrix[today]?.[jamKe]?.[k.id] ?? '')
 			.find(Boolean);
 		if (!firstNonEmpty) continue;
 		kode = firstNonEmpty;
@@ -215,7 +224,9 @@ for (let jamKe = 1; jamKe <= maxJam; jamKe++) {
 
 	if (isInRange) anyTrigger = true;
 
-	console.log(`  jamKe=${jamKe}: ${waktu.start}-${waktu.end} | kode='${kode}' | ${soundLabel}${marker}`);
+	console.log(
+		`  jamKe=${jamKe}: ${waktu.start}-${waktu.end} | kode='${kode}' | ${soundLabel}${marker}`
+	);
 }
 
 if (!anyTrigger) {
@@ -228,7 +239,7 @@ for (let jamKe = 1; jamKe <= maxJam; jamKe++) {
 	let kode = isAllSame(today, jamKe);
 	if (!kode) {
 		const firstNonEmpty = kelasTerurut
-			.map(k => jadwalMatrix[today]?.[jamKe]?.[k.id] ?? '')
+			.map((k) => jadwalMatrix[today]?.[jamKe]?.[k.id] ?? '')
 			.find(Boolean);
 		if (!firstNonEmpty) continue;
 		kode = firstNonEmpty;

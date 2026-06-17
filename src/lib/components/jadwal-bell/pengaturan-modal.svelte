@@ -36,6 +36,8 @@
 	const defaultTtsMessages: Record<string, string> = {
 		upacara: 'Upacara bendera akan segera dimulai, mohon bersiap di lapangan.',
 		istirahat: 'Waktunya beristirahat. Silahkan nikmati waktu istirahat anda.',
+		selesai_istirahat:
+			'waktu istirahat telah selesai, silahkan masuk kembali ke kelas masing-masing.',
 		pergantian: 'Satu jam pelajaran telah berlalu.',
 		masuk: 'Jam pelajaran telah dimulai, silahkan berbaris sebelum masuk ke kelas masing-masing.',
 		pulang: 'Pelajaran telah selesai, waktunya pulang.'
@@ -55,6 +57,7 @@
 		{ tipe: 'upacara', label: 'Upacara' },
 		{ tipe: 'masuk', label: 'Masuk' },
 		{ tipe: 'istirahat', label: 'Istirahat' },
+		{ tipe: 'selesai_istirahat', label: 'Selesai Istirahat' },
 		{ tipe: 'pergantian', label: 'Pergantian Jam' },
 		{ tipe: 'pulang', label: 'Pulang' },
 		{ tipe: 'custom', label: 'Bell' }

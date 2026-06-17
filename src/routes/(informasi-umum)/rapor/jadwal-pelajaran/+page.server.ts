@@ -274,7 +274,14 @@ export const actions: Actions = {
 		const tipe = formData.get('tipe')?.toString().trim();
 		const message = formData.get('message')?.toString().trim();
 
-		const allowedTypes = ['upacara', 'istirahat', 'pergantian', 'masuk', 'pulang'];
+		const allowedTypes = [
+			'upacara',
+			'istirahat',
+			'selesai_istirahat',
+			'pergantian',
+			'masuk',
+			'pulang'
+		];
 		if (!tipe || !allowedTypes.includes(tipe)) return fail(400, { fail: 'Tipe tidak valid' });
 
 		if (message && message.length > 500)

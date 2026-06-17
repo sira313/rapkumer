@@ -12,12 +12,6 @@
 		'badge-error'
 	];
 
-	const kodeTambahanColor: Record<string, string> = {
-		UPB: 'badge-warning',
-		IST: 'badge-success',
-		PLG: 'badge-error'
-	};
-
 	let {
 		kodeMapel,
 		kodeTambahan,
@@ -39,10 +33,21 @@
 	let kodeColorMap = $state<Record<string, string>>({});
 	$effect(() => {
 		void kodeMapel;
-		const shuffled = [...badgeColors].sort(() => Math.random() - 0.5);
+		void kegiatanCustom;
+		const allKodes = [
+			...new Set([...kodeTambahan, ...kegiatanCustom.map((k) => k.kode), ...kodeMapel])
+		].sort();
 		const map: Record<string, string> = {};
-		kodeMapel.forEach((kode, i) => {
-			map[kode] = shuffled[i % shuffled.length];
+		allKodes.forEach((kode, i) => {
+			if (kode === 'UPB') {
+				map[kode] = 'badge-warning';
+			} else if (kode === 'IST') {
+				map[kode] = 'badge-success';
+			} else if (kode === 'PLG') {
+				map[kode] = 'badge-error';
+			} else {
+				map[kode] = badgeColors[i % badgeColors.length];
+			}
 		});
 		kodeColorMap = map;
 	});
@@ -73,7 +78,7 @@
 		<span
 			role="button"
 			tabindex="-1"
-			class="badge {kodeTambahanColor[kode] ?? 'badge-info'} badge-soft cursor-grab"
+			class="badge {kodeColorMap[kode] ?? 'badge-info'} badge-soft cursor-grab"
 			draggable="true"
 			ondragstart={(e) => handleDragStart(e, kode)}
 		>
@@ -84,7 +89,7 @@
 		<span
 			role="button"
 			tabindex="-1"
-			class="badge badge-secondary badge-soft cursor-grab"
+			class="badge {kodeColorMap[kegiatan.kode] ?? 'badge-secondary'} badge-soft cursor-grab"
 			draggable="true"
 			ondragstart={(e) => handleDragStart(e, kegiatan.kode)}
 		>

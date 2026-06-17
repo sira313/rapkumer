@@ -2,12 +2,13 @@
 	import { onDestroy, onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { invalidate } from '$app/navigation';
-	import { showModal } from '$lib/components/global-modal.svelte';
+	import { showModal, hideModal } from '$lib/components/global-modal.svelte';
 	import { toast } from '$lib/components/toast.svelte';
 	import Icon from '$lib/components/icon.svelte';
 	import KodeKegiatan from '$lib/components/jadwal-bell/kode-kegiatan.svelte';
 	import PengaturanModal from '$lib/components/jadwal-bell/pengaturan-modal.svelte';
 	import TambahKegiatanModal from '$lib/components/jadwal-bell/tambah-kegiatan-modal.svelte';
+	import SimulasiModal from '$lib/components/jadwal-bell/simulasi-modal.svelte';
 	import { jadwalIsEditing } from '$lib/stores/jadwal-edit';
 	import type { PageData } from './$types';
 
@@ -81,10 +82,9 @@
 		const allKodes = new Set<string>(kodeTambahan);
 		for (const kd of kegiatanCustom) allKodes.add((kd as { kode: string }).kode);
 		for (const kode of daftarKodeMapel) allKodes.add(kode);
+		const sorted = [...allKodes].sort();
 		const map: Record<string, string> = {};
-		const shuffled = [...badgeColors].sort(() => Math.random() - 0.5);
-		let i = 0;
-		for (const kode of allKodes) {
+		sorted.forEach((kode, i) => {
 			if (kode === 'UPB') {
 				map[kode] = 'badge-warning';
 			} else if (kode === 'IST') {
@@ -92,10 +92,9 @@
 			} else if (kode === 'PLG') {
 				map[kode] = 'badge-error';
 			} else {
-				map[kode] = shuffled[i % shuffled.length];
-				i++;
+				map[kode] = badgeColors[i % badgeColors.length];
 			}
-		}
+		});
 		badgeColorMap = map;
 	});
 
@@ -156,7 +155,6 @@
 	$effect(() => {
 		jadwalIsEditing.set(isEditing);
 	});
-	let showMobileBadges = $state(false);
 	let dragSource = $state<{ hari: string; jamKe: number; kelasId?: number; kode: string } | null>(
 		null
 	);
@@ -410,6 +408,48 @@
 
 	let bellActive = $state(bellSettings?.isActive === 1);
 
+	function openSimulasi() {
+		showModal({
+			title: 'Simulasi Bell',
+			body: SimulasiModal,
+			bodyProps: {
+				hariList,
+				formatHari,
+				maxJam,
+				kelasTerurut,
+				isAllSame,
+				getKode,
+				computeWaktu,
+				timeToMinutes,
+				kegiatanCustom,
+				daftarKodeMapel,
+				isFirstSubjectPeriod,
+				playSoundForKode,
+				playTipeSound
+			},
+			onNegative: { label: 'Tutup' },
+			dismissible: true
+		});
+	}
+
+	function openKodeKegiatan() {
+		showModal({
+			title: 'Kode Kegiatan',
+			body: KodeKegiatan,
+			bodyProps: {
+				kodeMapel: daftarKodeMapel,
+				kodeTambahan,
+				kegiatanCustom,
+				canManage: canManage && isEditing,
+				onHapusKegiatan: handleHapusKegiatan,
+				onEditKegiatan: openEditKegiatan,
+				onDrag: () => requestAnimationFrame(() => hideModal())
+			},
+			onNegative: { label: 'Tutup' },
+			dismissible: true
+		});
+	}
+
 	function startBell() {
 		_lastTriggeredPeriod = new Set();
 		_lastPergantianPeriod = new Set();
@@ -564,6 +604,8 @@
 	const defaultTtsMessages: Record<string, string> = {
 		upacara: 'Upacara bendera akan segera dimulai, mohon bersiap di lapangan.',
 		istirahat: 'Waktunya beristirahat. Silahkan nikmati waktu istirahat anda.',
+		selesai_istirahat:
+			'waktu istirahat telah selesai, silahkan masuk kembali ke kelas masing-masing.',
 		pergantian: 'Satu jam pelajaran telah berlalu.',
 		masuk: 'Jam pelajaran telah dimulai, silahkan berbaris sebelum masuk ke kelas masing-masing.',
 		pulang: 'Pelajaran telah selesai, waktunya pulang.'
@@ -610,7 +652,10 @@
 					return new Promise<boolean>((resolve) => {
 						audio.onended = () => resolve(true);
 						audio.onerror = () => resolve(false);
-						audio.play().then(() => {}).catch(() => resolve(false));
+						audio
+							.play()
+							.then(() => {})
+							.catch(() => resolve(false));
 					});
 				} catch {
 					return Promise.resolve(false);
@@ -644,6 +689,15 @@
 	}
 
 	function playSoundForKode(kode: string, today?: string, jamKe?: number) {
+		if (today && jamKe && jamKe > 1) {
+			const prevKode = isAllSame(today, jamKe - 1);
+			if (prevKode === 'IST') {
+				playBellSound();
+				setTimeout(() => playTipeSound('selesai_istirahat'), 1500);
+				return;
+			}
+		}
+
 		let tipe: string | null = null;
 		let customText: string | null = null;
 
@@ -834,9 +888,7 @@
 		for (let jamKe = 1; jamKe <= maxJam; jamKe++) {
 			let kode: string | null = isAllSame(today, jamKe);
 			if (!kode) {
-				const firstNonEmpty = kelasTerurut
-					.map((k) => getKode(today, jamKe, k.id))
-					.find(Boolean);
+				const firstNonEmpty = kelasTerurut.map((k) => getKode(today, jamKe, k.id)).find(Boolean);
 				if (!firstNonEmpty) continue;
 				kode = firstNonEmpty;
 			}
@@ -903,8 +955,8 @@
 					{/if}
 					<button
 						type="button"
-						class="btn btn-soft btn-sm shadow-none lg:hidden"
-						onclick={() => (showMobileBadges = true)}
+						class="btn btn-soft shadow-none xl:hidden"
+						onclick={openKodeKegiatan}
 						title="Kode Kegiatan"
 					>
 						<Icon name="grid" />
@@ -972,17 +1024,43 @@
 						Hapus semua
 					</button>
 				{:else}
-					<button
-						type="button"
-						class="btn {bellActive ? 'btn-error' : 'btn-success'} shadow-none"
-						onclick={toggleBell}
-						disabled={!canManage}
-						aria-disabled={!canManage}
-						title={!canManage ? 'Anda tidak memiliki izin' : ''}
-					>
-						<Icon name={bellActive ? 'pause' : 'play'} />
-						{bellActive ? 'Pause Bell' : 'Play Bell'}
-					</button>
+					<div class="flex">
+						<button
+							type="button"
+							class="btn btn-soft rounded-r-none shadow-none {bellActive
+								? 'btn-error'
+								: 'btn-success'}"
+							onclick={toggleBell}
+							disabled={!canManage}
+							aria-disabled={!canManage}
+							title={!canManage ? 'Anda tidak memiliki izin' : ''}
+						>
+							<Icon name={bellActive ? 'pause' : 'play'} />
+							{bellActive ? 'Pause Bell' : 'Play Bell'}
+						</button>
+						<div class="dropdown dropdown-end">
+							<button
+								type="button"
+								class="btn btn-soft rounded-l-none shadow-none {bellActive
+									? 'btn-error'
+									: 'btn-success'}"
+								disabled={!canManage}
+								aria-label="Menu bell"
+							>
+								<Icon name="more-vertical" />
+							</button>
+							<ul
+								class="dropdown-content menu bg-base-100 border-base-300 z-50 mt-2 w-44 rounded-md border p-2 shadow-lg"
+							>
+								<li>
+									<button type="button" onclick={openSimulasi}>
+										<Icon name="play" />
+										Simulasi Bell
+									</button>
+								</li>
+							</ul>
+						</div>
+					</div>
 				{/if}
 			</div>
 
@@ -1151,38 +1229,3 @@
 		</div>
 	</section>
 </div>
-
-{#if showMobileBadges}
-	<dialog
-		class="modal modal-open"
-		onclick={() => (showMobileBadges = false)}
-		onkeydown={(e) => e.key === 'Escape' && (showMobileBadges = false)}
-	>
-		<div
-			class="modal-box"
-			role="document"
-			onclick={(e) => e.stopPropagation()}
-			onkeydown={(e) => e.stopPropagation()}
-		>
-			<div class="mb-4 flex items-center justify-between">
-				<h3 class="text-lg font-bold">Kode Kegiatan</h3>
-				<button
-					type="button"
-					class="btn btn-sm btn-circle btn-ghost"
-					onclick={() => (showMobileBadges = false)}
-				>
-					<Icon name="close" />
-				</button>
-			</div>
-			<KodeKegiatan
-				kodeMapel={daftarKodeMapel}
-				{kodeTambahan}
-				{kegiatanCustom}
-				canManage={canManage && isEditing}
-				onHapusKegiatan={handleHapusKegiatan}
-				onEditKegiatan={openEditKegiatan}
-				onDrag={() => (showMobileBadges = false)}
-			/>
-		</div>
-	</dialog>
-{/if}
