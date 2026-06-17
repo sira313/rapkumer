@@ -39,14 +39,25 @@ function getPolyfillScript(): string {
 function findChromeExecutable(): string | undefined {
 	if (process.env.PUPPETEER_EXECUTABLE_PATH) return process.env.PUPPETEER_EXECUTABLE_PATH;
 	if (process.platform === 'win32') {
+		const localAppData = process.env.LOCALAPPDATA || '';
+		const programFiles = process.env.PROGRAMFILES || 'C:\\Program Files';
+		const programFilesX86 = process.env['PROGRAMFILES(X86)'] || 'C:\\Program Files (x86)';
+		const programW6432 = process.env.ProgramW6432;
 		const paths = [
-			'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-			'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-			'C:\\Program Files\\Chromium\\Application\\chrome.exe'
+			`${localAppData}\\Google\\Chrome\\Application\\chrome.exe`,
+			`${localAppData}\\Microsoft\\Edge\\Application\\msedge.exe`,
+			...(programW6432 ? [`${programW6432}\\Google\\Chrome\\Application\\chrome.exe`, `${programW6432}\\Microsoft\\Edge\\Application\\msedge.exe`, `${programW6432}\\Chromium\\Application\\chrome.exe`] : []),
+			`${programFiles}\\Google\\Chrome\\Application\\chrome.exe`,
+			`${programFilesX86}\\Google\\Chrome\\Application\\chrome.exe`,
+			`${programFiles}\\Microsoft\\Edge\\Application\\msedge.exe`,
+			`${programFilesX86}\\Microsoft\\Edge\\Application\\msedge.exe`,
+			`${programFiles}\\Chromium\\Application\\chrome.exe`,
+			`${programFilesX86}\\Chromium\\Application\\chrome.exe`
 		];
 		for (const p of paths) {
 			if (existsSync(p)) return p;
 		}
+		return undefined;
 	}
 	const commonPaths = [
 		'/usr/bin/google-chrome-stable',
@@ -72,6 +83,14 @@ async function getBrowser(): Promise<Browser> {
 		}
 	}
 	const executablePath = findChromeExecutable();
+	if (!executablePath) {
+		throw new Error(
+			'Chromium/Chrome/Edge tidak ditemukan. ' +
+				'Install Google Chrome atau Microsoft Edge, ' +
+				'atau set variabel lingkungan PUPPETEER_EXECUTABLE_PATH ' +
+				'ke path lengkap browser executable.'
+		);
+	}
 	browser = await puppeteer.launch({
 		executablePath,
 		headless: true,
