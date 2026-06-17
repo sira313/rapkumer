@@ -25,7 +25,9 @@ export const load: PageServerLoad = async ({ locals, depends }) => {
 			daftarKodeMapel: [],
 			bellSounds: [],
 			hariSekolah: 6,
-			jamPulang: '15:00'
+			jamPulang: '15:00',
+			liburNasional: [],
+			liburSemester: []
 		};
 
 	await ensureJadwalBellSchema();
@@ -54,6 +56,23 @@ export const load: PageServerLoad = async ({ locals, depends }) => {
 	const hariSekolah = presensiSettings?.hariSekolah ?? 6;
 	const jamPulang = presensiSettings?.jamPulang ?? '15:00';
 
+	let liburNasional: string[] = [];
+	let liburSemester: Array<{ start: string; end: string }> = [];
+	if (presensiSettings) {
+		try {
+			const parsed = JSON.parse(presensiSettings.liburNasional || '[]');
+			if (Array.isArray(parsed)) liburNasional = parsed;
+		} catch {
+			// ignore
+		}
+		try {
+			const parsed = JSON.parse(presensiSettings.liburSemester || '[]');
+			if (Array.isArray(parsed)) liburSemester = parsed;
+		} catch {
+			// ignore
+		}
+	}
+
 	const kelasIds = await db.query.tableKelas.findMany({
 		where: eq(tableKelas.sekolahId, sekolahId),
 		columns: { id: true }
@@ -76,7 +95,9 @@ export const load: PageServerLoad = async ({ locals, depends }) => {
 		daftarKodeMapel,
 		bellSounds,
 		hariSekolah,
-		jamPulang
+		jamPulang,
+		liburNasional,
+		liburSemester
 	};
 };
 

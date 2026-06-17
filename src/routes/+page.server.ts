@@ -10,9 +10,10 @@ import {
 	tableKehadiranMurid,
 	tableKelas,
 	tableMataPelajaran,
-	tableMurid
+	tableMurid,
+	tablePresensiSettings
 } from '$lib/server/db/schema';
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 
 const AGAMA_BASE_SUBJECT = 'Pendidikan Agama dan Budi Pekerti';
 
@@ -272,16 +273,47 @@ export async function load(event) {
 		};
 	}
 
-	const bellRow = sekolahId
-		? await db.query.tableBellSettings.findFirst({
-				columns: { isActive: true },
-				where: eq(tableBellSettings.sekolahId, sekolahId)
-			})
-		: null;
+	const [bellRow, presensiRow] = await Promise.all([
+		sekolahId
+			? db.query.tableBellSettings.findFirst({
+					columns: { isActive: true },
+					where: eq(tableBellSettings.sekolahId, sekolahId)
+				})
+			: Promise.resolve(null),
+		sekolahId
+			? db.query.tablePresensiSettings.findFirst({
+					columns: { hariSekolah: true, liburNasional: true, liburSemester: true },
+					where: eq(tablePresensiSettings.sekolahId, sekolahId),
+					orderBy: [desc(tablePresensiSettings.id)]
+				})
+			: Promise.resolve(null)
+	]);
+
+	const hariSekolah = presensiRow?.hariSekolah ?? 6;
+
+	let liburNasional: string[] = [];
+	let liburSemester: Array<{ start: string; end: string }> = [];
+	if (presensiRow) {
+		try {
+			const parsed = JSON.parse(presensiRow.liburNasional || '[]');
+			if (Array.isArray(parsed)) liburNasional = parsed;
+		} catch {
+			// ignore
+		}
+		try {
+			const parsed = JSON.parse(presensiRow.liburSemester || '[]');
+			if (Array.isArray(parsed)) liburSemester = parsed;
+		} catch {
+			// ignore
+		}
+	}
 
 	return {
 		...parentData,
 		statistikDashboard,
-		bellActive: bellRow?.isActive === 1
+		bellActive: bellRow?.isActive === 1,
+		hariSekolah,
+		liburNasional,
+		liburSemester
 	};
 }

@@ -33,6 +33,43 @@
 	);
 	const ekstrakurikulerStats = $derived(statistikDashboard.ekstrakurikuler ?? { total: 0 });
 	const bellActive = $derived(data.bellActive ?? false);
+	const hariSekolah = $derived((data.hariSekolah as number) ?? 6);
+	const liburNasional = $derived((data.liburNasional as string[]) ?? []);
+	const liburSemester = $derived(
+		(data.liburSemester as Array<{ start: string; end: string }>) ?? []
+	);
+
+	function toDateStr(date: Date): string {
+		const y = date.getFullYear();
+		const m = String(date.getMonth() + 1).padStart(2, '0');
+		const d = String(date.getDate()).padStart(2, '0');
+		return `${y}-${m}-${d}`;
+	}
+
+	function isHoliday(date: Date): boolean {
+		const dayOfWeek = date.getDay();
+		if (hariSekolah === 5 && (dayOfWeek === 0 || dayOfWeek === 6)) return true;
+		if (hariSekolah === 6 && dayOfWeek === 0) return true;
+		const dateStr = toDateStr(date);
+		if (liburNasional.includes(dateStr)) return true;
+		for (const range of liburSemester) {
+			if (dateStr >= range.start && dateStr <= range.end) return true;
+		}
+		return false;
+	}
+
+	let _now = $state(new Date());
+	$effect(() => {
+		const id = setInterval(() => _now = new Date(), 60_000);
+		return () => clearInterval(id);
+	});
+
+	const hariIni = $derived.by(() => {
+		const status = isHoliday(_now) ? 'Libur' : 'Hari Belajar';
+		const hariNama = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][_now.getDay()];
+		const tgl = _now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+		return `${hariNama}, ${tgl} - ${status}`;
+	});
 </script>
 
 {#if bellActive}
@@ -48,7 +85,10 @@
 				d="M13.73 21a2 2 0 0 1-3.46 0"
 			/></svg
 		>
-		<span>Sistem bell sedang berjalan — memonitor jadwal pelajaran secara otomatis.</span>
+		<div class="flex flex-col gap-0.5">
+			<span>Sistem bell sedang berjalan — memonitor jadwal pelajaran secara otomatis.</span>
+			<span class="opacity-70">{hariIni}</span>
+		</div>
 	</div>
 {/if}
 

@@ -108,6 +108,44 @@
 		return matrix;
 	});
 
+	const liburNasional = $derived((data.liburNasional as string[]) ?? []);
+	const liburSemester = $derived(
+		(data.liburSemester as Array<{ start: string; end: string }>) ?? []
+	);
+
+	function toDateStr(date: Date): string {
+		const y = date.getFullYear();
+		const m = String(date.getMonth() + 1).padStart(2, '0');
+		const d = String(date.getDate()).padStart(2, '0');
+		return `${y}-${m}-${d}`;
+	}
+
+	function isHoliday(date: Date): boolean {
+		const dayOfWeek = date.getDay();
+		if (hariSekolah === 5 && (dayOfWeek === 0 || dayOfWeek === 6)) return true;
+		if (hariSekolah === 6 && dayOfWeek === 0) return true;
+
+		const dateStr = toDateStr(date);
+		if (liburNasional.includes(dateStr)) return true;
+		for (const range of liburSemester) {
+			if (dateStr >= range.start && dateStr <= range.end) return true;
+		}
+		return false;
+	}
+
+	let _now = $state(new Date());
+	$effect(() => {
+		const id = setInterval(() => _now = new Date(), 60_000);
+		return () => clearInterval(id);
+	});
+
+	const hariIni = $derived.by(() => {
+		const status = isHoliday(_now) ? 'Libur' : 'Hari Belajar';
+		const hariNama = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][_now.getDay()];
+		const tgl = _now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+		return `${hariNama}, ${tgl} - ${status}`;
+	});
+
 	const maxJam = $derived.by(() => {
 		const jamPelajaranMenit = bellSettings?.jamPelajaranMenit ?? 35;
 		const jamMulaiMinutes = timeToMinutes(bellSettings?.jamMulai ?? '07:00');
@@ -881,6 +919,7 @@
 
 	function tickBell() {
 		const now = new Date();
+		if (isHoliday(now)) return;
 		const today = dayNameMap[now.getDay()];
 		if (!today) return;
 		const currentMinutes = now.getHours() * 60 + now.getMinutes();
@@ -1074,7 +1113,10 @@
 			{#if bellActive}
 				<div class="alert alert-soft alert-success flex items-center gap-2">
 					<Icon name="play" class="h-4 w-4 shrink-0" />
-					<span class="text-sm">Sistem bell aktif — memonitor jadwal secara otomatis.</span>
+					<div class="flex flex-col gap-0.5 text-sm">
+						<span>Sistem bell aktif — memonitor jadwal secara otomatis.</span>
+						<span class="opacity-70">{hariIni}</span>
+					</div>
 				</div>
 			{/if}
 
