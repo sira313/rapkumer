@@ -277,9 +277,9 @@
 	<section class="card bg-base-100 rounded-lg border border-none p-6 shadow-md">
 		<div class="space-y-6">
 			<header>
-				<h1 class="text-2xl font-bold">Pengaturan Data Rapor</h1>
+				<h1 class="text-2xl font-bold">Manajemen Akademik</h1>
 				<p class="text-base-content/70 text-sm">
-					Kelola sekolah aktif, tahun ajaran, semester, dan tanggal bagi rapor.
+					Kelola sekolah aktif, tahun ajaran, semester, presensi, dan jadwal pelajaran.
 				</p>
 			</header>
 
@@ -514,7 +514,7 @@
 								Pengaturan Presensi
 							</button>
 							<a
-								href={resolve('/rapor/jadwal-pelajaran')}
+								href={resolve('/akademik/jadwal-pelajaran')}
 								class="btn btn-soft shadow-none max-sm:w-full"
 							>
 								<Icon name="table" />

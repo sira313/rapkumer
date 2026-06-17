@@ -141,7 +141,7 @@
 
 			hideModal();
 			toast('Pengaturan presensi berhasil disimpan', 'success');
-			await invalidate('app:rapor');
+			await invalidate('app:akademik');
 		} catch (e) {
 			const message = e instanceof Error ? e.message : 'Gagal menyimpan pengaturan presensi';
 			toast(message, 'error');

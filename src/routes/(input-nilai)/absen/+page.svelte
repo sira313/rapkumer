@@ -433,7 +433,7 @@
 				class: 'btn-primary',
 				action: ({ close }) => {
 					close();
-					goto('/rapor');
+					goto('/akademik');
 				}
 			},
 			onNeutral: {
@@ -720,7 +720,7 @@
 		<div class="alert alert-soft alert-warning mt-6">
 			<Icon name="alert" />
 			<span
-				>Tanggal masuk semester atau tanggal bagi rapor belum diatur. Atur di halaman /rapor.</span
+				>Tanggal masuk semester atau tanggal bagi rapor belum diatur. Atur di halaman /akademik.</span
 			>
 		</div>
 	{:else if data.mode === 'bulanan'}

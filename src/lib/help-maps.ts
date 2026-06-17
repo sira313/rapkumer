@@ -10,7 +10,7 @@ export const helpMaps: HelpMapEntry[] = [
 	{ matcher: '/sekolah', file: 'sekolah' },
 	{ matcher: '/sekolah/form', file: 'sekolah-form' },
 	{ matcher: '/sekolah/tahun-ajaran', file: 'tahun-ajaran' },
-	{ matcher: '/rapor', file: 'rapor' },
+	{ matcher: '/akademik', file: 'rapor' },
 	{ matcher: '/murid', file: 'murid' },
 	{ matcher: '/intrakurikuler', file: 'intrakurikuler' },
 	{ matcher: /^\/intrakurikuler\/\d+\/tp-rl$/, file: 'tp-rl' },

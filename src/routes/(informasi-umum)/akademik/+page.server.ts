@@ -678,11 +678,11 @@ async function copyKelasDanMuridDariGanjilKeGenap(opts: {
 }
 
 export const load: PageServerLoad = async ({ locals, depends }) => {
-	depends('app:rapor');
+	depends('app:akademik');
 
 	const meta: PageMeta = {
-		title: 'Data Rapor',
-		description: 'Kelola sekolah aktif, tahun ajaran, semester, dan tanggal bagi rapor.'
+		title: 'Manajemen Akademik',
+		description: 'Kelola sekolah aktif, tahun ajaran, semester, presensi, dan jadwal pelajaran.'
 	};
 
 	const activeSekolahId = locals.sekolah?.id ?? null;
@@ -762,7 +762,7 @@ export const actions: Actions = {
 					.where(eq(tableAuthUser.id, Number((locals.user as { id?: number }).id)));
 			}
 		} catch (err) {
-			console.warn('[rapor.switch] failed to persist sekolahId to user record', err);
+			console.warn('[akademik.switch] failed to persist sekolahId to user record', err);
 		}
 
 		const context = await resolveSekolahAcademicContext(sekolah.id);

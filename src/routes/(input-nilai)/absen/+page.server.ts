@@ -470,7 +470,7 @@ export async function load({ parent, locals, url, depends }) {
 				...defaultRapor,
 				presensiReady: false,
 				presensiWarningMessage:
-					'Tidak dapat menampilkan rekap rapor. Atur tanggal masuk semester dan tanggal bagi rapor di halaman /rapor.'
+					'Tidak dapat menampilkan rekap rapor. Atur tanggal masuk semester dan tanggal bagi rapor di halaman /akademik.'
 			};
 		}
 

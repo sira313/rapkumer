@@ -995,7 +995,7 @@
 							Batal
 						</button>
 					{:else}
-						<a href="/rapor" class="btn btn-soft shadow-none">
+						<a href="/akademik" class="btn btn-soft shadow-none">
 							<Icon name="left" /> Kembali
 						</a>
 					{/if}

@@ -8,8 +8,8 @@ export const appMenuItems: MenuItem[] = [
 				path: '/sekolah'
 			},
 			{
-				title: 'Data Rapor',
-				path: '/rapor',
+				title: 'Manajemen Akademik',
+				path: '/akademik',
 				tags: ['jadwal', 'bell', 'sound']
 			},
 			{

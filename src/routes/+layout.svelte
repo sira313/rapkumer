@@ -23,7 +23,7 @@
 	let stoppingServer = $state(false);
 	let loggingOut = $state(false);
 	const isLoginPage = $derived(page.url.pathname === '/login');
-	let isJadwalPage = $derived(page.url.pathname === '/rapor/jadwal-pelajaran');
+	let isJadwalPage = $derived(page.url.pathname === '/akademik/jadwal-pelajaran');
 	const jadwalCanManage = $derived(
 		((page.data.user as { permissions?: string[] })?.permissions ?? []).includes('rapor_manage')
 	);
