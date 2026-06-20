@@ -151,7 +151,7 @@
 		const jamMulaiMinutes = timeToMinutes(bellSettings?.jamMulai ?? '07:00');
 		const jamPulangMinutes = timeToMinutes((data.jamPulang as string) ?? '15:00');
 		const raw = (jamPulangMinutes - jamMulaiMinutes) / jamPelajaranMenit;
-		const calculated = Math.max(1, Math.ceil(raw));
+		const calculated = Math.max(1, Math.floor(raw));
 		let maxFromData = 0;
 		for (const hari of hariList) {
 			const daySchedule = jadwalMatrix[hari];
