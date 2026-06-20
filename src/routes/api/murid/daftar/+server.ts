@@ -28,7 +28,7 @@ export async function GET({ url, locals }) {
 	}
 
 	const muridList = await db.query.tableMurid.findMany({
-		columns: { id: true, nama: true },
+		columns: { id: true, nama: true, agama: true },
 		where: eq(tableMurid.kelasId, kelasId),
 		orderBy: asc(tableMurid.nama)
 	});

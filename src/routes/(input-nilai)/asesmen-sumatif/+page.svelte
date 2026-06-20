@@ -110,12 +110,23 @@
 	}
 
 	// Download template as Excel (.xlsx) — delegated to modular helper in $lib
+	function normalizeAgamaToKey(agama: string | null | undefined): string {
+		const n = agama?.trim().toLowerCase() ?? '';
+		if (n === 'islam') return 'islam';
+		if (n === 'kristen' || n === 'protestan') return 'kristen';
+		if (n === 'katolik' || n === 'katholik') return 'katolik';
+		if (n === 'hindu') return 'hindu';
+		if (n === 'buddha' || n === 'budha' || n === 'buddhist') return 'buddha';
+		if (n === 'khonghucu' || n === 'konghucu' || n === 'khong hu cu') return 'konghuchu';
+		return n;
+	}
+
 	async function downloadTemplate() {
 		try {
 			// Fetch all students in the class (bypass pagination) so the template
 			// includes every student, not just the current page.
 			const kelasId = (data as any).kelasAktif?.id ?? null;
-			let allMurid: { id: number; nama: string }[] | null = null;
+			let allMurid: { id: number; nama: string; agama: string }[] | null = null;
 			if (kelasId) {
 				try {
 					const res = await fetch(`/api/murid/daftar?kelas_id=${kelasId}`);
@@ -124,7 +135,7 @@
 					// fall back to paginated list below
 				}
 			}
-			const daftarMuridExport = allMurid ?? data.daftarMurid;
+			let daftarMuridExport = allMurid ?? data.daftarMurid;
 
 			// Determine which mata pelajaran to use
 			const mapelIdStr =
@@ -206,10 +217,15 @@
 										// ignore resolve errors
 									}
 								}
+								const filteredMurid = Array.isArray(daftarMuridExport)
+									? daftarMuridExport.filter(
+											(m: any) => !('agama' in m) || normalizeAgamaToKey(m.agama) === chosenKey
+										)
+									: daftarMuridExport;
 								await downloadTemplateXLSX({
 									mapelName: chosen.name,
 									kelasName: data.kelasAktif?.nama ?? 'Nama Kelas',
-									daftarMurid: daftarMuridExport,
+									daftarMurid: filteredMurid,
 									lingkupGroups: finalLingkupGroups,
 									mapelId: resolvedMapelId,
 									kelasId: kelasId
