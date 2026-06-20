@@ -194,10 +194,10 @@
 
 <div class="not-prose flex flex-col gap-4">
 	<div class="flex flex-wrap items-end gap-3">
-		<label class="flex flex-col gap-1">
+		<label class="flex flex-col gap-1 flex-1">
 			<span class="fieldset-legend text-sm font-semibold">Hari</span>
 			<select
-				class="select bg-base-200 dark:bg-base-300 w-36 truncate dark:border-none"
+				class="select bg-base-200 dark:bg-base-300 w-full truncate dark:border-none"
 				bind:value={simulasiHari}
 				disabled={simulasiRunning}
 			>
@@ -206,11 +206,11 @@
 				{/each}
 			</select>
 		</label>
-		<label class="flex flex-col gap-1">
+		<label class="flex flex-col gap-1 flex-1">
 			<span class="fieldset-legend text-sm font-semibold">Jam</span>
 			<input
 				type="time"
-				class="input bg-base-200 dark:bg-base-300 w-36 dark:border-none"
+				class="input bg-base-200 dark:bg-base-300 w-full dark:border-none"
 				bind:value={simulasiJam}
 				disabled={simulasiRunning}
 			/>

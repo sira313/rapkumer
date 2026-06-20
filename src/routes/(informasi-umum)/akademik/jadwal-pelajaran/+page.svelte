@@ -54,8 +54,7 @@
 			'UPB',
 			'IST',
 			'PLG',
-			...kegiatanCustom.map((k) => (k as { kode: string }).kode),
-			...daftarKodeKokurikuler
+			...kegiatanCustom.map((k) => (k as { kode: string }).kode)
 		])
 	);
 	const customDurationMap = $derived(
@@ -912,9 +911,14 @@
 
 		let targetKe = jamKe + 1;
 		while (targetKe <= maxHariJam) {
+			const allSameAtRow = isAllSame(hari, targetKe);
+			if (allSameAtRow && kodeMerged.has(allSameAtRow)) {
+				targetKe++;
+				continue;
+			}
 			const existingKode = kelasId !== undefined
 				? getKode(hari, targetKe, kelasId)
-				: isAllSame(hari, targetKe);
+				: allSameAtRow;
 			if (existingKode === sourceKode) {
 				targetKe++;
 			} else {
