@@ -16,6 +16,7 @@
 		SelectedGroupState,
 		TujuanPembelajaranGroup
 	} from '$lib/components/tp-rl/types';
+	import { showModal } from '$lib/components/global-modal.svelte';
 	import { toast } from '$lib/components/toast.svelte';
 	import {
 		buildGroupedTujuanPembelajaran,
@@ -172,6 +173,7 @@
 
 	let activeFormId = $state<string | null>(null);
 	let isFormSubmitting = $state(false);
+	let confirmedLongTpEntries = $state<Set<number>>(new Set());
 
 	const BOBOT_TOTAL = 100;
 	let isEditingBobot = $state(false);
@@ -474,9 +476,19 @@
 		importDialogOpen = false;
 	}
 
-	async function handleImportSuccess() {
+	async function handleImportSuccess(data?: Record<string, unknown>) {
 		importDialogOpen = false;
 		await invalidate('app:mapel_tp-rl');
+
+		const longEntryCount = (data?.longEntryCount ?? 0) as number;
+		if (longEntryCount > 0) {
+			showModal({
+				title: 'Perhatian',
+				body: `Tujuan pembelajaran yang diimpor melebihi 95 karakter, hal ini akan menjadi masalah jika bapak/ibu mencoba mengeksport TP ini ke E-Rapor Kemdikdas. ${longEntryCount} data terindikasi bermasalah.`,
+				onNeutral: { label: 'Mengerti' },
+				dismissible: false
+			});
+		}
 	}
 
 	function openEditForm(group: TujuanPembelajaranGroup) {
@@ -503,6 +515,7 @@
 		deleteEntryDialog = null;
 		activeFormId = null;
 		isFormSubmitting = false;
+		confirmedLongTpEntries = new Set();
 	}
 
 	function handleFormRegistered(formId: string) {
@@ -547,6 +560,37 @@
 
 	function handleEntryInput(index: number, value: string) {
 		if (!groupForm) return;
+
+		if (value.length > 95 && !confirmedLongTpEntries.has(index)) {
+			const truncated = value.slice(0, 95);
+			const truncatedEntries = groupForm.entries.map((entry, entryIndex) =>
+				entryIndex === index ? { ...entry, deskripsi: truncated, deleted: false } : entry
+			);
+			groupForm = { ...groupForm, entries: ensureTrailingEntry(truncatedEntries) };
+
+			showModal({
+				title: 'Perhatian',
+				body: 'Tujuan pembelajaran yang bapak/ibu input melebihi 95 karakter, hal ini akan menjadi masalah jika bapak/ibu mencoba mengeksport TP ini ke E-Rapor Kemdikdas. Lanjutkan?',
+				onPositive: {
+					label: 'Lanjutkan',
+					action: ({ close }) => {
+						if (!groupForm) { close(); return; }
+						const fullEntries = groupForm.entries.map((entry, entryIndex) =>
+							entryIndex === index
+								? { ...entry, deskripsi: value, deleted: false }
+								: entry
+						);
+						groupForm = { ...groupForm, entries: ensureTrailingEntry(fullEntries) };
+						confirmedLongTpEntries = new Set([...confirmedLongTpEntries, index]);
+						close();
+					}
+				},
+				onNegative: { label: 'Kembali' },
+				dismissible: false
+			});
+			return;
+		}
+
 		const entries = groupForm.entries.map((entry, entryIndex) =>
 			entryIndex === index ? { ...entry, deskripsi: value, deleted: false } : entry
 		);

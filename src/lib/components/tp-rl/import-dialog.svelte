@@ -4,7 +4,7 @@
 
 	interface Props {
 		onCancel: () => void;
-		onSuccess: () => void;
+		onSuccess: (data?: Record<string, unknown>) => void;
 	}
 
 	let { onCancel, onSuccess }: Props = $props();
@@ -81,8 +81,8 @@
 			action="?/import"
 			enctype="multipart/form-data"
 			showToast={true}
-			onsuccess={({ form }) => {
-				onSuccess();
+			onsuccess={({ form, data }) => {
+				onSuccess(data);
 				resetForm(form);
 			}}
 			submitStateChange={(v) => (submitting = v)}

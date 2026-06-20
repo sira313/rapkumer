@@ -679,6 +679,7 @@ export const actions = {
 		const toInsert: Array<{ lingkupMateri: string; deskripsi: string; mataPelajaranId: number }> =
 			[];
 		let duplicateCount = 0;
+		let longEntryCount = 0;
 
 		for (const group of cleanedGroups) {
 			const normalizedLingkup = normalizeCell(group.lingkupMateri);
@@ -690,6 +691,9 @@ export const actions = {
 					continue;
 				}
 				existingKeys.add(key);
+				if (normalizedDeskripsi.length > 95) {
+					longEntryCount += 1;
+				}
 				toInsert.push({
 					lingkupMateri: normalizedLingkup,
 					deskripsi: normalizedDeskripsi,
@@ -714,6 +718,6 @@ export const actions = {
 			parts.push(`${duplicateCount} data diabaikan karena sudah ada.`);
 		}
 
-		return { message: parts.join(' ') };
+		return { message: parts.join(' '), longEntryCount };
 	}
 };
