@@ -445,7 +445,7 @@
 			</div>
 
 			<h3 class="mt-4 pb-2 text-lg font-bold">
-				Isi nilai sumatif tiap tujuan pembelajaran di bawah ini untuk {data.murid.nama}.
+				Isi nilai harian tiap tujuan pembelajaran untuk {data.murid.nama}.
 			</h3>
 
 			{#if !data.hasTujuan}
@@ -477,37 +477,44 @@
 
 			<LingkupSummaryCard {naSumatifLingkup} {lingkupSummaries} {totalBobot} {formatScore} />
 
-			<h3 class="mt-6 pb-2 text-lg font-bold">
-				Isi Sumatif Tengah Semester di bawah ini untuk {data.murid.nama}.
-			</h3>
-			<SasInputTable
-				tesText={stsTesText}
-				nonTesText={stsNonTesText}
-				namePrefix="sts"
-				tesLabel="Nilai Tes Sumatif Tengah Semester (STS)"
-				nonTesLabel="Nilai Non Tes Sumatif Tengah Semester (STS)"
-				{getInputClass}
-				on:sasChange={handleSasChange}
-			/>
+			<details class="collapse collapse-arrow mt-6 bg-base-200 rounded-box">
+				<summary class="collapse-title text-lg font-bold">
+					Isi Sumatif Tengah Semester & Akhir Semester (opsional)
+				</summary>
+				<div class="collapse-content space-y-4">
+					<h3 class="pb-2 text-lg font-bold">
+						Isi Sumatif Tengah Semester di bawah ini untuk {data.murid.nama}.
+					</h3>
+					<SasInputTable
+						tesText={stsTesText}
+						nonTesText={stsNonTesText}
+						namePrefix="sts"
+						tesLabel="Nilai Tes Sumatif Tengah Semester (STS)"
+						nonTesLabel="Nilai Non Tes Sumatif Tengah Semester (STS)"
+						{getInputClass}
+						on:sasChange={handleSasChange}
+					/>
 
-			<SasSummaryCard
-				nilaiSas={nilaiSts}
-				{formatScore}
-				title="NA Sumatif Tengah Semester"
-				subtitle="Rata-rata dari nilai Tes dan Non Tes STS"
-			/>
+					<SasSummaryCard
+						nilaiSas={nilaiSts}
+						{formatScore}
+						title="NA Sumatif Tengah Semester"
+						subtitle="Rata-rata dari nilai Tes dan Non Tes STS"
+					/>
 
-			<h3 class="mt-6 pb-2 text-lg font-bold">
-				Isi Sumatif Akhir Semester di bawah ini untuk {data.murid.nama}.
-			</h3>
-			<SasInputTable
-				tesText={sasTesText}
-				nonTesText={sasNonTesText}
-				{getInputClass}
-				on:sasChange={handleSasChange}
-			/>
+					<h3 class="pb-2 text-lg font-bold">
+						Isi Sumatif Akhir Semester di bawah ini untuk {data.murid.nama}.
+					</h3>
+					<SasInputTable
+						tesText={sasTesText}
+						nonTesText={sasNonTesText}
+						{getInputClass}
+						on:sasChange={handleSasChange}
+					/>
 
-			<SasSummaryCard {nilaiSas} {formatScore} />
+					<SasSummaryCard {nilaiSas} {formatScore} />
+				</div>
+			</details>
 
 			<NilaiAkhirCard
 				title="Nilai Rapor Tengah Semester"
