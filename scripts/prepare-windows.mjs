@@ -9,7 +9,10 @@ const projectRoot = path.resolve(__dirname, '..');
 
 function run(cmd, args = [], opts = {}) {
 	console.info(`\n> ${[cmd, ...args].join(' ')}`);
-	const res = spawnSync(cmd, args, { stdio: 'inherit', shell: false, ...opts });
+	const isWin = process.platform === 'win32';
+	const noExt = !path.extname(cmd);
+	const useShell = opts.shell ?? (isWin && noExt);
+	const res = spawnSync(cmd, args, { stdio: 'inherit', shell: useShell, ...opts });
 	if (res.error) {
 		console.error('Failed to run:', res.error);
 		throw res.error;
@@ -19,7 +22,8 @@ function run(cmd, args = [], opts = {}) {
 
 function hasCommand(cmd) {
 	try {
-		const r = spawnSync(cmd, ['--version'], { stdio: 'ignore' });
+		const isWin = process.platform === 'win32';
+		const r = spawnSync(cmd, ['--version'], { stdio: 'ignore', shell: isWin });
 		return !r.error && r.status === 0;
 	} catch {
 		return false;
