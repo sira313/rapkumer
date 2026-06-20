@@ -905,18 +905,30 @@
 
 	function copyToBelow(hari: string, jamKe: number, kelasId?: number) {
 		if (!canManage || !isEditing || jamKe >= (hariMaxJam[hari] ?? maxJam)) return;
-		const nextSame = isAllSame(hari, jamKe + 1);
-		const targetKe = nextSame && kodeMerged.has(nextSame) ? jamKe + 2 : jamKe + 1;
-		if (targetKe > (hariMaxJam[hari] ?? maxJam)) return;
+
+		const maxHariJam = hariMaxJam[hari] ?? maxJam;
+		const sourceKode = kelasId !== undefined ? getKode(hari, jamKe, kelasId) : isAllSame(hari, jamKe);
+		if (!sourceKode) return;
+
+		let targetKe = jamKe + 1;
+		while (targetKe <= maxHariJam) {
+			const existingKode = kelasId !== undefined
+				? getKode(hari, targetKe, kelasId)
+				: isAllSame(hari, targetKe);
+			if (existingKode === sourceKode) {
+				targetKe++;
+			} else {
+				break;
+			}
+		}
+
+		if (targetKe > maxHariJam) return;
+
 		if (kelasId !== undefined) {
-			const kode = getKode(hari, jamKe, kelasId);
-			if (!kode) return;
-			setKode(hari, targetKe, kelasId, kode);
+			setKode(hari, targetKe, kelasId, sourceKode);
 		} else {
 			for (const k of kelasTerurut) {
-				const kode = getKode(hari, jamKe, k.id);
-				if (!kode) return;
-				setKode(hari, targetKe, k.id, kode);
+				setKode(hari, targetKe, k.id, sourceKode);
 			}
 		}
 	}
