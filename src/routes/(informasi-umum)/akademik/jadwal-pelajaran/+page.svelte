@@ -24,6 +24,7 @@
 	const kegiatanCustom = $derived(data.kegiatanCustom as KegiatanCustomRow[]);
 	let jadwalPelajaran = $state(data.jadwalPelajaran as JadwalPelajaranRow[]);
 	const daftarKodeMapel = $derived(data.daftarKodeMapel as string[]);
+	const daftarKodeKokurikuler = $derived(data.daftarKodeKokurikuler as string[]);
 	const bellSounds = $derived(data.bellSounds as BellSoundsRow[]);
 
 	const daftarKelas = (page.data.daftarKelas ?? []) as Array<{ id: number; nama: string }>;
@@ -49,7 +50,13 @@
 
 	const kodeTambahan = ['UPB', 'IST', 'PLG'];
 	const kodeMerged = $derived(
-		new Set(['UPB', 'IST', 'PLG', ...kegiatanCustom.map((k) => (k as { kode: string }).kode)])
+		new Set([
+			'UPB',
+			'IST',
+			'PLG',
+			...kegiatanCustom.map((k) => (k as { kode: string }).kode),
+			...daftarKodeKokurikuler
+		])
 	);
 	const customDurationMap = $derived(
 		new Map(kegiatanCustom.map((k) => [k.kode, (k as { durasi: number | null }).durasi]))
@@ -60,7 +67,8 @@
 			['UPB', 'Upacara'],
 			['IST', 'Istirahat'],
 			['PLG', 'Pulang'],
-			...kegiatanCustom.map((k) => [k.kode, k.nama] as [string, string])
+			...kegiatanCustom.map((k) => [k.kode, k.nama] as [string, string]),
+			...daftarKodeKokurikuler.map((k) => [k, k] as [string, string])
 		])
 	);
 
@@ -79,9 +87,11 @@
 	$effect(() => {
 		void kegiatanCustom;
 		void daftarKodeMapel;
+		void daftarKodeKokurikuler;
 		const allKodes = new Set<string>(kodeTambahan);
 		for (const kd of kegiatanCustom) allKodes.add((kd as { kode: string }).kode);
 		for (const kode of daftarKodeMapel) allKodes.add(kode);
+		for (const kode of daftarKodeKokurikuler) allKodes.add(kode);
 		const sorted = [...allKodes].sort();
 		const map: Record<string, string> = {};
 		sorted.forEach((kode, i) => {
@@ -135,14 +145,20 @@
 
 	let _now = $state(new Date());
 	$effect(() => {
-		const id = setInterval(() => _now = new Date(), 60_000);
+		const id = setInterval(() => (_now = new Date()), 60_000);
 		return () => clearInterval(id);
 	});
 
 	const hariIni = $derived.by(() => {
 		const status = isHoliday(_now) ? 'Libur' : 'Hari Belajar';
-		const hariNama = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][_now.getDay()];
-		const tgl = _now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+		const hariNama = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][
+			_now.getDay()
+		];
+		const tgl = _now.toLocaleDateString('id-ID', {
+			day: 'numeric',
+			month: 'long',
+			year: 'numeric'
+		});
 		return `${hariNama}, ${tgl} - ${status}`;
 	});
 
@@ -203,12 +219,13 @@
 	function recomputePlgPosisi() {
 		const m: Record<string, number | null> = {};
 		for (const hari of hariList) {
+			const autoPlgJam = computePlgAutoJam(hari);
 			const dayEdit = editing[hari];
 			let found: number | null = null;
 			if (dayEdit) {
 				for (const jamKeStr of Object.keys(dayEdit)) {
 					const jk = Number(jamKeStr);
-					if (jk >= maxJam) continue;
+					if (jk === autoPlgJam) continue;
 					const kelasEntries = dayEdit[jk];
 					if (!kelasEntries) continue;
 					const codes = kelasTerurut.map((k) => kelasEntries[k.id]);
@@ -223,7 +240,7 @@
 				if (dayMatrix) {
 					for (const jamKeStr of Object.keys(dayMatrix)) {
 						const jk = Number(jamKeStr);
-						if (jk >= maxJam) continue;
+						if (jk === autoPlgJam) continue;
 						const kelasEntries = dayMatrix[jk];
 						if (!kelasEntries) continue;
 						const codes = kelasTerurut.map((k) => {
@@ -250,6 +267,7 @@
 		void maxJam;
 		void editing;
 		void jadwalMatrix;
+		void waktuMatrix;
 		void kelasTerurut;
 		recomputePlgPosisi();
 	});
@@ -262,13 +280,13 @@
 		const m: Record<string, number> = {};
 		for (const hari of hariList) {
 			const pos = plgPosisi[hari];
-			m[hari] = pos ?? maxJam;
+			m[hari] = pos ?? computePlgAutoJam(hari);
 		}
 		return m;
 	});
 
 	function getKode(hari: string, jamKe: number, kelasId: number): string {
-		if (jamKe === maxJam && !autoPlgHidden[hari]) return 'PLG';
+		if (jamKe === hariMaxJam[hari] && !autoPlgHidden[hari]) return 'PLG';
 		if (editing[hari]?.[jamKe]?.[kelasId] !== undefined) {
 			return editing[hari][jamKe][kelasId];
 		}
@@ -317,6 +335,20 @@
 		const customDur = customDurationMap.get(kode);
 		if (customDur != null) return customDur;
 		return defaultDur;
+	}
+
+	function computePlgAutoJam(hari: string): number {
+		const jamPulangMinutes = timeToMinutes((data.jamPulang as string) ?? '15:00');
+		for (let j = maxJam; j >= 1; j--) {
+			const waktu = waktuMatrix[hari]?.[j];
+			if (waktu) {
+				const startMinutes = timeToMinutes(waktu.start);
+				if (startMinutes < jamPulangMinutes) {
+					return j;
+				}
+			}
+		}
+		return 1;
 	}
 
 	function computeWaktu(
@@ -477,6 +509,7 @@
 			bodyProps: {
 				kodeMapel: daftarKodeMapel,
 				kodeTambahan,
+				kodeKokurikuler: daftarKodeKokurikuler,
 				kegiatanCustom,
 				canManage: canManage && isEditing,
 				onHapusKegiatan: handleHapusKegiatan,
@@ -802,12 +835,12 @@
 	function handleDrop(e: DragEvent, hari: string, jamKe: number, kelasId?: number) {
 		e.preventDefault();
 		const kode = e.dataTransfer?.getData('text/plain');
-		if (!kode || !canManage || !isEditing || jamKe === maxJam) return;
+		if (!kode || !canManage || !isEditing || jamKe === hariMaxJam[hari]) return;
 
 		function setPlg({ close }: { close: () => void }) {
 			// PLG always applies to all classes (row-level)
 			for (const k of kelasTerurut) setKode(hari, jamKe, k.id, 'PLG');
-			for (let j = jamKe + 1; j <= maxJam; j++) {
+			for (let j = jamKe + 1; j <= (hariMaxJam[hari] ?? maxJam); j++) {
 				for (const k of kelasTerurut) setKode(hari, j, k.id, '');
 			}
 			if (dragSource) {
@@ -859,7 +892,7 @@
 
 	function clearCell(hari: string, jamKe: number, kelasId?: number) {
 		if (!canManage || !isEditing) return;
-		if (jamKe === maxJam) {
+		if (jamKe === hariMaxJam[hari]) {
 			autoPlgHidden[hari] = true;
 			return;
 		}
@@ -871,10 +904,10 @@
 	}
 
 	function copyToBelow(hari: string, jamKe: number, kelasId?: number) {
-		if (!canManage || !isEditing || jamKe >= maxJam) return;
+		if (!canManage || !isEditing || jamKe >= (hariMaxJam[hari] ?? maxJam)) return;
 		const nextSame = isAllSame(hari, jamKe + 1);
 		const targetKe = nextSame && kodeMerged.has(nextSame) ? jamKe + 2 : jamKe + 1;
-		if (targetKe > maxJam) return;
+		if (targetKe > (hariMaxJam[hari] ?? maxJam)) return;
 		if (kelasId !== undefined) {
 			const kode = getKode(hari, jamKe, kelasId);
 			if (!kode) return;
@@ -898,7 +931,7 @@
 				class: 'btn-error',
 				action: async ({ close }) => {
 					for (const hari of hariList) {
-						for (let jamKe = 1; jamKe < maxJam; jamKe++) {
+						for (let jamKe = 1; jamKe < (hariMaxJam[hari] ?? maxJam); jamKe++) {
 							for (const k of kelasTerurut) {
 								setKode(hari, jamKe, k.id, '');
 							}
@@ -924,7 +957,7 @@
 		if (!today) return;
 		const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
-		for (let jamKe = 1; jamKe <= maxJam; jamKe++) {
+		for (let jamKe = 1; jamKe <= (hariMaxJam[today] ?? maxJam); jamKe++) {
 			let kode: string | null = isAllSame(today, jamKe);
 			if (!kode) {
 				const firstNonEmpty = kelasTerurut.map((k) => getKode(today, jamKe, k.id)).find(Boolean);
@@ -1177,7 +1210,7 @@
 											<div class="flex h-full w-full items-center justify-center">
 												{#if canManage && isEditing}
 													<div class="join w-full">
-														{#if jamKe < maxJam && allSame}
+														{#if jamKe < hariMaxJam[hari] && allSame}
 															<button
 																type="button"
 																class="btn btn-xs join-item btn-soft btn-info shrink-0 px-1 shadow-none"
@@ -1229,7 +1262,7 @@
 												{#if canManage && isEditing}
 													{#if kode}
 														<div class="join">
-															{#if jamKe < maxJam}
+															{#if jamKe < hariMaxJam[hari]}
 																<button
 																	type="button"
 																	class="btn btn-xs join-item btn-soft btn-info px-1 shadow-none"

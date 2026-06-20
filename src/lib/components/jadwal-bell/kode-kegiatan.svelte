@@ -15,6 +15,7 @@
 	let {
 		kodeMapel,
 		kodeTambahan,
+		kodeKokurikuler,
 		kegiatanCustom,
 		canManage,
 		onHapusKegiatan,
@@ -23,6 +24,7 @@
 	}: {
 		kodeMapel: string[];
 		kodeTambahan: string[];
+		kodeKokurikuler: string[];
 		kegiatanCustom: Array<{ kode: string; nama: string; durasi: number | null }>;
 		canManage: boolean;
 		onHapusKegiatan: (kode: string) => void;
@@ -34,8 +36,14 @@
 	$effect(() => {
 		void kodeMapel;
 		void kegiatanCustom;
+		void kodeKokurikuler;
 		const allKodes = [
-			...new Set([...kodeTambahan, ...kegiatanCustom.map((k) => k.kode), ...kodeMapel])
+			...new Set([
+				...kodeTambahan,
+				...kegiatanCustom.map((k) => k.kode),
+				...kodeMapel,
+				...kodeKokurikuler
+			])
 		].sort();
 		const map: Record<string, string> = {};
 		allKodes.forEach((kode, i) => {
@@ -79,6 +87,17 @@
 			role="button"
 			tabindex="-1"
 			class="badge {kodeColorMap[kode] ?? 'badge-info'} badge-soft cursor-grab"
+			draggable="true"
+			ondragstart={(e) => handleDragStart(e, kode)}
+		>
+			{kode}
+		</span>
+	{/each}
+	{#each kodeKokurikuler as kode (kode)}
+		<span
+			role="button"
+			tabindex="-1"
+			class="badge {kodeColorMap[kode] ?? 'badge-accent'} badge-soft cursor-grab"
 			draggable="true"
 			ondragstart={(e) => handleDragStart(e, kode)}
 		>

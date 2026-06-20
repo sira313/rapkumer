@@ -213,6 +213,7 @@
 									<KodeKegiatan
 										kodeMapel={page.data.daftarKodeMapel as string[]}
 										kodeTambahan={['UPB', 'IST', 'PLG']}
+										kodeKokurikuler={(page.data.daftarKodeKokurikuler as string[]) ?? []}
 										kegiatanCustom={(page.data.kegiatanCustom as Array<{
 											kode: string;
 											nama: string;

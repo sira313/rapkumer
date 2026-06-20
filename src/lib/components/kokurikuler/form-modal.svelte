@@ -21,6 +21,8 @@
 		dimensionOptions,
 		selectedDimensions,
 		onToggleDimension,
+		kodeInput,
+		onKodeChange,
 		tujuanInput,
 		onTujuanChange,
 		onClose,
@@ -37,6 +39,8 @@
 		dimensionOptions: DimensionOption[];
 		selectedDimensions: DimensiProfilLulusanKey[];
 		onToggleDimension: (dimension: DimensiProfilLulusanKey, checked: boolean) => void;
+		kodeInput: string;
+		onKodeChange: (value: string) => void;
 		tujuanInput: string;
 		onTujuanChange: (value: string) => void;
 		onClose: () => void;
@@ -91,6 +95,19 @@
 						{/each}
 					</div>
 
+					<p class="mt-4 font-semibold">Kode</p>
+					<input
+						type="text"
+						class="input bg-base-200 dark:bg-base-300 mt-2 w-full dark:border-none"
+						placeholder="Masukkan kode (contoh: KK-BAKU)"
+						name="kode"
+						value={kodeInput}
+						oninput={(event) => onKodeChange((event.currentTarget as HTMLInputElement).value)}
+						required
+						disabled={!canManage}
+						maxlength={20}
+					/>
+
 					<p class="mt-4 font-semibold">Kegiatan Kokurikuler</p>
 					<textarea
 						class="textarea bg-base-200 dark:bg-base-300 mt-2 h-28 w-full dark:border-none"
@@ -117,6 +134,7 @@
 						!selectedDimensions.length ||
 						!kelasId ||
 						!tableReady ||
+						!kodeInput.trim() ||
 						!tujuanInput.trim()}
 				>
 					{#if submitting}

@@ -39,6 +39,7 @@
 		  }
 		| null
 	>(null);
+	let kodeInput = $state('');
 	let tujuanInput = $state('');
 
 	const labelByKey = profilPelajarPancasilaDimensionLabelByKey;
@@ -103,6 +104,7 @@
 		if (!tableReady) {
 			if (selectedIds.length) selectedIds = [];
 			if (selectedDimensions.length) selectedDimensions = [];
+			if (kodeInput) kodeInput = '';
 			if (tujuanInput) tujuanInput = '';
 			if (modalState) modalState = null;
 			if (deleteDialogState) deleteDialogState = null;
@@ -122,6 +124,7 @@
 	function openAddModal() {
 		if (!canManage) return;
 		if (selectedDimensions.length) selectedDimensions = [];
+		kodeInput = '';
 		tujuanInput = '';
 		modalState = { mode: 'add' };
 	}
@@ -129,6 +132,7 @@
 	function openEditModal(item: Kokurikuler & { dimensi: DimensiProfilLulusanKey[] }) {
 		if (!canManage) return;
 		selectedDimensions = [...item.dimensi];
+		kodeInput = item.kode;
 		tujuanInput = item.tujuan;
 		modalState = { mode: 'edit', item };
 	}
@@ -145,9 +149,10 @@
 	}
 
 	function closeModal() {
-		if (modalState === null && !selectedDimensions.length && !tujuanInput) return;
+		if (modalState === null && !selectedDimensions.length && !kodeInput && !tujuanInput) return;
 		modalState = null;
 		if (selectedDimensions.length) selectedDimensions = [];
+		if (kodeInput) kodeInput = '';
 		if (tujuanInput) tujuanInput = '';
 	}
 
@@ -160,6 +165,10 @@
 		selectedDimensions = checked
 			? [...new Set([...selectedDimensions, dimension])]
 			: selectedDimensions.filter((existing) => existing !== dimension);
+	}
+
+	function handleKodeChange(value: string) {
+		kodeInput = value;
 	}
 
 	function handleTujuanChange(value: string) {
@@ -179,12 +188,15 @@
 	{dimensionOptions}
 	{selectedDimensions}
 	onToggleDimension={toggleDimension}
+	{kodeInput}
+	onKodeChange={handleKodeChange}
 	{tujuanInput}
 	onTujuanChange={handleTujuanChange}
 	onClose={closeModal}
 	onSuccess={({ form }) => {
 		form.reset();
 		selectedDimensions = [];
+		kodeInput = '';
 		tujuanInput = '';
 		closeModal();
 		invalidate('app:kokurikuler');
@@ -284,6 +296,7 @@
 						/>
 					</th>
 					<th style="width: 60px;">No</th>
+					<th style="width: 100px; min-width: 80px;">Kode</th>
 					<th style="min-width: 200px;">8 DPL</th>
 					<th class="w-full" style="min-width: 260px;">Kegiatan Kokurikuler</th>
 					<th style="width: 140px; min-width: 120px;">Aksi</th>
@@ -302,6 +315,7 @@
 							/>
 						</td>
 						<td class="align-top">{index + 1}</td>
+						<td class="align-top font-mono text-sm">{item.kode}</td>
 						<td class="align-top">
 							{#if item.dimensi.length}
 								{item.dimensi
@@ -337,7 +351,7 @@
 					</tr>
 				{:else}
 					<tr>
-						<td class="py-6 text-center italic opacity-60" colspan="5">
+						<td class="py-6 text-center italic opacity-60" colspan="6">
 							Belum ada data kokurikuler
 						</td>
 					</tr>

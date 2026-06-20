@@ -5,6 +5,7 @@ import {
 	tableBellSettings,
 	tableKegiatanCustom,
 	tableJadwalPelajaran,
+	tableKokurikuler,
 	tableMataPelajaran,
 	tableBellSounds,
 	tableKelas,
@@ -23,6 +24,7 @@ export const load: PageServerLoad = async ({ locals, depends }) => {
 			kegiatanCustom: [],
 			jadwalPelajaran: [],
 			daftarKodeMapel: [],
+			daftarKodeKokurikuler: [],
 			bellSounds: [],
 			hariSekolah: 6,
 			jamPulang: '15:00',
@@ -82,10 +84,37 @@ export const load: PageServerLoad = async ({ locals, depends }) => {
 		kelasIdList.length > 0
 			? await db.query.tableMataPelajaran.findMany({
 					where: inArray(tableMataPelajaran.kelasId, kelasIdList),
-					columns: { kode: true }
+					columns: { kode: true, nama: true }
 				})
 			: [];
-	const daftarKodeMapel = [...new Set(daftarMapel.map((m) => m.kode).filter(Boolean))] as string[];
+	const agamaMapelNames = [
+		'Pendidikan Agama dan Budi Pekerti',
+		'Pendidikan Agama Islam dan Budi Pekerti',
+		'Pendidikan Agama Kristen dan Budi Pekerti',
+		'Pendidikan Agama Katolik dan Budi Pekerti',
+		'Pendidikan Agama Buddha dan Budi Pekerti',
+		'Pendidikan Agama Hindu dan Budi Pekerti',
+		'Pendidikan Agama Konghuchu dan Budi Pekerti'
+	];
+	const agamaNameSet = new Set(agamaMapelNames);
+	const kodeSet = new Set<string>();
+	for (const m of daftarMapel) {
+		if (agamaNameSet.has(m.nama)) {
+			kodeSet.add('PAPB');
+		} else if (m.kode) {
+			kodeSet.add(m.kode);
+		}
+	}
+	const daftarKodeMapel = [...kodeSet].sort() as string[];
+
+	const daftarKodeKokurikuler = (
+		kelasIdList.length > 0
+			? await db.query.tableKokurikuler.findMany({
+					columns: { kode: true },
+					where: inArray(tableKokurikuler.kelasId, kelasIdList)
+				})
+			: []
+	).map((k) => k.kode);
 
 	return {
 		meta: { title: 'Jadwal Pelajaran & Bell Sekolah' },
@@ -93,6 +122,7 @@ export const load: PageServerLoad = async ({ locals, depends }) => {
 		kegiatanCustom,
 		jadwalPelajaran,
 		daftarKodeMapel,
+		daftarKodeKokurikuler,
 		bellSounds,
 		hariSekolah,
 		jamPulang,
