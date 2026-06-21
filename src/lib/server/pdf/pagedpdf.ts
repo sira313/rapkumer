@@ -46,7 +46,13 @@ function findChromeExecutable(): string | undefined {
 		const paths = [
 			`${localAppData}\\Google\\Chrome\\Application\\chrome.exe`,
 			`${localAppData}\\Microsoft\\Edge\\Application\\msedge.exe`,
-			...(programW6432 ? [`${programW6432}\\Google\\Chrome\\Application\\chrome.exe`, `${programW6432}\\Microsoft\\Edge\\Application\\msedge.exe`, `${programW6432}\\Chromium\\Application\\chrome.exe`] : []),
+			...(programW6432
+				? [
+						`${programW6432}\\Google\\Chrome\\Application\\chrome.exe`,
+						`${programW6432}\\Microsoft\\Edge\\Application\\msedge.exe`,
+						`${programW6432}\\Chromium\\Application\\chrome.exe`
+					]
+				: []),
 			`${programFiles}\\Google\\Chrome\\Application\\chrome.exe`,
 			`${programFilesX86}\\Google\\Chrome\\Application\\chrome.exe`,
 			`${programFiles}\\Microsoft\\Edge\\Application\\msedge.exe`,

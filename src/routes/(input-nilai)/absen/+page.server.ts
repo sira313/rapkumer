@@ -1,8 +1,11 @@
 import db from '$lib/server/db';
 import {
 	tableAbsensi,
+	tableAuthUserMataPelajaran,
+	tableJadwalPelajaran,
 	tableKetidakhadiranHarian,
 	tableKetidakhadiranRapor,
+	tableMataPelajaran,
 	tableMurid,
 	tablePresensiSettings,
 	tableKelas,
@@ -14,11 +17,44 @@ import { ensureKetidakhadiranHarianSchema } from '$lib/server/db/ensure-ketidakh
 import { ensureKetidakhadiranRaporSchema } from '$lib/server/db/ensure-ketidakhadiran-rapor';
 import { ensurePresensiSettingsSchema } from '$lib/server/db/ensure-presensi-settings';
 import { fail, redirect } from '@sveltejs/kit';
+import { cookieNames } from '$lib/utils';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 
 const PER_PAGE = 20;
 const TABLE_MISSING_MESSAGE =
 	'Tabel yang diperlukan belum tersedia. Jalankan "pnpm db:push" untuk menerapkan migrasi terbaru.';
+
+async function canUserEditAbsen(
+	user: NonNullable<App.Locals['user']>,
+	sekolahId: number
+): Promise<boolean> {
+	if (user.type === 'admin' || user.type === 'wali_kelas') return true;
+	if (user.type === 'wali_asuh') return false;
+	if (user.type === 'user') {
+		const hasDirectMapel = !!user.mataPelajaranId;
+		const hasManyMapel =
+			!hasDirectMapel && user.id
+				? (
+						await db.query.tableAuthUserMataPelajaran.findMany({
+							columns: { id: true },
+							where: eq(tableAuthUserMataPelajaran.authUserId, user.id),
+							limit: 1
+						})
+					).length > 0
+				: false;
+		if (!hasDirectMapel && !hasManyMapel) return false;
+		try {
+			const settings = await db.query.tablePresensiSettings.findFirst({
+				columns: { jenisPresensi: true },
+				where: eq(tablePresensiSettings.sekolahId, sekolahId)
+			});
+			if (settings?.jenisPresensi === 'tiap_mapel') return true;
+		} catch {
+			// table may not exist yet
+		}
+	}
+	return false;
+}
 
 function isTableMissingError(error: unknown) {
 	return (
@@ -91,6 +127,26 @@ type KehadiranRow = {
 	hadir: boolean;
 	keterangan: string | null;
 	updatedAt: string | null;
+};
+
+type PersentaseHarianSubject = {
+	kodeKegiatan: string;
+	label: string;
+};
+
+type PersentaseHarianRow = {
+	no: number;
+	muridId: number;
+	nama: string;
+	subjects: Record<string, string>;
+	persentase: number;
+};
+
+type JadwalSaatIni = {
+	mataPelajaranId: number | null;
+	namaMataPelajaran: string;
+	jamKe: number;
+	perkiraanJam: string;
 };
 
 type PageState = {
@@ -166,7 +222,27 @@ export async function load({ parent, locals, url, depends }) {
 	const tanggalParam = url.searchParams.get('tanggal');
 	const tanggal = tanggalParam && isValidDate(tanggalParam) ? tanggalParam : todayDateString();
 
-	const mode = url.searchParams.get('mode') ?? 'harian';
+	const simHari = url.searchParams.get('simHari')?.toLowerCase() ?? null;
+	const simJam = url.searchParams.get('simJam') ?? null;
+
+	const explicitMode = url.searchParams.get('mode');
+	const isGuruMapelForDefault =
+		locals.user?.type === 'user' &&
+		(!!locals.user.mataPelajaranId ||
+			(locals.user.id
+				? (
+						await db.query.tableAuthUserMataPelajaran.findMany({
+							columns: { id: true },
+							where: eq(tableAuthUserMataPelajaran.authUserId, locals.user.id),
+							limit: 1
+						})
+					).length > 0
+				: false));
+	const mode =
+		explicitMode ??
+		(isGuruMapelForDefault && presensiSettings?.jenisPresensi === 'tiap_mapel'
+			? 'persentase_harian'
+			: 'harian');
 	const bulanParam = url.searchParams.get('bulan');
 	const tahunParam = url.searchParams.get('tahun');
 	const now = new Date();
@@ -194,7 +270,13 @@ export async function load({ parent, locals, url, depends }) {
 			bulananRows: [] as BulananRow[],
 			redDays: [] as number[],
 			presensiReady,
-			presensiWarningMessage
+			presensiWarningMessage,
+			jenisPresensi: presensiSettings?.jenisPresensi ?? 'wali_kelas_saja',
+			persentaseHarianSubjects: [] as PersentaseHarianSubject[],
+			persentaseHarianRows: [] as PersentaseHarianRow[],
+			jadwalSaatIni: null,
+			simulasiHari: simHari ?? null,
+			simulasiJam: simJam ?? null
 		};
 
 		if (!sekolahId || !kelasAktif?.id) return defaultBulanan;
@@ -328,12 +410,14 @@ export async function load({ parent, locals, url, depends }) {
 		}
 
 		// Fetch ketidakhadiran and absensi for the month
+		// In bulanan mode, only show global attendance (mataPelajaranId IS NULL)
 		const allKetidakhadiran = await db.query.tableKetidakhadiranHarian.findMany({
 			columns: { muridId: true, tanggal: true, keterangan: true },
 			where: and(
 				inArray(tableKetidakhadiranHarian.muridId, muridIds),
 				sql`${tableKetidakhadiranHarian.tanggal} >= ${monthStart}`,
-				sql`${tableKetidakhadiranHarian.tanggal} <= ${monthEnd}`
+				sql`${tableKetidakhadiranHarian.tanggal} <= ${monthEnd}`,
+				sql`${tableKetidakhadiranHarian.mataPelajaranId} IS NULL`
 			)
 		});
 
@@ -350,7 +434,8 @@ export async function load({ parent, locals, url, depends }) {
 			where: and(
 				inArray(tableAbsensi.muridId, muridIds),
 				sql`${tableAbsensi.waktu} >= ${monthStartISO}`,
-				sql`${tableAbsensi.waktu} <= ${monthEndISO}`
+				sql`${tableAbsensi.waktu} <= ${monthEndISO}`,
+				sql`${tableAbsensi.mataPelajaranId} IS NULL`
 			)
 		});
 
@@ -424,7 +509,13 @@ export async function load({ parent, locals, url, depends }) {
 			bulananRows,
 			redDays,
 			presensiReady,
-			presensiWarningMessage
+			presensiWarningMessage,
+			jenisPresensi: presensiSettings?.jenisPresensi ?? 'wali_kelas_saja',
+			persentaseHarianSubjects: [] as PersentaseHarianSubject[],
+			persentaseHarianRows: [] as PersentaseHarianRow[],
+			jadwalSaatIni: null,
+			simulasiHari: simHari,
+			simulasiJam: simJam
 		};
 	}
 
@@ -452,7 +543,13 @@ export async function load({ parent, locals, url, depends }) {
 			tanggalMulaiRapor: '',
 			tanggalAkhirRapor: '',
 			presensiReady,
-			presensiWarningMessage
+			presensiWarningMessage,
+			jenisPresensi: presensiSettings?.jenisPresensi ?? 'wali_kelas_saja',
+			persentaseHarianSubjects: [] as PersentaseHarianSubject[],
+			persentaseHarianRows: [] as PersentaseHarianRow[],
+			jadwalSaatIni: null,
+			simulasiHari: simHari,
+			simulasiJam: simJam
 		};
 
 		if (!sekolahId || !kelasAktif?.id) return defaultRapor;
@@ -618,12 +715,14 @@ export async function load({ parent, locals, url, depends }) {
 		}
 
 		// Fetch ketidakhadiran records for the range
+		// In rapor mode, only show global attendance (mataPelajaranId IS NULL)
 		const allKetidakhadiran = await db.query.tableKetidakhadiranHarian.findMany({
 			columns: { muridId: true, tanggal: true, keterangan: true },
 			where: and(
 				inArray(tableKetidakhadiranHarian.muridId, muridIds),
 				sql`${tableKetidakhadiranHarian.tanggal} >= ${tanggalMulaiRapor}`,
-				sql`${tableKetidakhadiranHarian.tanggal} <= ${tanggalAkhirRapor}`
+				sql`${tableKetidakhadiranHarian.tanggal} <= ${tanggalAkhirRapor}`,
+				sql`${tableKetidakhadiranHarian.mataPelajaranId} IS NULL`
 			)
 		});
 
@@ -641,7 +740,8 @@ export async function load({ parent, locals, url, depends }) {
 			where: and(
 				inArray(tableAbsensi.muridId, muridIds),
 				sql`${tableAbsensi.waktu} >= ${rangeStartISO}`,
-				sql`${tableAbsensi.waktu} <= ${rangeEndISO}`
+				sql`${tableAbsensi.waktu} <= ${rangeEndISO}`,
+				sql`${tableAbsensi.mataPelajaranId} IS NULL`
 			)
 		});
 
@@ -731,7 +831,13 @@ export async function load({ parent, locals, url, depends }) {
 			tanggalMulaiRapor,
 			tanggalAkhirRapor,
 			presensiReady,
-			presensiWarningMessage
+			presensiWarningMessage,
+			jenisPresensi: presensiSettings?.jenisPresensi ?? 'wali_kelas_saja',
+			persentaseHarianSubjects: [] as PersentaseHarianSubject[],
+			persentaseHarianRows: [] as PersentaseHarianRow[],
+			jadwalSaatIni: null,
+			simulasiHari: simHari,
+			simulasiJam: simJam
 		};
 	}
 
@@ -751,7 +857,7 @@ export async function load({ parent, locals, url, depends }) {
 			totalMurid: 0,
 			muridCount: 0,
 			tanggal,
-			mode: 'harian' as const,
+			mode: (mode === 'persentase_harian' ? 'persentase_harian' : 'harian') as const,
 			bulan: 0,
 			tahun: 0,
 			daysInMonth: 0,
@@ -761,7 +867,13 @@ export async function load({ parent, locals, url, depends }) {
 			tanggalMulaiRapor: '',
 			tanggalAkhirRapor: '',
 			presensiReady,
-			presensiWarningMessage
+			presensiWarningMessage,
+			jenisPresensi: 'wali_kelas_saja',
+			persentaseHarianSubjects: [] as PersentaseHarianSubject[],
+			persentaseHarianRows: [] as PersentaseHarianRow[],
+			jadwalSaatIni: null,
+			simulasiHari: simHari,
+			simulasiJam: simJam
 		};
 	}
 
@@ -820,11 +932,15 @@ export async function load({ parent, locals, url, depends }) {
 						id: true,
 						muridId: true,
 						tanggal: true,
+						mataPelajaranId: true,
 						keterangan: true,
 						createdAt: true,
 						updatedAt: true
 					},
-					where: eq(tableKetidakhadiranHarian.tanggal, tanggal)
+					where: and(
+						eq(tableKetidakhadiranHarian.tanggal, tanggal),
+						sql`${tableKetidakhadiranHarian.mataPelajaranId} IS NULL`
+					)
 				},
 				absensi: {
 					columns: { id: true },
@@ -880,7 +996,10 @@ export async function load({ parent, locals, url, depends }) {
 				with: {
 					ketidakhadiranHarian: {
 						columns: { keterangan: true },
-						where: eq(tableKetidakhadiranHarian.tanggal, tanggal),
+						where: and(
+							eq(tableKetidakhadiranHarian.tanggal, tanggal),
+							sql`${tableKetidakhadiranHarian.mataPelajaranId} IS NULL`
+						),
 						limit: 1
 					}
 				},
@@ -894,6 +1013,201 @@ export async function load({ parent, locals, url, depends }) {
 			}));
 		} catch {
 			tableReady = false;
+		}
+	}
+
+	const jenisPresensi = presensiSettings?.jenisPresensi ?? 'wali_kelas_saja';
+
+	let persentaseHarianSubjects: PersentaseHarianSubject[] = [];
+	let persentaseHarianRows: PersentaseHarianRow[] = [];
+	let jadwalSaatIni: JadwalSaatIni | null = null;
+
+	if (jenisPresensi === 'tiap_mapel' && tableReady && semuaMurid.length > 0) {
+		const dayIndex = new Date().getDay();
+		const dayNames = ['minggu', 'senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu'];
+		const todayHari = simHari ?? dayNames[dayIndex];
+
+		const jadwalHariIni = await db.query.tableJadwalPelajaran.findMany({
+			columns: { kodeKegiatan: true, jamKe: true },
+			where: and(
+				eq(tableJadwalPelajaran.sekolahId, sekolahId),
+				eq(tableJadwalPelajaran.kelasId, kelasAktif.id),
+				eq(tableJadwalPelajaran.hari, todayHari)
+			),
+			orderBy: [asc(tableJadwalPelajaran.jamKe)]
+		});
+
+		const seen = new Set<string>();
+		const uniqueJadwal: Array<{ kodeKegiatan: string }> = [];
+		for (const j of jadwalHariIni) {
+			if (!seen.has(j.kodeKegiatan)) {
+				seen.add(j.kodeKegiatan);
+				uniqueJadwal.push({ kodeKegiatan: j.kodeKegiatan });
+			}
+		}
+
+		if (uniqueJadwal.length > 0) {
+			const tambahanKode = new Set(['IST', 'PLG']);
+			const uniqueKode = uniqueJadwal
+				.map((j) => j.kodeKegiatan)
+				.filter((k) => !tambahanKode.has(k.toUpperCase()));
+
+			if (uniqueKode.length === 0) {
+				persentaseHarianSubjects = [];
+				persentaseHarianRows = [];
+				jadwalSaatIni = null;
+			} else {
+				const matchingMp = await db.query.tableMataPelajaran.findMany({
+					columns: { id: true, kode: true, nama: true },
+					where: and(
+						eq(tableMataPelajaran.kelasId, kelasAktif.id),
+						inArray(tableMataPelajaran.kode, uniqueKode)
+					)
+				});
+
+				const kodeToMpMap = new Map<string, { id: number; nama: string }>();
+				for (const mp of matchingMp) {
+					if (mp.kode) kodeToMpMap.set(mp.kode, { id: mp.id, nama: mp.nama });
+				}
+
+				persentaseHarianSubjects = uniqueKode.map((kode) => ({
+					kodeKegiatan: kode,
+					label: kode
+				}));
+
+				const allMuridIds = semuaMurid.map((m) => m.id);
+				const todayStart = new Date(tanggal + 'T00:00:00');
+				const todayEnd = new Date(tanggal + 'T23:59:59.999');
+
+				const [allKetidakhadiran, allAbsensi] = await Promise.all([
+					db.query.tableKetidakhadiranHarian.findMany({
+						columns: { muridId: true, mataPelajaranId: true, keterangan: true },
+						where: and(
+							inArray(tableKetidakhadiranHarian.muridId, allMuridIds),
+							eq(tableKetidakhadiranHarian.tanggal, tanggal)
+						)
+					}),
+					db.query.tableAbsensi.findMany({
+						columns: { muridId: true, mataPelajaranId: true },
+						where: and(
+							inArray(tableAbsensi.muridId, allMuridIds),
+							sql`${tableAbsensi.waktu} >= ${todayStart.toISOString()}`,
+							sql`${tableAbsensi.waktu} <= ${todayEnd.toISOString()}`
+						)
+					})
+				]);
+
+				const khGlobal = new Map<number, string | null>();
+				const khPerMapel = new Map<string, string | null>();
+				for (const kh of allKetidakhadiran) {
+					if (kh.mataPelajaranId == null) {
+						khGlobal.set(kh.muridId, kh.keterangan);
+					} else {
+						khPerMapel.set(`${kh.muridId}:${kh.mataPelajaranId}`, kh.keterangan);
+					}
+				}
+
+				const absenGlobal = new Set<number>();
+				const absenPerMapel = new Set<string>();
+				for (const a of allAbsensi) {
+					if (a.mataPelajaranId == null) {
+						absenGlobal.add(a.muridId);
+					} else {
+						absenPerMapel.add(`${a.muridId}:${a.mataPelajaranId}`);
+					}
+				}
+
+				if (presensiSettings?.jamMasuk) {
+					const [h, m] = presensiSettings.jamMasuk.split(':').map(Number);
+					const schoolStart = new Date();
+					schoolStart.setHours(h, m, 0, 0);
+
+					let diffMinutes: number;
+					if (simJam) {
+						const [simH, simM] = simJam.split(':').map(Number);
+						diffMinutes = simH * 60 + simM - (h * 60 + m);
+					} else {
+						diffMinutes = (Date.now() - schoolStart.getTime()) / 60000;
+					}
+
+					const currentJamKe = Math.max(1, Math.floor(diffMinutes / 45) + 1);
+					const jadwalEntry = jadwalHariIni.find((j) => j.jamKe === currentJamKe);
+					if (jadwalEntry) {
+						const mpInfo = kodeToMpMap.get(jadwalEntry.kodeKegiatan);
+						if (mpInfo) {
+							const startT = new Date(schoolStart.getTime() + (currentJamKe - 1) * 45 * 60000);
+							const endT = new Date(startT.getTime() + 45 * 60000);
+							const fmt = (d: Date) =>
+								`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+							jadwalSaatIni = {
+								mataPelajaranId: mpInfo.id,
+								namaMataPelajaran: mpInfo.nama,
+								jamKe: currentJamKe,
+								perkiraanJam: `${fmt(startT)}-${fmt(endT)}`
+							};
+						}
+					}
+				}
+
+				const totalSubjects = uniqueKode.length;
+				persentaseHarianRows = semuaMurid.map((murid, index) => {
+					const subjectStatus: Record<string, string> = {};
+					let attendedCount = 0;
+
+					for (const kode of uniqueKode) {
+						const mpInfo = kodeToMpMap.get(kode);
+						const mpId = mpInfo?.id;
+						let status = '';
+
+						if (mpId != null) {
+							const mapelKey = khPerMapel.get(`${murid.id}:${mpId}`);
+							if (mapelKey !== undefined) {
+								if (mapelKey === null) {
+									status = 'H';
+									attendedCount++;
+								} else if (mapelKey === 'sakit') status = 'S';
+								else if (mapelKey === 'izin') status = 'I';
+								else if (mapelKey === 'alfa') status = 'TK';
+							}
+						}
+
+						if (!status) {
+							const globalKeterangan = khGlobal.get(murid.id);
+							if (globalKeterangan !== undefined) {
+								if (globalKeterangan === null) {
+									status = 'H';
+									attendedCount++;
+								} else if (globalKeterangan === 'sakit') status = 'S';
+								else if (globalKeterangan === 'izin') status = 'I';
+								else if (globalKeterangan === 'alfa') status = 'TK';
+							}
+						}
+
+						if (!status && mpId != null && absenPerMapel.has(`${murid.id}:${mpId}`)) {
+							status = 'H';
+							attendedCount++;
+						}
+
+						if (!status && absenGlobal.has(murid.id)) {
+							status = 'H';
+							attendedCount++;
+						}
+
+						subjectStatus[kode] = status;
+					}
+
+					const persentase =
+						totalSubjects > 0 ? Math.round((attendedCount / totalSubjects) * 100) : 0;
+
+					return {
+						no: index + 1,
+						muridId: murid.id,
+						nama: murid.nama,
+						subjects: subjectStatus,
+						persentase
+					};
+				});
+			}
 		}
 	}
 
@@ -914,7 +1228,7 @@ export async function load({ parent, locals, url, depends }) {
 		totalMurid: total,
 		muridCount: muridCount ?? 0,
 		tanggal,
-		mode: 'harian' as const,
+		mode: (mode === 'persentase_harian' ? 'persentase_harian' : 'harian') as const,
 		bulan: 0,
 		tahun: 0,
 		daysInMonth: 0,
@@ -924,18 +1238,24 @@ export async function load({ parent, locals, url, depends }) {
 		tanggalMulaiRapor: '',
 		tanggalAkhirRapor: '',
 		presensiReady,
-		presensiWarningMessage
+		presensiWarningMessage,
+		jenisPresensi,
+		persentaseHarianSubjects,
+		persentaseHarianRows,
+		jadwalSaatIni,
+		simulasiHari: simHari,
+		simulasiJam: simJam
 	};
 }
 
 export const actions = {
-	update: async ({ request, locals }) => {
+	update: async ({ request, locals, cookies }) => {
 		const sekolahId = locals.sekolah?.id ?? null;
 		if (!sekolahId) {
 			return fail(401, { fail: 'Sekolah tidak ditemukan' });
 		}
 
-		if (locals.user?.type === 'user' || locals.user?.type === 'wali_asuh') {
+		if (!locals.user || !(await canUserEditAbsen(locals.user, sekolahId))) {
 			return fail(403, { fail: 'Anda tidak memiliki izin untuk mengubah data kehadiran' });
 		}
 
@@ -956,6 +1276,41 @@ export const actions = {
 		const keteranganRaw = formData.get('keterangan')?.toString().trim() ?? '';
 		const keterangan = ['sakit', 'izin', 'alfa'].includes(keteranganRaw) ? keteranganRaw : null;
 
+		const mataPelajaranIdRaw = formData.get('mataPelajaranId')?.toString();
+		const mataPelajaranId = mataPelajaranIdRaw ? Number(mataPelajaranIdRaw) : null;
+
+		// Guru mapel only: validate schedule match
+		if (locals.user?.type === 'user') {
+			const settings = await db.query.tablePresensiSettings.findFirst({
+				columns: { jenisPresensi: true, jamMasuk: true },
+				where: eq(tablePresensiSettings.sekolahId, sekolahId)
+			});
+			if (settings?.jenisPresensi === 'tiap_mapel' && settings.jamMasuk) {
+				const kelasId = Number(cookies.get(cookieNames.ACTIVE_KELAS_ID) ?? '');
+				if (!kelasId) {
+					return fail(400, { fail: 'Kelas tidak ditemukan' });
+				}
+				const dayIdx = new Date().getDay();
+				const dayN = ['minggu', 'senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu'][dayIdx];
+				const [h, m] = settings.jamMasuk.split(':').map(Number);
+				const diff = (Date.now() - new Date().setHours(h, m, 0, 0)) / 60000;
+				const jamKe = Math.max(1, Math.floor(diff / 45) + 1);
+				const jadwal = await db.query.tableJadwalPelajaran.findFirst({
+					columns: { kodeKegiatan: true },
+					where: and(
+						eq(tableJadwalPelajaran.sekolahId, sekolahId),
+						eq(tableJadwalPelajaran.kelasId, kelasId),
+						eq(tableJadwalPelajaran.hari, dayN),
+						eq(tableJadwalPelajaran.jamKe, jamKe)
+					)
+				});
+				const tambahan = new Set(['IST', 'PLG']);
+				if (!jadwal || tambahan.has(jadwal.kodeKegiatan.toUpperCase())) {
+					return fail(403, { fail: 'Jam pelajaran bapak/ibu belum dimulai' });
+				}
+			}
+		}
+
 		const muridRecord = await db.query.tableMurid.findFirst({
 			columns: { id: true },
 			where: and(eq(tableMurid.id, muridId), eq(tableMurid.sekolahId, sekolahId))
@@ -971,12 +1326,18 @@ export const actions = {
 				.values({
 					muridId,
 					tanggal,
-					keterangan
+					keterangan,
+					mataPelajaranId
 				})
 				.onConflictDoUpdate({
-					target: [tableKetidakhadiranHarian.muridId, tableKetidakhadiranHarian.tanggal],
+					target: [
+						tableKetidakhadiranHarian.muridId,
+						tableKetidakhadiranHarian.tanggal,
+						tableKetidakhadiranHarian.mataPelajaranId
+					],
 					set: {
 						keterangan,
+						mataPelajaranId,
 						updatedAt: new Date().toISOString()
 					}
 				});
@@ -996,7 +1357,7 @@ export const actions = {
 			return fail(401, { fail: 'Sekolah tidak ditemukan' });
 		}
 
-		if (locals.user?.type === 'user' || locals.user?.type === 'wali_asuh') {
+		if (!locals.user || !(await canUserEditAbsen(locals.user, sekolahId))) {
 			return fail(403, { fail: 'Anda tidak memiliki izin untuk mengubah data kehadiran' });
 		}
 
@@ -1015,6 +1376,37 @@ export const actions = {
 			return fail(400, { fail: 'Kelas tidak ditemukan' });
 		}
 
+		const mataPelajaranIdRaw = formData.get('mataPelajaranId')?.toString();
+		const mataPelajaranId = mataPelajaranIdRaw ? Number(mataPelajaranIdRaw) : null;
+
+		// Guru mapel only: validate schedule match
+		if (locals.user?.type === 'user') {
+			const settings = await db.query.tablePresensiSettings.findFirst({
+				columns: { jenisPresensi: true, jamMasuk: true },
+				where: eq(tablePresensiSettings.sekolahId, sekolahId)
+			});
+			if (settings?.jenisPresensi === 'tiap_mapel' && settings.jamMasuk) {
+				const dayIdx = new Date().getDay();
+				const dayN = ['minggu', 'senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu'][dayIdx];
+				const [h, m] = settings.jamMasuk.split(':').map(Number);
+				const diff = (Date.now() - new Date().setHours(h, m, 0, 0)) / 60000;
+				const jamKe = Math.max(1, Math.floor(diff / 45) + 1);
+				const jadwal = await db.query.tableJadwalPelajaran.findFirst({
+					columns: { kodeKegiatan: true },
+					where: and(
+						eq(tableJadwalPelajaran.sekolahId, sekolahId),
+						eq(tableJadwalPelajaran.kelasId, kelasId),
+						eq(tableJadwalPelajaran.hari, dayN),
+						eq(tableJadwalPelajaran.jamKe, jamKe)
+					)
+				});
+				const tambahan = new Set(['IST', 'PLG']);
+				if (!jadwal || tambahan.has(jadwal.kodeKegiatan.toUpperCase())) {
+					return fail(403, { fail: 'Jam pelajaran bapak/ibu belum dimulai' });
+				}
+			}
+		}
+
 		const now = new Date().toISOString();
 		const todayStart = new Date(tanggal + 'T00:00:00');
 		const todayEnd = new Date(tanggal + 'T23:59:59.999');
@@ -1030,22 +1422,31 @@ export const actions = {
 				for (const murid of semuaMurid) {
 					await db
 						.insert(tableKetidakhadiranHarian)
-						.values({ muridId: murid.id, tanggal, keterangan: null })
+						.values({ muridId: murid.id, tanggal, keterangan: null, mataPelajaranId })
 						.onConflictDoUpdate({
-							target: [tableKetidakhadiranHarian.muridId, tableKetidakhadiranHarian.tanggal],
-							set: { keterangan: null, updatedAt: now }
+							target: [
+								tableKetidakhadiranHarian.muridId,
+								tableKetidakhadiranHarian.tanggal,
+								tableKetidakhadiranHarian.mataPelajaranId
+							],
+							set: { keterangan: null, mataPelajaranId, updatedAt: now }
 						});
 
 					const existingAbsensi = await db.query.tableAbsensi.findFirst({
 						columns: { id: true },
 						where: and(
 							eq(tableAbsensi.muridId, murid.id),
+							mataPelajaranId != null
+								? eq(tableAbsensi.mataPelajaranId, mataPelajaranId)
+								: sql`${tableAbsensi.mataPelajaranId} IS NULL`,
 							sql`${tableAbsensi.waktu} >= ${todayStart.toISOString()}`,
 							sql`${tableAbsensi.waktu} <= ${todayEnd.toISOString()}`
 						)
 					});
 					if (!existingAbsensi) {
-						await db.insert(tableAbsensi).values({ muridId: murid.id, waktu: absensiWaktu });
+						await db
+							.insert(tableAbsensi)
+							.values({ muridId: murid.id, waktu: absensiWaktu, mataPelajaranId });
 					}
 				}
 
@@ -1076,24 +1477,28 @@ export const actions = {
 
 				const selectedIds = Array.from(entryMap.keys());
 				if (selectedIds.length > 0) {
-					await db
-						.delete(tableAbsensi)
-						.where(
-							and(
-								inArray(tableAbsensi.muridId, selectedIds),
-								sql`${tableAbsensi.waktu} >= ${todayStart.toISOString()}`,
-								sql`${tableAbsensi.waktu} <= ${todayEnd.toISOString()}`
-							)
-						);
+					const deleteAbsensiConditions = [
+						inArray(tableAbsensi.muridId, selectedIds),
+						sql`${tableAbsensi.waktu} >= ${todayStart.toISOString()}`,
+						sql`${tableAbsensi.waktu} <= ${todayEnd.toISOString()}`
+					];
+					if (mataPelajaranId != null) {
+						deleteAbsensiConditions.push(eq(tableAbsensi.mataPelajaranId, mataPelajaranId));
+					}
+					await db.delete(tableAbsensi).where(and(...deleteAbsensiConditions));
 				}
 
 				for (const [muridId, keterangan] of entryMap) {
 					await db
 						.insert(tableKetidakhadiranHarian)
-						.values({ muridId, tanggal, keterangan })
+						.values({ muridId, tanggal, keterangan, mataPelajaranId })
 						.onConflictDoUpdate({
-							target: [tableKetidakhadiranHarian.muridId, tableKetidakhadiranHarian.tanggal],
-							set: { keterangan, updatedAt: now }
+							target: [
+								tableKetidakhadiranHarian.muridId,
+								tableKetidakhadiranHarian.tanggal,
+								tableKetidakhadiranHarian.mataPelajaranId
+							],
+							set: { keterangan, mataPelajaranId, updatedAt: now }
 						});
 				}
 
@@ -1113,8 +1518,19 @@ export const actions = {
 			return fail(401, { fail: 'Sekolah tidak ditemukan' });
 		}
 
-		if (locals.user?.type === 'user' || locals.user?.type === 'wali_asuh') {
+		if (!locals.user || !(await canUserEditAbsen(locals.user, sekolahId))) {
 			return fail(403, { fail: 'Anda tidak memiliki izin untuk menghapus data presensi' });
+		}
+
+		// Guru mapel cannot delete attendance data
+		if (locals.user.type === 'user') {
+			const settings = await db.query.tablePresensiSettings.findFirst({
+				columns: { jenisPresensi: true },
+				where: eq(tablePresensiSettings.sekolahId, sekolahId)
+			});
+			if (settings?.jenisPresensi === 'tiap_mapel') {
+				return fail(403, { fail: 'Guru mapel tidak dapat menghapus data presensi' });
+			}
 		}
 
 		const formData = await request.formData();
@@ -1146,6 +1562,7 @@ export const actions = {
 					.where(
 						and(
 							inArray(tableAbsensi.muridId, ids),
+							sql`${tableAbsensi.mataPelajaranId} IS NULL`,
 							sql`${tableAbsensi.waktu} >= ${todayStart.toISOString()}`,
 							sql`${tableAbsensi.waktu} <= ${todayEnd.toISOString()}`
 						)
@@ -1156,6 +1573,7 @@ export const actions = {
 					.where(
 						and(
 							inArray(tableKetidakhadiranHarian.muridId, ids),
+							sql`${tableKetidakhadiranHarian.mataPelajaranId} IS NULL`,
 							eq(tableKetidakhadiranHarian.tanggal, tanggal)
 						)
 					);

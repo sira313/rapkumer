@@ -50,12 +50,7 @@
 
 	const kodeTambahan = ['UPB', 'IST', 'PLG'];
 	const kodeMerged = $derived(
-		new Set([
-			'UPB',
-			'IST',
-			'PLG',
-			...kegiatanCustom.map((k) => (k as { kode: string }).kode)
-		])
+		new Set(['UPB', 'IST', 'PLG', ...kegiatanCustom.map((k) => (k as { kode: string }).kode)])
 	);
 	const customDurationMap = $derived(
 		new Map(kegiatanCustom.map((k) => [k.kode, (k as { durasi: number | null }).durasi]))
@@ -906,7 +901,8 @@
 		if (!canManage || !isEditing || jamKe >= (hariMaxJam[hari] ?? maxJam)) return;
 
 		const maxHariJam = hariMaxJam[hari] ?? maxJam;
-		const sourceKode = kelasId !== undefined ? getKode(hari, jamKe, kelasId) : isAllSame(hari, jamKe);
+		const sourceKode =
+			kelasId !== undefined ? getKode(hari, jamKe, kelasId) : isAllSame(hari, jamKe);
 		if (!sourceKode) return;
 
 		let targetKe = jamKe + 1;
@@ -916,9 +912,7 @@
 				targetKe++;
 				continue;
 			}
-			const existingKode = kelasId !== undefined
-				? getKode(hari, targetKe, kelasId)
-				: allSameAtRow;
+			const existingKode = kelasId !== undefined ? getKode(hari, targetKe, kelasId) : allSameAtRow;
 			if (existingKode === sourceKode) {
 				targetKe++;
 			} else {

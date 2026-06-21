@@ -1,7 +1,14 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
 import { and, eq, sql } from 'drizzle-orm';
 import db from '$lib/server/db';
-import { tableAbsensi, tableKelas, tableMurid, tablePresensiSettings } from '$lib/server/db/schema';
+import {
+	tableAbsensi,
+	tableAuthUserMataPelajaran,
+	tableJadwalPelajaran,
+	tableKelas,
+	tableMurid,
+	tablePresensiSettings
+} from '$lib/server/db/schema';
 import { ensureAbsensiSchema } from '$lib/server/db/ensure-absensi';
 import { ensurePresensiSettingsSchema } from '$lib/server/db/ensure-presensi-settings';
 import { cookieNames } from '$lib/utils';
@@ -21,6 +28,14 @@ function getDateTime(timeStr: string, baseDate: Date) {
 function addMinutes(date: Date, minutes: number) {
 	const dt = new Date(date);
 	dt.setMinutes(dt.getMinutes() + minutes);
+	return dt;
+}
+
+function getJamKeTime(jamMasuk: string, jamKe: number) {
+	const { hours, minutes } = parseTime(jamMasuk);
+	const dt = new Date();
+	dt.setHours(hours, minutes, 0, 0);
+	dt.setMinutes(dt.getMinutes() + (jamKe - 1) * 45);
 	return dt;
 }
 
@@ -77,13 +92,9 @@ function isHoliday(
 	return false;
 }
 
-export const POST = (async ({ request, locals, cookies }) => {
+export const POST = (async ({ request, locals, cookies, url }) => {
 	if (!locals.user) {
 		return json({ error: 'Sesi tidak valid. Silakan login ulang.' }, { status: 401 });
-	}
-
-	if (locals.user.type === 'user') {
-		return json({ error: 'Anda tidak memiliki izin untuk melakukan absensi.' }, { status: 403 });
 	}
 
 	const sekolahId = locals.sekolah?.id ?? null;
@@ -91,9 +102,68 @@ export const POST = (async ({ request, locals, cookies }) => {
 		return json({ error: 'Sekolah tidak ditemukan.' }, { status: 400 });
 	}
 
+	const user = locals.user;
+	if (user.type === 'user') {
+		const canScan = await (async () => {
+			if (!user.mataPelajaranId) {
+				if (!user.id) return false;
+				const rel = await db.query.tableAuthUserMataPelajaran.findMany({
+					columns: { id: true },
+					where: eq(tableAuthUserMataPelajaran.authUserId, user.id),
+					limit: 1
+				});
+				if (rel.length === 0) return false;
+			}
+			try {
+				const s = await db.query.tablePresensiSettings.findFirst({
+					columns: { jenisPresensi: true, jamMasuk: true },
+					where: eq(tablePresensiSettings.sekolahId, sekolahId)
+				});
+				return s?.jenisPresensi === 'tiap_mapel';
+			} catch {
+				return false;
+			}
+		})();
+		if (!canScan) {
+			return json({ error: 'Anda tidak memiliki izin untuk melakukan absensi.' }, { status: 403 });
+		}
+	}
+
 	const kelasId = Number(cookies.get(cookieNames.ACTIVE_KELAS_ID) ?? '');
 	if (!kelasId) {
 		return json({ error: 'Kelas tidak ditemukan.' }, { status: 400 });
+	}
+
+	const mataPelajaranIdRaw = url.searchParams.get('mataPelajaranId');
+	const mataPelajaranId = mataPelajaranIdRaw ? Number(mataPelajaranIdRaw) : null;
+
+	// Guru mapel: validate schedule match
+	if (user.type === 'user' && mataPelajaranId) {
+		const s = await db.query.tablePresensiSettings.findFirst({
+			columns: { jenisPresensi: true, jamMasuk: true },
+			where: eq(tablePresensiSettings.sekolahId, sekolahId)
+		});
+		if (s?.jenisPresensi === 'tiap_mapel' && s.jamMasuk) {
+			const dayIdx = new Date().getDay();
+			const dayN = ['minggu', 'senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu'][dayIdx];
+			const [h, m] = s.jamMasuk.split(':').map(Number);
+			const now = new Date();
+			const diff = (now.getTime() - new Date(now).setHours(h, m, 0, 0)) / 60000;
+			const jamKe = Math.max(1, Math.floor(diff / 45) + 1);
+			const jadwal = await db.query.tableJadwalPelajaran.findFirst({
+				columns: { kodeKegiatan: true },
+				where: and(
+					eq(tableJadwalPelajaran.sekolahId, sekolahId),
+					eq(tableJadwalPelajaran.kelasId, kelasId),
+					eq(tableJadwalPelajaran.hari, dayN),
+					eq(tableJadwalPelajaran.jamKe, jamKe)
+				)
+			});
+			const tambahan = new Set(['IST', 'PLG']);
+			if (!jadwal || tambahan.has(jadwal.kodeKegiatan.toUpperCase())) {
+				return json({ error: 'Jam pelajaran bapak/ibu belum dimulai' }, { status: 403 });
+			}
+		}
 	}
 
 	await ensurePresensiSettingsSchema();
@@ -194,6 +264,54 @@ export const POST = (async ({ request, locals, cookies }) => {
 					{ status: 403 }
 				);
 			}
+		} else if (settings.tipePresensi === 'awal_mapel' || settings.tipePresensi === 'awal_akhir_mapel') {
+			const dayIdx = now.getDay();
+			const dayN = ['minggu', 'senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu'][dayIdx];
+			const diff = (now.getTime() - new Date(now).setHours(jamMasukDate.getHours(), jamMasukDate.getMinutes(), 0, 0)) / 60000;
+			const jamKe = Math.max(1, Math.floor(diff / 45) + 1);
+			const jadwal = await db.query.tableJadwalPelajaran.findFirst({
+				columns: { kodeKegiatan: true },
+				where: and(
+					eq(tableJadwalPelajaran.sekolahId, sekolahId),
+					eq(tableJadwalPelajaran.kelasId, kelasId),
+					eq(tableJadwalPelajaran.hari, dayN),
+					eq(tableJadwalPelajaran.jamKe, jamKe)
+				)
+			});
+			const tambahan = new Set(['IST', 'PLG']);
+			if (!jadwal || tambahan.has(jadwal.kodeKegiatan.toUpperCase())) {
+				return json({ error: 'Tidak ada jadwal pelajaran saat ini' }, { status: 403 });
+			}
+			const jamKeStart = getJamKeTime(settings.jamMasuk, jamKe);
+			const jamKeEnd = addMinutes(jamKeStart, 45);
+			const awalEnd = addMinutes(jamKeStart, 15);
+			const akhirStart = addMinutes(jamKeEnd, -15);
+
+			if (settings.tipePresensi === 'awal_mapel') {
+				if (now < jamKeStart || now > awalEnd) {
+					return json(
+						{ error: `Presensi hanya tersedia dari ${formatTime(jamKeStart)} sampai ${formatTime(awalEnd)}.` },
+						{ status: 403 }
+					);
+				}
+				isMorningWindow = true;
+				morningEnd = awalEnd;
+			} else {
+				isMorningWindow = now >= jamKeStart && now <= awalEnd;
+				isAfternoonWindow = now >= akhirStart && now <= jamKeEnd;
+				morningEnd = awalEnd;
+				afternoonStart = akhirStart;
+				afternoonEnd = jamKeEnd;
+
+				if (!isMorningWindow && !isAfternoonWindow) {
+					return json(
+						{
+							error: `Presensi awal: ${formatTime(jamKeStart)}-${formatTime(awalEnd)}. Presensi akhir: ${formatTime(akhirStart)}-${formatTime(jamKeEnd)}.`
+						},
+						{ status: 403 }
+					);
+				}
+			}
 		}
 	}
 
@@ -204,7 +322,8 @@ export const POST = (async ({ request, locals, cookies }) => {
 	const todayEnd = new Date();
 	todayEnd.setHours(23, 59, 59, 999);
 
-	if (settings?.tipePresensi === 'masuk_pulang' && morningEnd && afternoonStart && afternoonEnd) {
+	const duaWindow = settings?.tipePresensi === 'masuk_pulang' || settings?.tipePresensi === 'awal_akhir_mapel';
+	if (duaWindow && morningEnd && afternoonStart && afternoonEnd) {
 		if (isMorningWindow) {
 			const existing = await db
 				.select({ id: tableAbsensi.id })
@@ -212,6 +331,9 @@ export const POST = (async ({ request, locals, cookies }) => {
 				.where(
 					and(
 						eq(tableAbsensi.muridId, murid.id),
+						mataPelajaranId != null
+							? eq(tableAbsensi.mataPelajaranId, mataPelajaranId)
+							: sql`${tableAbsensi.mataPelajaranId} IS NULL`,
 						sql`${tableAbsensi.waktu} >= ${todayStart.toISOString()}`,
 						sql`${tableAbsensi.waktu} <= ${morningEnd.toISOString()}`
 					)
@@ -231,6 +353,9 @@ export const POST = (async ({ request, locals, cookies }) => {
 				.where(
 					and(
 						eq(tableAbsensi.muridId, murid.id),
+						mataPelajaranId != null
+							? eq(tableAbsensi.mataPelajaranId, mataPelajaranId)
+							: sql`${tableAbsensi.mataPelajaranId} IS NULL`,
 						sql`${tableAbsensi.waktu} >= ${afternoonStart.toISOString()}`,
 						sql`${tableAbsensi.waktu} <= ${afternoonEnd.toISOString()}`
 					)
@@ -251,6 +376,9 @@ export const POST = (async ({ request, locals, cookies }) => {
 			.where(
 				and(
 					eq(tableAbsensi.muridId, murid.id),
+					mataPelajaranId != null
+						? eq(tableAbsensi.mataPelajaranId, mataPelajaranId)
+						: sql`${tableAbsensi.mataPelajaranId} IS NULL`,
 					sql`${tableAbsensi.waktu} >= ${todayStart.toISOString()}`,
 					sql`${tableAbsensi.waktu} <= ${todayEnd.toISOString()}`
 				)
@@ -266,7 +394,8 @@ export const POST = (async ({ request, locals, cookies }) => {
 
 	await db.insert(tableAbsensi).values({
 		muridId: murid.id,
-		waktu
+		waktu,
+		mataPelajaranId
 	});
 
 	return json({ message: `Absensi berhasil untuk ${murid.nama}` });

@@ -252,6 +252,7 @@
 				jamPulang: existing?.jamPulang ?? '15:00',
 				hariSekolah: existing?.hariSekolah ?? 6,
 				tipePresensi: existing?.tipePresensi ?? 'masuk_pulang',
+				jenisPresensi: existing?.jenisPresensi ?? 'wali_kelas_saja',
 				liburNasional: existing?.liburNasional ?? '[]',
 				liburSemester: existing?.liburSemester ?? '[]',
 				onAction: (a) => {

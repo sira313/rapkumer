@@ -15,6 +15,7 @@
 		jamPulang?: string;
 		hariSekolah?: number;
 		tipePresensi?: string;
+		jenisPresensi?: string;
 		liburNasional?: string;
 		liburSemester?: string;
 		onAction?: (actions: { submit: () => Promise<void>; cancel: () => void }) => void;
@@ -26,6 +27,7 @@
 		jamPulang = '15:00',
 		hariSekolah = 6,
 		tipePresensi = 'masuk_pulang',
+		jenisPresensi = 'wali_kelas_saja',
 		liburNasional = '[]',
 		liburSemester = '[]',
 		onAction
@@ -36,6 +38,7 @@
 	let jamPulangValue = $state(jamPulang);
 	let hariSekolahValue = $state(String(hariSekolah));
 	let tipePresensiValue = $state(tipePresensi);
+	let jenisPresensiValue = $state(jenisPresensi);
 
 	let liburDates = $state<string[]>([]);
 	try {
@@ -84,7 +87,15 @@
 		if (!jamMasukValue || !jamPulangValue) return 'Jam masuk dan jam pulang harus diisi';
 		if (jamMasukValue >= jamPulangValue) return 'Jam masuk harus lebih awal dari jam pulang';
 		if (!['5', '6'].includes(hariSekolahValue)) return 'Pilih hari sekolah';
-		if (!['masuk_pulang', 'masuk_saja'].includes(tipePresensiValue)) return 'Pilih tipe presensi';
+		if (!['masuk_pulang', 'masuk_saja', 'awal_mapel', 'awal_akhir_mapel'].includes(tipePresensiValue))
+			return 'Pilih tipe presensi';
+		if (
+			['awal_mapel', 'awal_akhir_mapel'].includes(tipePresensiValue) &&
+			jenisPresensiValue !== 'tiap_mapel'
+		)
+			return 'Tipe presensi Awal/Awal & Akhir Mapel hanya tersedia untuk jenis presensi Tiap Mapel';
+		if (!['wali_kelas_saja', 'tiap_mapel'].includes(jenisPresensiValue))
+			return 'Pilih jenis presensi';
 		return null;
 	});
 
@@ -101,8 +112,15 @@
 			toast('Pilih hari sekolah', 'warning');
 			return false;
 		}
-		if (!['masuk_pulang', 'masuk_saja'].includes(tipePresensiValue)) {
+		if (!['masuk_pulang', 'masuk_saja', 'awal_mapel', 'awal_akhir_mapel'].includes(tipePresensiValue)) {
 			toast('Pilih tipe presensi', 'warning');
+			return false;
+		}
+		if (
+			['awal_mapel', 'awal_akhir_mapel'].includes(tipePresensiValue) &&
+			jenisPresensiValue !== 'tiap_mapel'
+		) {
+			toast('Tipe presensi Awal/Awal & Akhir Mapel hanya tersedia untuk jenis presensi Tiap Mapel', 'warning');
 			return false;
 		}
 		return true;
@@ -119,6 +137,7 @@
 		formData.append('jamPulang', jamPulangValue);
 		formData.append('hariSekolah', hariSekolahValue);
 		formData.append('tipePresensi', tipePresensiValue);
+		formData.append('jenisPresensi', jenisPresensiValue);
 		formData.append('liburNasional', JSON.stringify(liburDates));
 		formData.append(
 			'liburSemester',
@@ -158,6 +177,18 @@
 	$effect(() => {
 		onAction?.({ submit: handleSubmit, cancel: handleCancel });
 	});
+
+	// Auto-set tipePresensi when jenisPresensi changes
+	$effect(() => {
+		jenisPresensiValue;
+		if (jenisPresensiValue === 'tiap_mapel') {
+			if (!['awal_mapel', 'awal_akhir_mapel'].includes(tipePresensiValue)) {
+				tipePresensiValue = 'awal_mapel';
+			}
+		} else if (['awal_mapel', 'awal_akhir_mapel'].includes(tipePresensiValue)) {
+			tipePresensiValue = 'masuk_pulang';
+		}
+	});
 </script>
 
 <div class="not-prose flex flex-col gap-6">
@@ -193,59 +224,77 @@
 		</label>
 		<label class="fieldset flex flex-col gap-1 overflow-hidden">
 			<span class="fieldset-legend text-sm font-semibold">Tipe Presensi</span>
-			<select
-				class="select bg-base-200 dark:bg-base-300 w-full truncate dark:border-none"
-				bind:value={tipePresensiValue}
-			>
-				<option value="masuk_pulang">Masuk Pulang</option>
-				<option value="masuk_saja">Masuk Saja</option>
-			</select>
+	<select
+			class="select bg-base-200 dark:bg-base-300 w-full truncate dark:border-none"
+			bind:value={tipePresensiValue}
+		>
+			<option value="masuk_pulang">Masuk Pulang</option>
+			<option value="masuk_saja">Masuk Saja</option>
+			<option value="awal_mapel" disabled={jenisPresensiValue !== 'tiap_mapel'}>
+				Awal Mapel
+			</option>
+			<option value="awal_akhir_mapel" disabled={jenisPresensiValue !== 'tiap_mapel'}>
+				Awal & Akhir Mapel
+			</option>
+		</select>
 		</label>
 	</div>
 
-	<div class="flex flex-col gap-2">
-		<span class="fieldset-legend text-sm font-semibold">Tanggal Libur Nasional</span>
-		<div class="flex items-center gap-2">
-			<input
-				type="date"
-				class="input bg-base-200 dark:bg-base-300 w-44 dark:border-none"
-				bind:value={newLiburDate}
-				disabled={submitting}
-			/>
-			<button
-				type="button"
-				class="btn btn-soft btn-sm shadow-none"
-				onclick={addLiburDate}
-				disabled={submitting || !newLiburDate}
-			>
-				Tambah
-			</button>
-		</div>
-		{#if liburDates.length > 0}
-			<div class="flex flex-wrap gap-1.5">
-				{#each liburDates as date, i (date)}
-					<div class="badge badge-outline gap-1 px-2 py-3 text-sm">
-						{date}
-						<button
-							type="button"
-							class="btn btn-xs btn-ghost btn-circle hover:bg-error/20 p-0 shadow-none"
-							onclick={() => removeLiburDate(i)}
-							disabled={submitting}
-							aria-label="Hapus {date}"
-						>
-							<svg
-								xmlns="http://www.w3.org/2000/svg"
-								class="h-3 w-3"
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								stroke-width="2"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg
-							>
-						</button>
-					</div>
-				{/each}
+	<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+		<div class="flex flex-col gap-2">
+			<span class="fieldset-legend text-sm font-semibold">Tanggal Libur Nasional</span>
+			<div class="flex items-center gap-2">
+				<input
+					type="date"
+					class="input bg-base-200 dark:bg-base-300 w-44 dark:border-none"
+					bind:value={newLiburDate}
+					disabled={submitting}
+				/>
+				<button
+					type="button"
+					class="btn btn-soft btn-sm shadow-none"
+					onclick={addLiburDate}
+					disabled={submitting || !newLiburDate}
+				>
+					Tambah
+				</button>
 			</div>
-		{/if}
+			{#if liburDates.length > 0}
+				<div class="flex flex-wrap gap-1.5">
+					{#each liburDates as date, i (date)}
+						<div class="badge badge-outline gap-1 px-2 py-3 text-sm">
+							{date}
+							<button
+								type="button"
+								class="btn btn-xs btn-ghost btn-circle hover:bg-error/20 p-0 shadow-none"
+								onclick={() => removeLiburDate(i)}
+								disabled={submitting}
+								aria-label="Hapus {date}"
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									class="h-3 w-3"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg
+								>
+							</button>
+						</div>
+					{/each}
+				</div>
+			{/if}
+		</div>
+		<label class="fieldset flex flex-col gap-1 overflow-hidden">
+			<span class="fieldset-legend text-sm font-semibold">Jenis Presensi</span>
+			<select
+				class="select bg-base-200 dark:bg-base-300 w-full truncate dark:border-none"
+				bind:value={jenisPresensiValue}
+			>
+				<option value="wali_kelas_saja">Wali kelas saja</option>
+				<option value="tiap_mapel">Tiap mapel</option>
+			</select>
+		</label>
 	</div>
 
 	<div class="flex flex-col gap-2">

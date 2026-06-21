@@ -574,11 +574,12 @@
 				onPositive: {
 					label: 'Lanjutkan',
 					action: ({ close }) => {
-						if (!groupForm) { close(); return; }
+						if (!groupForm) {
+							close();
+							return;
+						}
 						const fullEntries = groupForm.entries.map((entry, entryIndex) =>
-							entryIndex === index
-								? { ...entry, deskripsi: value, deleted: false }
-								: entry
+							entryIndex === index ? { ...entry, deskripsi: value, deleted: false } : entry
 						);
 						groupForm = { ...groupForm, entries: ensureTrailingEntry(fullEntries) };
 						confirmedLongTpEntries = new Set([...confirmedLongTpEntries, index]);

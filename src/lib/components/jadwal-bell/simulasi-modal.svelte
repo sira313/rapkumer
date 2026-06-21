@@ -194,7 +194,7 @@
 
 <div class="not-prose flex flex-col gap-4">
 	<div class="flex flex-wrap items-end gap-3">
-		<label class="flex flex-col gap-1 flex-1">
+		<label class="flex flex-1 flex-col gap-1">
 			<span class="fieldset-legend text-sm font-semibold">Hari</span>
 			<select
 				class="select bg-base-200 dark:bg-base-300 w-full truncate dark:border-none"
@@ -206,7 +206,7 @@
 				{/each}
 			</select>
 		</label>
-		<label class="flex flex-col gap-1 flex-1">
+		<label class="flex flex-1 flex-col gap-1">
 			<span class="fieldset-legend text-sm font-semibold">Jam</span>
 			<input
 				type="time"

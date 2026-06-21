@@ -1240,9 +1240,33 @@ export const actions: Actions = {
 			return fail(400, { fail: 'Hari sekolah tidak valid' });
 		}
 
-		const tipePresensiEnum = tipePresensi as 'masuk_pulang' | 'masuk_saja';
-		if (!['masuk_pulang', 'masuk_saja'].includes(tipePresensiEnum)) {
+		const validTipe = ['masuk_pulang', 'masuk_saja', 'awal_mapel', 'awal_akhir_mapel'];
+		const tipePresensiEnum = tipePresensi as 'masuk_pulang' | 'masuk_saja' | 'awal_mapel' | 'awal_akhir_mapel';
+		if (!validTipe.includes(tipePresensiEnum)) {
 			return fail(400, { fail: 'Tipe presensi tidak valid' });
+		}
+
+		const jenisPresensi = formData.get('jenisPresensi')?.toString().trim() ?? 'wali_kelas_saja';
+		const jenisPresensiEnum = jenisPresensi as 'wali_kelas_saja' | 'tiap_mapel';
+		if (!['wali_kelas_saja', 'tiap_mapel'].includes(jenisPresensiEnum)) {
+			return fail(400, { fail: 'Jenis presensi tidak valid' });
+		}
+
+		if (jenisPresensiEnum === 'tiap_mapel') {
+			const jadwalCount = await db.$client.execute({
+				sql: `SELECT COUNT(*) as cnt FROM jadwal_pelajaran WHERE sekolah_id = ?`,
+				args: [sekolahId]
+			});
+			const row = (jadwalCount.rows as unknown as Array<{ cnt: number }>)[0];
+			if (!row || Number(row.cnt) === 0) {
+				return fail(400, {
+					fail: 'Jadwal pelajaran harus diisi terlebih dahulu agar dapat menggunakan presensi tiap mapel'
+				});
+			}
+		} else if (['awal_mapel', 'awal_akhir_mapel'].includes(tipePresensiEnum)) {
+			return fail(400, {
+				fail: 'Tipe presensi Awal/Awal & Akhir Mapel hanya tersedia untuk jenis presensi Tiap Mapel'
+			});
 		}
 
 		await ensurePresensiSettingsSchema();
@@ -1256,6 +1280,7 @@ export const actions: Actions = {
 				jamPulang,
 				hariSekolah,
 				tipePresensi: tipePresensiEnum,
+				jenisPresensi: jenisPresensiEnum,
 				liburNasional,
 				liburSemester,
 				updatedAt: new Date().toISOString()
@@ -1267,6 +1292,7 @@ export const actions: Actions = {
 					jamPulang,
 					hariSekolah,
 					tipePresensi: tipePresensiEnum,
+					jenisPresensi: jenisPresensiEnum,
 					liburNasional,
 					liburSemester,
 					updatedAt: new Date().toISOString()

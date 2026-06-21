@@ -4,7 +4,8 @@
 	import { toast } from '$lib/components/toast.svelte';
 	import { hideModal } from '$lib/components/global-modal.svelte';
 
-	let { onscan }: { onscan?: () => void } = $props();
+	let { onscan, mataPelajaranId }: { onscan?: () => void; mataPelajaranId?: number | null } =
+		$props();
 
 	let videoEl: HTMLVideoElement;
 	let canvasEl: HTMLCanvasElement;
@@ -73,7 +74,10 @@
 		processing = true;
 		status = 'Memproses...';
 		try {
-			const res = await fetch('/api/absen', {
+			const params = new URLSearchParams();
+			if (mataPelajaranId != null) params.set('mataPelajaranId', String(mataPelajaranId));
+			const url = `/api/absen${params.toString() ? `?${params.toString()}` : ''}`;
+			const res = await fetch(url, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ qrData: data })

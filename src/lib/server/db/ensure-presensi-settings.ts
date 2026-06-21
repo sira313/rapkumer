@@ -22,6 +22,13 @@ export async function ensurePresensiSettingsSchema() {
       CONSTRAINT "presensi_settings_sekolah_id_tahun_ajaran_id_unique" UNIQUE("sekolah_id","tahun_ajaran_id")
     )`
 	]);
+	try {
+		await db.$client.execute(
+			`ALTER TABLE "${TABLE}" ADD COLUMN "jenis_presensi" text NOT NULL DEFAULT 'wali_kelas_saja'`
+		);
+	} catch {
+		// column already exists
+	}
 	for (const col of ['libur_nasional', 'libur_semester']) {
 		try {
 			await db.$client.execute(

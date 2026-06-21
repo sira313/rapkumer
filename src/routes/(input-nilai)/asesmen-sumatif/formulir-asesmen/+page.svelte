@@ -477,7 +477,7 @@
 
 			<LingkupSummaryCard {naSumatifLingkup} {lingkupSummaries} {totalBobot} {formatScore} />
 
-			<details class="collapse collapse-arrow mt-6 bg-base-200 rounded-box">
+			<details class="collapse-arrow bg-base-200 rounded-box collapse mt-6">
 				<summary class="collapse-title text-lg font-bold">
 					Isi Sumatif Tengah Semester & Akhir Semester (opsional)
 				</summary>

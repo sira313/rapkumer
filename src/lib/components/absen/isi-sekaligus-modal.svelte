@@ -14,11 +14,17 @@
 	let {
 		daftarMurid,
 		kelasId = 0,
-		tanggal
+		tanggal,
+		mataPelajaranId,
+		namaMataPelajaran,
+		perkiraanJam
 	}: {
 		daftarMurid: MuridItem[];
 		kelasId?: number;
 		tanggal: string;
+		mataPelajaranId?: number | null;
+		namaMataPelajaran?: string;
+		perkiraanJam?: string;
 	} = $props();
 
 	let step = $state<'pilih-mode' | 'pilih-murid'>('pilih-mode');
@@ -119,6 +125,7 @@
 			fd.set('mode', 'hadir_semua');
 			fd.set('kelasId', String(kelasId));
 			fd.set('tanggal', tanggal);
+			if (mataPelajaranId != null) fd.set('mataPelajaranId', String(mataPelajaranId));
 			const res = await fetch('?/isiSekaligus', { method: 'POST', body: fd, redirect: 'error' });
 			if (!res.ok) {
 				const err = await res.json().catch(() => ({ fail: 'Gagal menyimpan' }));
@@ -145,6 +152,7 @@
 			fd.set('mode', 'selected');
 			fd.set('kelasId', String(kelasId));
 			fd.set('tanggal', tanggal);
+			if (mataPelajaranId != null) fd.set('mataPelajaranId', String(mataPelajaranId));
 			fd.set('entries', JSON.stringify(entries));
 			const res = await fetch('?/isiSekaligus', { method: 'POST', body: fd, redirect: 'error' });
 			if (!res.ok) {
@@ -169,7 +177,14 @@
 
 {#if step === 'pilih-mode'}
 	<div class="flex flex-col gap-4">
-		<p class="text-base-content text-lg font-medium">Apakah hadir semua hari ini?</p>
+		{#if namaMataPelajaran}
+			<p class="text-base-content text-lg font-medium">
+				Apakah hadir semua pada mata pelajaran {namaMataPelajaran}
+				{perkiraanJam ? `- ${perkiraanJam}` : ''}?
+			</p>
+		{:else}
+			<p class="text-base-content text-lg font-medium">Apakah hadir semua hari ini?</p>
+		{/if}
 	</div>
 {:else}
 	<div class="flex flex-col gap-3">

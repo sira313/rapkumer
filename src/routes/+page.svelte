@@ -60,14 +60,20 @@
 
 	let _now = $state(new Date());
 	$effect(() => {
-		const id = setInterval(() => _now = new Date(), 60_000);
+		const id = setInterval(() => (_now = new Date()), 60_000);
 		return () => clearInterval(id);
 	});
 
 	const hariIni = $derived.by(() => {
 		const status = isHoliday(_now) ? 'Libur' : 'Hari Belajar';
-		const hariNama = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][_now.getDay()];
-		const tgl = _now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+		const hariNama = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][
+			_now.getDay()
+		];
+		const tgl = _now.toLocaleDateString('id-ID', {
+			day: 'numeric',
+			month: 'long',
+			year: 'numeric'
+		});
 		return `${hariNama}, ${tgl} - ${status}`;
 	});
 </script>

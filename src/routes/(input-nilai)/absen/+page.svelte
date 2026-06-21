@@ -8,6 +8,7 @@
 	import IsiSekaligusModal from '$lib/components/absen/isi-sekaligus-modal.svelte';
 	import DownloadRekapModal from '$lib/components/absen/download-rekap-modal.svelte';
 	import HapusPresensiModal from '$lib/components/absen/hapus-presensi-modal.svelte';
+	import { toast } from '$lib/components/toast.svelte';
 	import { searchQueryMarker } from '$lib/utils';
 	import { onDestroy, onMount } from 'svelte';
 
@@ -87,6 +88,26 @@
 		// totalItems and perPage intentionally omitted when not used in this view
 	};
 
+	type PersentaseHarianSubject = {
+		kodeKegiatan: string;
+		label: string;
+	};
+
+	type PersentaseHarianRow = {
+		no: number;
+		muridId: number;
+		nama: string;
+		subjects: Record<string, string>;
+		persentase: number;
+	};
+
+	type JadwalSaatIni = {
+		mataPelajaranId: number | null;
+		namaMataPelajaran: string;
+		jamKe: number;
+		perkiraanJam: string;
+	};
+
 	type PageData = {
 		page: PageState;
 		daftarMurid: KehadiranRow[];
@@ -95,7 +116,7 @@
 		totalMurid: number;
 		muridCount: number;
 		tanggal: string;
-		mode: 'harian' | 'bulanan' | 'rapor';
+		mode: 'harian' | 'bulanan' | 'rapor' | 'persentase_harian';
 		bulan: number;
 		tahun: number;
 		daysInMonth: number;
@@ -106,6 +127,12 @@
 		tanggalAkhirRapor: string;
 		presensiReady: boolean;
 		presensiWarningMessage: string;
+		jenisPresensi: string;
+		persentaseHarianSubjects: PersentaseHarianSubject[];
+		persentaseHarianRows: PersentaseHarianRow[];
+		jadwalSaatIni: JadwalSaatIni | null;
+		simulasiHari: string | null;
+		simulasiJam: string | null;
 	};
 
 	let { data }: { data: PageData } = $props();
@@ -309,7 +336,7 @@
 		return data.tanggal === `${y}-${m}-${day}`;
 	});
 
-	let selectedMode = $state<'harian' | 'bulanan' | 'rapor'>(data.mode);
+	let selectedMode = $state<'harian' | 'bulanan' | 'rapor' | 'persentase_harian'>(data.mode);
 	let selectedBulan = $state(data.mode === 'bulanan' ? data.bulan : new Date().getMonth() + 1);
 	let selectedTahun = $state(data.mode === 'bulanan' ? data.tahun : new Date().getFullYear());
 
@@ -324,6 +351,27 @@
 		}
 	});
 
+	let simulasiHari = $state(page.url.searchParams.get('simHari') ?? 'Senin');
+	let simulasiJam = $state(page.url.searchParams.get('simJam') ?? '07:00');
+	let showSimulasi = $state(false);
+	const simActive = $derived(!!page.url.searchParams.get('simHari'));
+
+	function applySimulasi() {
+		void applyNavigation((params) => {
+			params.set('simHari', simulasiHari);
+			params.set('simJam', simulasiJam);
+		});
+		showSimulasi = false;
+	}
+
+	function resetSimulasi() {
+		void applyNavigation((params) => {
+			params.delete('simHari');
+			params.delete('simJam');
+		});
+		showSimulasi = false;
+	}
+
 	function handleModeChange() {
 		void applyNavigation((params) => {
 			if (selectedMode === 'bulanan') {
@@ -336,6 +384,10 @@
 				params.delete('bulan');
 				params.delete('tahun');
 				params.delete('tanggal');
+			} else if (selectedMode === 'persentase_harian') {
+				params.set('mode', 'persentase_harian');
+				params.delete('bulan');
+				params.delete('tahun');
 			} else {
 				params.delete('mode');
 				params.delete('bulan');
@@ -368,6 +420,15 @@
 		} else if (data.mode === 'rapor') {
 			// No date navigation for rapor mode
 			return;
+		} else if (data.mode === 'persentase_harian') {
+			void applyNavigation((params) => {
+				params.set('mode', 'persentase_harian');
+				params.set('tanggal', selectedTanggal);
+				params.delete('page');
+				params.delete('q');
+				params.delete('bulan');
+				params.delete('tahun');
+			});
 		} else {
 			void applyNavigation((params) => {
 				params.set('tanggal', selectedTanggal);
@@ -443,16 +504,27 @@
 		});
 	}
 
-	function openScanner() {
+	const isGuruMapelMode = $derived(
+		page.data.user?.type === 'user' && data.jenisPresensi === 'tiap_mapel'
+	);
+
+	const jadwalBelumDimulai = $derived(isGuruMapelMode && !data.jadwalSaatIni);
+
+	function openScanner(mapelId?: number | null) {
 		if (!data.presensiReady) {
 			presensiNotReady();
+			return;
+		}
+		if (jadwalBelumDimulai) {
+			toast({ message: 'Jam pelajaran bapak/ibu belum dimulai', type: 'warning' });
 			return;
 		}
 		showModal({
 			title: 'Scan QR Kehadiran',
 			body: ScannerModal,
 			bodyProps: {
-				onscan: () => invalidate('app:absen')
+				onscan: () => invalidate('app:absen'),
+				mataPelajaranId: mapelId ?? null
 			},
 			dismissible: false
 		});
@@ -508,6 +580,9 @@
 							)}</span
 						>
 					{/if}
+				{:else if data.mode === 'persentase_harian'}
+					Persentase Kehadiran per Mapel -
+					<span class="text-primary">{formatTanggal(data.tanggal)}</span>
 				{:else if isToday}
 					Kehadiran murid hari Ini -
 					<span class="text-primary">{waktuSekarang}</span>
@@ -520,12 +595,13 @@
 				<p class="text-base-content/80 block text-sm">{kelasAktifLabel}</p>
 			{/if}
 		</div>
-		{#if data.mode !== 'rapor'}
+		{#if data.mode === 'rapor'}{:else}
+			{@const currentMapel = data.jadwalSaatIni}
 			<div class="flex max-sm:w-full">
 				<button
 					type="button"
 					class="btn btn-primary btn-soft flex-1 rounded-r-none shadow-none max-sm:flex-1"
-					onclick={openScanner}
+					onclick={() => openScanner(currentMapel?.mataPelajaranId)}
 				>
 					<Icon name="grid" />
 					Scan QR
@@ -553,13 +629,20 @@
 										presensiNotReady();
 										return;
 									}
+									if (jadwalBelumDimulai) {
+										toast({ message: 'Jam pelajaran bapak/ibu belum dimulai', type: 'warning' });
+										return;
+									}
 									showModal({
 										title: 'Isi Kehadiran Sekaligus',
 										body: IsiSekaligusModal,
 										bodyProps: {
 											daftarMurid: data.semuaMurid,
 											kelasId: kelasAktif?.id ?? undefined,
-											tanggal: data.tanggal
+											tanggal: data.tanggal,
+											mataPelajaranId: currentMapel?.mataPelajaranId ?? null,
+											namaMataPelajaran: currentMapel?.namaMataPelajaran ?? undefined,
+											perkiraanJam: currentMapel?.perkiraanJam ?? undefined
 										},
 										dismissible: true
 									});
@@ -603,6 +686,12 @@
 							? `${formatTanggal(data.tanggalMulaiRapor)} - ${formatTanggal(data.tanggalAkhirRapor)}`
 							: 'Rentang tanggal tidak tersedia'}
 					</span>
+				{:else if data.mode === 'persentase_harian'}
+					<input
+						type="date"
+						class="input bg-base-200 dark:bg-base-300 w-full rounded-r-none max-sm:w-full dark:border-none"
+						bind:value={selectedTanggal}
+					/>
 				{:else}
 					<input
 						type="date"
@@ -638,17 +727,36 @@
 					type="button"
 					class="btn btn-soft btn-error rounded-l-none shadow-none"
 					aria-label="Hapus data presensi"
-					title={data.mode === 'bulanan'
-						? 'Tidak dapat menghapus dalam mode bulanan'
-						: data.mode === 'rapor'
-							? 'Tidak dapat menghapus dalam mode rapor'
-							: !canEdit
-								? 'Anda tidak memiliki izin untuk menghapus presensi'
-								: 'Hapus data presensi tanggal ini'}
+					title={isGuruMapelMode
+						? 'Guru mapel tidak dapat menghapus presensi'
+						: data.mode === 'bulanan'
+							? 'Tidak dapat menghapus dalam mode bulanan'
+							: data.mode === 'rapor'
+								? 'Tidak dapat menghapus dalam mode rapor'
+								: data.mode === 'persentase_harian'
+									? 'Tidak dapat menghapus dalam mode persentase harian'
+									: !canEdit
+										? 'Anda tidak memiliki izin untuk menghapus presensi'
+										: 'Hapus data presensi tanggal ini'}
 					onclick={openDeleteConfirm}
-					disabled={data.mode === 'bulanan' || data.mode === 'rapor' || !canEdit}
+					disabled={data.mode === 'bulanan' ||
+						data.mode === 'rapor' ||
+						data.mode === 'persentase_harian' ||
+						!canEdit ||
+						isGuruMapelMode}
 				>
 					<Icon name="del" />
+				</button>
+				<button
+					type="button"
+					class="btn btn-soft rounded-none shadow-none {simActive ? 'btn-warning' : ''}"
+					aria-label="Simulasi hari & jam"
+					title={simActive
+						? `Simulasi: ${data.simulasiHari} ${data.simulasiJam}`
+						: 'Simulasi hari & jam'}
+					onclick={() => (showSimulasi = !showSimulasi)}
+				>
+					<Icon name={simActive ? 'pause' : 'play'} />
 				</button>
 			</div>
 		</div>
@@ -661,6 +769,31 @@
 			Download Rekap (.xlsx)
 		</button>
 	</div>
+
+	{#if showSimulasi}
+		<div class="bg-base-200 rounded-box mb-4 flex flex-wrap items-end gap-3 p-3">
+			<label class="flex flex-col gap-1">
+				<span class="text-sm font-semibold">Hari</span>
+				<select class="select select-sm bg-base-100 w-32" bind:value={simulasiHari}>
+					{#each ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'] as h (h)}
+						<option>{h}</option>
+					{/each}
+				</select>
+			</label>
+			<label class="flex flex-col gap-1">
+				<span class="text-sm font-semibold">Jam</span>
+				<input type="time" class="input input-sm bg-base-100 w-32" bind:value={simulasiJam} />
+			</label>
+			<button type="button" class="btn btn-primary btn-sm shadow-none" onclick={applySimulasi}>
+				<Icon name="play" /> Terapkan
+			</button>
+			{#if simActive}
+				<button type="button" class="btn btn-soft btn-sm shadow-none" onclick={resetSimulasi}>
+					Reset
+				</button>
+			{/if}
+		</div>
+	{/if}
 
 	<form
 		class="flex flex-col gap-2 sm:flex-row"
@@ -690,13 +823,17 @@
 					selectedMode = (e.currentTarget as HTMLSelectElement).value as
 						| 'harian'
 						| 'bulanan'
-						| 'rapor';
+						| 'rapor'
+						| 'persentase_harian';
 					handleModeChange();
 				}}
 			>
 				<option value="harian">Harian</option>
 				<option value="bulanan">Bulanan</option>
 				<option value="rapor">Rapor</option>
+				{#if data.jenisPresensi === 'tiap_mapel'}
+					<option value="persentase_harian">Persentase Harian</option>
+				{/if}
 			</select>
 		</div>
 	</form>
@@ -705,6 +842,11 @@
 		<div class="alert alert-soft alert-warning mt-6">
 			<Icon name="alert" />
 			<span>Belum ada murid di kelas ini. Tambahkan murid terlebih dahulu.</span>
+		</div>
+	{:else if data.mode === 'persentase_harian' && !data.presensiReady && data.presensiWarningMessage}
+		<div class="alert alert-soft alert-warning mt-6">
+			<Icon name="alert" />
+			<span>{data.presensiWarningMessage}</span>
 		</div>
 	{:else if !hasFilteredMurid}
 		<div class="alert alert-soft alert-info mt-6">
@@ -967,6 +1109,57 @@
 				</button>
 			{/each}
 		</div>
+	{:else if data.mode === 'persentase_harian'}
+		{#if data.persentaseHarianSubjects.length === 0}
+			<div class="alert alert-soft alert-warning mt-6">
+				<Icon name="alert" />
+				<span
+					>Tidak ada jadwal pelajaran untuk hari ini. Persentase kehadiran per mapel tidak tersedia.</span
+				>
+			</div>
+		{:else}
+			<div
+				class="bg-base-100 dark:bg-base-200 mt-4 overflow-x-auto rounded-md shadow-md dark:shadow-none"
+			>
+				<table class="border-base-200 table border text-xs sm:text-sm dark:border-none">
+					<thead>
+						<tr class="bg-base-200 dark:bg-base-300 text-base-content text-left font-bold">
+							<th class="text-center" style="width: 50px; min-width: 40px;">No</th>
+							<th style="min-width: 160px;">Nama</th>
+							{#each data.persentaseHarianSubjects as subject (subject.kodeKegiatan)}
+								<th class="text-center" style="min-width: 80px;">{subject.label}</th>
+							{/each}
+							<th class="text-center" style="min-width: 100px;">%</th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each data.persentaseHarianRows as row (row.muridId)}
+							<tr>
+								<td class="text-center">{row.no}</td>
+								<td>{row.nama}</td>
+								{#each data.persentaseHarianSubjects as subject (subject.kodeKegiatan)}
+									{@const status = row.subjects[subject.kodeKegiatan] ?? ''}
+									<td class="text-center">
+										{#if status === 'H'}
+											<span class="text-success font-bold">H</span>
+										{:else if status === 'S'}
+											<span class="text-warning font-bold">S</span>
+										{:else if status === 'I'}
+											<span class="text-info font-bold">I</span>
+										{:else if status === 'TK'}
+											<span class="text-error font-bold">TK</span>
+										{:else}
+											<span class="text-base-content/40">-</span>
+										{/if}
+									</td>
+								{/each}
+								<td class="text-center font-semibold">{row.persentase}%</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
+		{/if}
 	{:else}
 		<div
 			class="bg-base-100 dark:bg-base-200 mt-4 overflow-x-auto rounded-md shadow-md dark:shadow-none"

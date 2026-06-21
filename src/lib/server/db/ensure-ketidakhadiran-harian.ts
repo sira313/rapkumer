@@ -7,12 +7,14 @@ export async function ensureKetidakhadiranHarianSchema() {
       "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
       "murid_id" integer NOT NULL,
       "tanggal" text NOT NULL,
+      "mata_pelajaran_id" integer,
       "keterangan" text,
       "created_at" text NOT NULL,
       "updated_at" text,
-      CONSTRAINT "ketidakhadiran_harian_murid_id_murid_id_fk" FOREIGN KEY ("murid_id") REFERENCES "murid" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
+      CONSTRAINT "ketidakhadiran_harian_murid_id_murid_id_fk" FOREIGN KEY ("murid_id") REFERENCES "murid" ("id") ON UPDATE NO ACTION ON DELETE CASCADE,
+      CONSTRAINT "ketidakhadiran_harian_mata_pelajaran_id_mata_pelajaran_id_fk" FOREIGN KEY ("mata_pelajaran_id") REFERENCES "mata_pelajaran" ("id") ON UPDATE NO ACTION ON DELETE SET NULL
     )`,
-		`CREATE UNIQUE INDEX IF NOT EXISTS "ketidakhadiran_murid_tanggal_idx" ON "ketidakhadiran_harian" ("murid_id", "tanggal")`
+		`CREATE UNIQUE INDEX IF NOT EXISTS "ketidakhadiran_murid_tanggal_mapel_idx" ON "ketidakhadiran_harian" ("murid_id", "tanggal", "mata_pelajaran_id")`
 	]);
 
 	// migrate existing tables that still have old sakit/izin/alfa columns
@@ -34,5 +36,27 @@ export async function ensureKetidakhadiranHarianSchema() {
 		await db.$client.execute({
 			sql: `UPDATE "ketidakhadiran_harian" SET "keterangan" = 'alfa' WHERE "keterangan" IS NULL AND "alfa" > 0`
 		});
+	}
+
+	try {
+		await db.$client.execute(
+			`ALTER TABLE "ketidakhadiran_harian" ADD COLUMN "mata_pelajaran_id" integer REFERENCES "mata_pelajaran"("id") ON DELETE SET NULL`
+		);
+	} catch {
+		// column already exists
+	}
+
+	// Migrate unique index if needed
+	try {
+		await db.$client.execute(`DROP INDEX IF EXISTS "ketidakhadiran_murid_tanggal_idx"`);
+	} catch {
+		// may not exist
+	}
+	try {
+		await db.$client.execute(
+			`CREATE UNIQUE INDEX IF NOT EXISTS "ketidakhadiran_murid_tanggal_mapel_idx" ON "ketidakhadiran_harian" ("murid_id", "tanggal", "mata_pelajaran_id")`
+		);
+	} catch {
+		// index may already exist
 	}
 }

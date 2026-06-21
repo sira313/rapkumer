@@ -882,11 +882,14 @@ export const tablePresensiSettings = sqliteTable(
 		jamMasuk: text().notNull().default('07:30'),
 		jamPulang: text().notNull().default('15:00'),
 		hariSekolah: int().notNull().default(6),
-		tipePresensi: text({ enum: ['masuk_pulang', 'masuk_saja'] })
+		tipePresensi: text({ enum: ['masuk_pulang', 'masuk_saja', 'awal_mapel', 'awal_akhir_mapel'] })
 			.notNull()
 			.default('masuk_pulang'),
 		liburNasional: text().notNull().default('[]'),
 		liburSemester: text().notNull().default('[]'),
+		jenisPresensi: text({ enum: ['wali_kelas_saja', 'tiap_mapel'] })
+			.notNull()
+			.default('wali_kelas_saja'),
 		...audit
 	},
 	(table) => [unique().on(table.sekolahId, table.tahunAjaranId)]
@@ -1009,6 +1012,7 @@ export const tableAbsensi = sqliteTable(
 		muridId: int()
 			.references(() => tableMurid.id, { onDelete: 'cascade' })
 			.notNull(),
+		mataPelajaranId: int().references(() => tableMataPelajaran.id, { onDelete: 'set null' }),
 		waktu: text().notNull(),
 		...audit
 	},
@@ -1030,10 +1034,17 @@ export const tableKetidakhadiranHarian = sqliteTable(
 			.references(() => tableMurid.id, { onDelete: 'cascade' })
 			.notNull(),
 		tanggal: text().notNull(),
+		mataPelajaranId: int().references(() => tableMataPelajaran.id, { onDelete: 'set null' }),
 		keterangan: text(),
 		...audit
 	},
-	(table) => [uniqueIndex('ketidakhadiran_murid_tanggal_idx').on(table.muridId, table.tanggal)]
+	(table) => [
+		uniqueIndex('ketidakhadiran_murid_tanggal_mapel_idx').on(
+			table.muridId,
+			table.tanggal,
+			table.mataPelajaranId
+		)
+	]
 );
 
 export const tableKetidakhadiranHarianRelations = relations(

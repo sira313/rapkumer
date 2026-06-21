@@ -90,7 +90,12 @@
 		readonlyRoutes.some((r) => page.url.pathname === r || page.url.pathname.startsWith(r + '/'))
 	);
 
-	const disableInteraction = $derived(data.user?.type === 'user' && isReadonlyPage);
+	const userIsGuruMapel = $derived(data.user?.type === 'user' && data.hasMataPelajaran);
+	const isAbsenPage = $derived(page.url.pathname.startsWith('/absen'));
+
+	const disableInteraction = $derived(
+		data.user?.type === 'user' && isReadonlyPage && !(isAbsenPage && userIsGuruMapel)
+	);
 
 	async function stopServer() {
 		if (stoppingServer) return;
