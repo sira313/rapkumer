@@ -143,10 +143,10 @@
 		return kelasAktif.fase ? `${kelasAktif.nama} - ${kelasAktif.fase}` : kelasAktif.nama;
 	});
 
-	// Restrict editing for wali_asuh
+	// Restrict editing: only admin and wali_kelas can edit
 	const canEdit = $derived.by(() => {
 		const u = page.data.user as { type?: string } | null | undefined;
-		return u?.type !== 'wali_asuh';
+		return u?.type === 'admin' || u?.type === 'wali_kelas';
 	});
 
 	const currentPage = $derived.by(() => data.page?.currentPage ?? 1);
@@ -389,7 +389,7 @@
 				params.delete('bulan');
 				params.delete('tahun');
 			} else {
-				params.delete('mode');
+				params.set('mode', 'harian');
 				params.delete('bulan');
 				params.delete('tahun');
 			}
@@ -621,34 +621,35 @@
 						<li>
 							<button
 								type="button"
-								class="w-full text-left"
-								disabled={!canEdit}
-								title={!canEdit ? 'Anda tidak memiliki izin untuk mengisi sekaligus' : ''}
-								onclick={() => {
-									if (!data.presensiReady) {
-										presensiNotReady();
-										return;
-									}
-									if (jadwalBelumDimulai) {
-										toast({ message: 'Jam pelajaran bapak/ibu belum dimulai', type: 'warning' });
-										return;
-									}
-									showModal({
-										title: 'Isi Kehadiran Sekaligus',
-										body: IsiSekaligusModal,
-										bodyProps: {
-											daftarMurid: data.semuaMurid,
-											kelasId: kelasAktif?.id ?? undefined,
-											tanggal: data.tanggal,
-											mataPelajaranId: currentMapel?.mataPelajaranId ?? null,
-											namaMataPelajaran: currentMapel?.namaMataPelajaran ?? undefined,
-											perkiraanJam: currentMapel?.perkiraanJam ?? undefined
-										},
-										dismissible: true
-									});
-								}}
-							>
-								Isi Sekaligus
+							class="w-full text-left"
+							disabled={!canEdit && page.data.user?.type !== 'user'}
+							title={!canEdit && page.data.user?.type !== 'user' ? 'Anda tidak memiliki izin untuk mengisi sekaligus' : ''}
+							onclick={() => {
+								if (!data.presensiReady) {
+									presensiNotReady();
+									return;
+								}
+								if (jadwalBelumDimulai) {
+									toast({ message: 'Jam pelajaran bapak/ibu belum dimulai', type: 'warning' });
+									return;
+								}
+								const useMapelData = page.data.user?.type === 'user' || data.mode === 'persentase_harian';
+								showModal({
+									title: 'Isi Kehadiran Sekaligus',
+									body: IsiSekaligusModal,
+									bodyProps: {
+										daftarMurid: data.semuaMurid,
+										kelasId: kelasAktif?.id ?? undefined,
+										tanggal: data.tanggal,
+										mataPelajaranId: useMapelData ? (currentMapel?.mataPelajaranId ?? null) : null,
+										namaMataPelajaran: useMapelData ? (currentMapel?.namaMataPelajaran ?? undefined) : undefined,
+										perkiraanJam: useMapelData ? (currentMapel?.perkiraanJam ?? undefined) : undefined
+									},
+									dismissible: true
+								});
+							}}
+						>
+							Isi Sekaligus
 							</button>
 						</li>
 					</ul>
@@ -828,15 +829,11 @@
 					handleModeChange();
 				}}
 			>
-				{#if page.data.user?.type === 'user' && data.jenisPresensi === 'tiap_mapel'}
+				<option value="harian">Harian</option>
+				<option value="bulanan">Bulanan</option>
+				<option value="rapor">Rapor</option>
+				{#if data.jenisPresensi === 'tiap_mapel'}
 					<option value="persentase_harian">Persentase Harian</option>
-				{:else}
-					<option value="harian">Harian</option>
-					<option value="bulanan">Bulanan</option>
-					<option value="rapor">Rapor</option>
-					{#if data.jenisPresensi === 'tiap_mapel'}
-						<option value="persentase_harian">Persentase Harian</option>
-					{/if}
 				{/if}
 			</select>
 		</div>

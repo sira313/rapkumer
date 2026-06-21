@@ -57,7 +57,7 @@ pnpm format                  # prettier --write . (tabs, single quotes, no trail
 - CSRF: SvelteKit's built-in disabled (`csrf.trustedOrigins: ['*']`). Custom guard checks origin/referer.
 - `event.locals.sekolah` scopes all queries — set by `cookieParser` hook.
 - Body size limit from `process.env.BODY_SIZE_LIMIT` (default 512K).
-- User type `user` accounts are **read-only** on `/murid`, `/kokurikuler`, `/ekstrakurikuler`, `/keasramaan`, `/asesmen-kokurikuler`, `/nilai-ekstrakurikuler`, `/asesmen-keasramaan`, `/absen`, `/catatan-wali-kelas`, `/keputusan`, `/cetak` — enforced in `+layout.svelte` via `disableInteraction`.
+- User type `user` accounts are **read-only** (`disableInteraction`) on `/murid`, `/kokurikuler`, `/ekstrakurikuler`, `/keasramaan`, `/asesmen-kokurikuler`, `/nilai-ekstrakurikuler`, `/asesmen-keasramaan`, `/catatan-wali-kelas`, `/keputusan`, `/cetak`. **Exception:** `/absen` exempts `user` type from `disableInteraction` — guru mapel can view all modes and use "Isi Sekaligus" (per-mapel bulk), but individual edit/delete remains blocked via `canUserEditAbsen`.
 
 ## DB
 

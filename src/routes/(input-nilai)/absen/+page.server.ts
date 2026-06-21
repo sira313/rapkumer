@@ -30,29 +30,7 @@ async function canUserEditAbsen(
 ): Promise<boolean> {
 	if (user.type === 'admin' || user.type === 'wali_kelas') return true;
 	if (user.type === 'wali_asuh') return false;
-	if (user.type === 'user') {
-		const hasDirectMapel = !!user.mataPelajaranId;
-		const hasManyMapel =
-			!hasDirectMapel && user.id
-				? (
-						await db.query.tableAuthUserMataPelajaran.findMany({
-							columns: { id: true },
-							where: eq(tableAuthUserMataPelajaran.authUserId, user.id),
-							limit: 1
-						})
-					).length > 0
-				: false;
-		if (!hasDirectMapel && !hasManyMapel) return false;
-		try {
-			const settings = await db.query.tablePresensiSettings.findFirst({
-				columns: { jenisPresensi: true },
-				where: eq(tablePresensiSettings.sekolahId, sekolahId)
-			});
-			if (settings?.jenisPresensi === 'tiap_mapel') return true;
-		} catch {
-			// table may not exist yet
-		}
-	}
+	if (user.type === 'user') return false;
 	return false;
 }
 
@@ -238,9 +216,11 @@ export async function load({ parent, locals, url, depends }) {
 						})
 					).length > 0
 				: false));
-	const mode = isGuruMapelForDefault && presensiSettings?.jenisPresensi === 'tiap_mapel'
-		? 'persentase_harian'
-		: (explicitMode ?? 'harian');
+	const mode =
+		explicitMode ??
+		(isGuruMapelForDefault && presensiSettings?.jenisPresensi === 'tiap_mapel'
+			? 'persentase_harian'
+			: 'harian');
 	const bulanParam = url.searchParams.get('bulan');
 	const tahunParam = url.searchParams.get('tahun');
 	const now = new Date();
@@ -1277,38 +1257,6 @@ export const actions = {
 		const mataPelajaranIdRaw = formData.get('mataPelajaranId')?.toString();
 		const mataPelajaranId = mataPelajaranIdRaw ? Number(mataPelajaranIdRaw) : null;
 
-		// Guru mapel only: validate schedule match
-		if (locals.user?.type === 'user') {
-			const settings = await db.query.tablePresensiSettings.findFirst({
-				columns: { jenisPresensi: true, jamMasuk: true },
-				where: eq(tablePresensiSettings.sekolahId, sekolahId)
-			});
-			if (settings?.jenisPresensi === 'tiap_mapel' && settings.jamMasuk) {
-				const kelasId = Number(cookies.get(cookieNames.ACTIVE_KELAS_ID) ?? '');
-				if (!kelasId) {
-					return fail(400, { fail: 'Kelas tidak ditemukan' });
-				}
-				const dayIdx = new Date().getDay();
-				const dayN = ['minggu', 'senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu'][dayIdx];
-				const [h, m] = settings.jamMasuk.split(':').map(Number);
-				const diff = (Date.now() - new Date().setHours(h, m, 0, 0)) / 60000;
-				const jamKe = Math.max(1, Math.floor(diff / 45) + 1);
-				const jadwal = await db.query.tableJadwalPelajaran.findFirst({
-					columns: { kodeKegiatan: true },
-					where: and(
-						eq(tableJadwalPelajaran.sekolahId, sekolahId),
-						eq(tableJadwalPelajaran.kelasId, kelasId),
-						eq(tableJadwalPelajaran.hari, dayN),
-						eq(tableJadwalPelajaran.jamKe, jamKe)
-					)
-				});
-				const tambahan = new Set(['IST', 'PLG']);
-				if (!jadwal || tambahan.has(jadwal.kodeKegiatan.toUpperCase())) {
-					return fail(403, { fail: 'Jam pelajaran bapak/ibu belum dimulai' });
-				}
-			}
-		}
-
 		const muridRecord = await db.query.tableMurid.findFirst({
 			columns: { id: true },
 			where: and(eq(tableMurid.id, muridId), eq(tableMurid.sekolahId, sekolahId))
@@ -1355,7 +1303,11 @@ export const actions = {
 			return fail(401, { fail: 'Sekolah tidak ditemukan' });
 		}
 
-		if (!locals.user || !(await canUserEditAbsen(locals.user, sekolahId))) {
+		if (!locals.user) {
+			return fail(403, { fail: 'Anda tidak memiliki izin untuk mengubah data kehadiran' });
+		}
+		const hasEditPermission = await canUserEditAbsen(locals.user, sekolahId);
+		if (!hasEditPermission && locals.user.type !== 'user') {
 			return fail(403, { fail: 'Anda tidak memiliki izin untuk mengubah data kehadiran' });
 		}
 
@@ -1518,17 +1470,6 @@ export const actions = {
 
 		if (!locals.user || !(await canUserEditAbsen(locals.user, sekolahId))) {
 			return fail(403, { fail: 'Anda tidak memiliki izin untuk menghapus data presensi' });
-		}
-
-		// Guru mapel cannot delete attendance data
-		if (locals.user.type === 'user') {
-			const settings = await db.query.tablePresensiSettings.findFirst({
-				columns: { jenisPresensi: true },
-				where: eq(tablePresensiSettings.sekolahId, sekolahId)
-			});
-			if (settings?.jenisPresensi === 'tiap_mapel') {
-				return fail(403, { fail: 'Guru mapel tidak dapat menghapus data presensi' });
-			}
 		}
 
 		const formData = await request.formData();
