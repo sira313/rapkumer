@@ -238,11 +238,9 @@ export async function load({ parent, locals, url, depends }) {
 						})
 					).length > 0
 				: false));
-	const mode =
-		explicitMode ??
-		(isGuruMapelForDefault && presensiSettings?.jenisPresensi === 'tiap_mapel'
-			? 'persentase_harian'
-			: 'harian');
+	const mode = isGuruMapelForDefault && presensiSettings?.jenisPresensi === 'tiap_mapel'
+		? 'persentase_harian'
+		: (explicitMode ?? 'harian');
 	const bulanParam = url.searchParams.get('bulan');
 	const tahunParam = url.searchParams.get('tahun');
 	const now = new Date();

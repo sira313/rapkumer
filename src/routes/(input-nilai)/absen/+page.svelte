@@ -828,11 +828,15 @@
 					handleModeChange();
 				}}
 			>
-				<option value="harian">Harian</option>
-				<option value="bulanan">Bulanan</option>
-				<option value="rapor">Rapor</option>
-				{#if data.jenisPresensi === 'tiap_mapel'}
+				{#if page.data.user?.type === 'user' && data.jenisPresensi === 'tiap_mapel'}
 					<option value="persentase_harian">Persentase Harian</option>
+				{:else}
+					<option value="harian">Harian</option>
+					<option value="bulanan">Bulanan</option>
+					<option value="rapor">Rapor</option>
+					{#if data.jenisPresensi === 'tiap_mapel'}
+						<option value="persentase_harian">Persentase Harian</option>
+					{/if}
 				{/if}
 			</select>
 		</div>
