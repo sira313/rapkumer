@@ -2,14 +2,17 @@
 	import { goto, invalidate } from '$app/navigation';
 	import { page } from '$app/state';
 	import Icon from '$lib/components/icon.svelte';
-	import FormEnhance from '$lib/components/form-enhance.svelte';
 	import { showModal } from '$lib/components/global-modal.svelte';
 	import ScannerModal from '$lib/components/absen/scanner-modal.svelte';
 	import IsiSekaligusModal from '$lib/components/absen/isi-sekaligus-modal.svelte';
 	import DownloadRekapModal from '$lib/components/absen/download-rekap-modal.svelte';
 	import HapusPresensiModal from '$lib/components/absen/hapus-presensi-modal.svelte';
+	import TableHarian from '$lib/components/absen/table-harian.svelte';
+	import TableBulanan from '$lib/components/absen/table-bulanan.svelte';
+	import TableRapor from '$lib/components/absen/table-rapor.svelte';
+	import TablePersentaseHarian from '$lib/components/absen/table-persentase-harian.svelte';
+	import AbsenPagination from '$lib/components/absen/absen-pagination.svelte';
 	import { toast } from '$lib/components/toast.svelte';
-	import { searchQueryMarker } from '$lib/utils';
 	import { onDestroy, onMount } from 'svelte';
 
 	const hariList = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
@@ -58,18 +61,6 @@
 		updatedAt: string | null;
 	};
 
-	type StatusPerDay = '' | 'H' | 'S' | 'I' | 'TK';
-
-	type BulananRow = {
-		no: number;
-		nama: string;
-		statusPerDay: StatusPerDay[];
-		countS: number;
-		countI: number;
-		countTK: number;
-		countHadir: number;
-	};
-
 	type RaporRow = {
 		id: number;
 		no: number;
@@ -88,26 +79,6 @@
 		// totalItems and perPage intentionally omitted when not used in this view
 	};
 
-	type PersentaseHarianSubject = {
-		kodeKegiatan: string;
-		label: string;
-	};
-
-	type PersentaseHarianRow = {
-		no: number;
-		muridId: number;
-		nama: string;
-		subjects: Record<string, string>;
-		persentase: number;
-	};
-
-	type JadwalSaatIni = {
-		mataPelajaranId: number | null;
-		namaMataPelajaran: string;
-		jamKe: number;
-		perkiraanJam: string;
-	};
-
 	type PageData = {
 		page: PageState;
 		daftarMurid: KehadiranRow[];
@@ -120,7 +91,15 @@
 		bulan: number;
 		tahun: number;
 		daysInMonth: number;
-		bulananRows: BulananRow[];
+		bulananRows: Array<{
+			no: number;
+			nama: string;
+			statusPerDay: Array<'' | 'H' | 'S' | 'I' | 'TK'>;
+			countS: number;
+			countI: number;
+			countTK: number;
+			countHadir: number;
+		}>;
 		raporRows: RaporRow[];
 		redDays: number[];
 		tanggalMulaiRapor: string;
@@ -128,9 +107,20 @@
 		presensiReady: boolean;
 		presensiWarningMessage: string;
 		jenisPresensi: string;
-		persentaseHarianSubjects: PersentaseHarianSubject[];
-		persentaseHarianRows: PersentaseHarianRow[];
-		jadwalSaatIni: JadwalSaatIni | null;
+		persentaseHarianSubjects: Array<{ kodeKegiatan: string; label: string }>;
+		persentaseHarianRows: Array<{
+			no: number;
+			muridId: number;
+			nama: string;
+			subjects: Record<string, string>;
+			persentase: number;
+		}>;
+		jadwalSaatIni: {
+			mataPelajaranId: number | null;
+			namaMataPelajaran: string;
+			jamKe: number;
+			perkiraanJam: string;
+		} | null;
 		simulasiHari: string | null;
 		simulasiJam: string | null;
 	};
@@ -267,16 +257,6 @@
 	function handlePageClick(pageNumber: number) {
 		if (pageNumber === currentPage) return;
 		gotoPage(pageNumber);
-	}
-
-	function displayKeterangan(value: string | null | undefined) {
-		if (value == null) return '-';
-		const labels: Record<string, string> = {
-			sakit: 'Sakit',
-			izin: 'Izin',
-			alfa: 'Alfa'
-		};
-		return labels[value] ?? value;
 	}
 
 	function startEdit(row: KehadiranRow) {
@@ -621,35 +601,44 @@
 						<li>
 							<button
 								type="button"
-							class="w-full text-left"
-							disabled={!canEdit && page.data.user?.type !== 'user'}
-							title={!canEdit && page.data.user?.type !== 'user' ? 'Anda tidak memiliki izin untuk mengisi sekaligus' : ''}
-							onclick={() => {
-								if (!data.presensiReady) {
-									presensiNotReady();
-									return;
-								}
-								if (jadwalBelumDimulai) {
-									toast({ message: 'Jam pelajaran bapak/ibu belum dimulai', type: 'warning' });
-									return;
-								}
-								const useMapelData = page.data.user?.type === 'user' || data.mode === 'persentase_harian';
-								showModal({
-									title: 'Isi Kehadiran Sekaligus',
-									body: IsiSekaligusModal,
-									bodyProps: {
-										daftarMurid: data.semuaMurid,
-										kelasId: kelasAktif?.id ?? undefined,
-										tanggal: data.tanggal,
-										mataPelajaranId: useMapelData ? (currentMapel?.mataPelajaranId ?? null) : null,
-										namaMataPelajaran: useMapelData ? (currentMapel?.namaMataPelajaran ?? undefined) : undefined,
-										perkiraanJam: useMapelData ? (currentMapel?.perkiraanJam ?? undefined) : undefined
-									},
-									dismissible: true
-								});
-							}}
-						>
-							Isi Sekaligus
+								class="w-full text-left"
+								disabled={!canEdit && page.data.user?.type !== 'user'}
+								title={!canEdit && page.data.user?.type !== 'user'
+									? 'Anda tidak memiliki izin untuk mengisi sekaligus'
+									: ''}
+								onclick={() => {
+									if (!data.presensiReady) {
+										presensiNotReady();
+										return;
+									}
+									if (jadwalBelumDimulai) {
+										toast({ message: 'Jam pelajaran bapak/ibu belum dimulai', type: 'warning' });
+										return;
+									}
+									const useMapelData =
+										page.data.user?.type === 'user' || data.mode === 'persentase_harian';
+									showModal({
+										title: 'Isi Kehadiran Sekaligus',
+										body: IsiSekaligusModal,
+										bodyProps: {
+											daftarMurid: data.semuaMurid,
+											kelasId: kelasAktif?.id ?? undefined,
+											tanggal: data.tanggal,
+											mataPelajaranId: useMapelData
+												? (currentMapel?.mataPelajaranId ?? null)
+												: null,
+											namaMataPelajaran: useMapelData
+												? (currentMapel?.namaMataPelajaran ?? undefined)
+												: undefined,
+											perkiraanJam: useMapelData
+												? (currentMapel?.perkiraanJam ?? undefined)
+												: undefined
+										},
+										dismissible: true
+									});
+								}}
+							>
+								Isi Sekaligus
 							</button>
 						</li>
 					</ul>
@@ -867,433 +856,52 @@
 			>
 		</div>
 	{:else if data.mode === 'bulanan'}
-		<div
-			class="bg-base-100 dark:bg-base-200 mt-4 overflow-x-auto rounded-md shadow-md dark:shadow-none"
-		>
-			<table class="border-base-200 table border text-xs sm:text-sm dark:border-none">
-				<thead>
-					<tr class="bg-base-200 dark:bg-base-300 text-base-content text-left font-bold">
-						<th
-							class="bg-base-200 dark:bg-base-300 sticky left-0 z-10 text-center"
-							style="width: 40px; min-width: 36px;">No</th
-						>
-						<th
-							class="bg-base-200 dark:bg-base-300 sticky left-[40px] z-10"
-							style="min-width: 140px;">Nama</th
-						>
-						{#each Array(data.daysInMonth) as _, i}
-							{@const isRed = data.redDays.includes(i + 1)}
-							<th
-								class="text-center {isRed ? 'text-error' : ''}"
-								style="width: 30px; min-width: 26px;">{i + 1}</th
-							>
-						{/each}
-						<th class="text-center" style="width: 34px; min-width: 30px;">S</th>
-						<th class="text-center" style="width: 34px; min-width: 30px;">I</th>
-						<th class="text-center" style="width: 34px; min-width: 30px;">TK</th>
-						<th class="text-center" style="width: 38px; min-width: 34px;">JLH</th>
-					</tr>
-				</thead>
-				<tbody>
-					{#each data.bulananRows as row (row.no)}
-						<tr class="hover:bg-base-200/30">
-							<td class="bg-base-100 dark:bg-base-200 sticky left-0 z-10 text-center">{row.no}</td>
-							<td class="bg-base-100 dark:bg-base-200 sticky left-[40px] z-10">{row.nama}</td>
-							{#each row.statusPerDay as status, i}
-								{@const isRed = data.redDays.includes(i + 1)}
-								<td class="text-center font-mono {isRed ? 'bg-error/5' : ''}">
-									{#if status === 'H'}
-										<span class="text-success font-bold">{status}</span>
-									{:else if status === 'S'}
-										<span class="text-warning font-bold">{status}</span>
-									{:else if status === 'I'}
-										<span class="text-info font-bold">{status}</span>
-									{:else if status === 'TK'}
-										<span class="text-error font-bold">{status}</span>
-									{:else}
-										<span class="text-base-content/20">-</span>
-									{/if}
-								</td>
-							{/each}
-							<td class="text-center font-bold">{row.countS || ''}</td>
-							<td class="text-center font-bold">{row.countI || ''}</td>
-							<td class="text-center font-bold">{row.countTK || ''}</td>
-							<td class="text-center font-bold">{row.countHadir || ''}</td>
-						</tr>
-					{/each}
-				</tbody>
-			</table>
-		</div>
-
-		<div class="join mt-4 sm:mx-auto">
-			{#each pages as pageNumber (pageNumber)}
-				<button
-					type="button"
-					class="join-item btn pointer-events-auto"
-					class:btn-active={pageNumber === currentPage}
-					onclick={() => handlePageClick(pageNumber)}
-					aria-current={pageNumber === currentPage ? 'page' : undefined}
-				>
-					{pageNumber}
-				</button>
-			{/each}
-		</div>
+		<TableBulanan
+			rows={data.bulananRows}
+			daysInMonth={data.daysInMonth}
+			redDays={data.redDays}
+			search={data.page.search}
+		/>
+		<AbsenPagination {pages} {currentPage} onPageClick={handlePageClick} />
 	{:else if data.mode === 'rapor'}
-		<div
-			class="bg-base-100 dark:bg-base-200 mt-4 overflow-x-auto rounded-md shadow-md dark:shadow-none"
-		>
-			<table class="border-base-200 table border dark:border-none">
-				<thead>
-					<tr class="bg-base-200 dark:bg-base-300 text-base-content text-left font-bold">
-						<th style="width: 50px; min-width: 40px;">No</th>
-						<th class="w-full" style="min-width: 160px;">Nama</th>
-						<th class="text-center" style="min-width: 80px;">Hadir</th>
-						<th class="text-center" style="min-width: 80px;">Sakit</th>
-						<th class="text-center" style="min-width: 80px;">Izin</th>
-						<th class="text-center" style="min-width: 80px;">Alfa</th>
-						<th class="text-center" style="min-width: 160px;">Aksi</th>
-					</tr>
-				</thead>
-				<tbody>
-					{#each data.raporRows as row (row.id)}
-						{@const isEditing = raporEditingRowId === row.id}
-						{@const updateFormId = `rapor-update-form-${row.id}`}
-						{@const resetFormId = `rapor-reset-form-${row.id}`}
-						<tr class={isEditing ? 'bg-base-200/40' : undefined}>
-							<td>{row.no}</td>
-							<td>{@html searchQueryMarker(data.page.search, row.nama)}</td>
-							<td class="text-center font-bold">{row.hadir || ''}</td>
-							<td class="text-center">
-								{#if isEditing}
-									<input
-										type="number"
-										class="input input-sm bg-base-200 dark:bg-base-300 w-16 text-center dark:border-none"
-										value={raporEditingValues.sakit}
-										onchange={(e) =>
-											(raporEditingValues = {
-												...raporEditingValues,
-												sakit: Number((e.currentTarget as HTMLInputElement).value)
-											})}
-										min="0"
-									/>
-								{:else}
-									{row.sakit || ''}
-								{/if}
-							</td>
-							<td class="text-center">
-								{#if isEditing}
-									<input
-										type="number"
-										class="input input-sm bg-base-200 dark:bg-base-300 w-16 text-center dark:border-none"
-										value={raporEditingValues.izin}
-										onchange={(e) =>
-											(raporEditingValues = {
-												...raporEditingValues,
-												izin: Number((e.currentTarget as HTMLInputElement).value)
-											})}
-										min="0"
-									/>
-								{:else}
-									{row.izin || ''}
-								{/if}
-							</td>
-							<td class="text-center">
-								{#if isEditing}
-									<input
-										type="number"
-										class="input input-sm bg-base-200 dark:bg-base-300 w-16 text-center dark:border-none"
-										value={raporEditingValues.alfa}
-										onchange={(e) =>
-											(raporEditingValues = {
-												...raporEditingValues,
-												alfa: Number((e.currentTarget as HTMLInputElement).value)
-											})}
-										min="0"
-									/>
-								{:else}
-									{row.alfa || ''}
-								{/if}
-							</td>
-							<td>
-								<div class="flex items-center justify-center gap-2">
-									{#if isEditing}
-										<FormEnhance
-											id={updateFormId}
-											action="?/updateRapor"
-											submitStateChange={(value) => (raporEditingSubmitting = value)}
-											onsuccess={handleRaporUpdateSuccess}
-											showToast
-										>
-											{#snippet children({ submitting })}
-												<input type="hidden" name="muridId" value={row.id} />
-												<input
-													type="hidden"
-													name="sakit"
-													value={raporEditingValues.sakit}
-													data-submitting={submitting ? '1' : '0'}
-												/>
-												<input type="hidden" name="izin" value={raporEditingValues.izin} />
-												<input type="hidden" name="alfa" value={raporEditingValues.alfa} />
-											{/snippet}
-										</FormEnhance>
-										<button
-											type="button"
-											class="btn btn-soft btn-sm btn-error shadow-none"
-											title="Batalkan"
-											onclick={cancelRaporEdit}
-											disabled={raporEditingSubmitting}
-										>
-											<Icon name="close" />
-										</button>
-										<button
-											type="submit"
-											class="btn btn-primary btn-sm shadow-none"
-											title="Simpan"
-											form={updateFormId}
-											disabled={raporEditingSaveDisabled}
-										>
-											{#if raporEditingSubmitting}
-												<span class="loading loading-spinner loading-xs" aria-hidden="true"></span>
-											{/if}
-											<Icon name="save" />
-										</button>
-									{:else}
-										<div class="flex flex-row">
-											<button
-												type="button"
-												class="btn btn-soft btn-sm rounded-r-none shadow-none"
-												onclick={() => startRaporEdit(row)}
-												disabled={!data.tableReady || !canEdit}
-												title={!canEdit
-													? 'Anda tidak memiliki izin untuk mengedit'
-													: 'Edit nilai ketidakhadiran'}
-											>
-												<Icon name="edit" />
-											</button>
-											<FormEnhance
-												id={resetFormId}
-												action="?/resetRapor"
-												onsuccess={handleRaporUpdateSuccess}
-												showToast
-											>
-												<input type="hidden" name="muridId" value={row.id} />
-											</FormEnhance>
-											<button
-												type="submit"
-												class="btn btn-soft btn-warning btn-sm rounded-l-none shadow-none"
-												title="Reset ke nilai asli"
-												form={resetFormId}
-												disabled={!data.tableReady || !canEdit || !row.overridden}
-											>
-												<Icon name="repeat" />
-											</button>
-										</div>
-									{/if}
-								</div>
-							</td>
-						</tr>
-					{/each}
-				</tbody>
-			</table>
-		</div>
-
-		<div class="join mt-4 sm:mx-auto">
-			{#each pages as pageNumber (pageNumber)}
-				<button
-					type="button"
-					class="join-item btn pointer-events-auto"
-					class:btn-active={pageNumber === currentPage}
-					onclick={() => handlePageClick(pageNumber)}
-					aria-current={pageNumber === currentPage ? 'page' : undefined}
-				>
-					{pageNumber}
-				</button>
-			{/each}
-		</div>
+		<TableRapor
+			rows={data.raporRows}
+			search={data.page.search}
+			{canEdit}
+			tableReady={data.tableReady}
+			editingRowId={raporEditingRowId}
+			editingValues={raporEditingValues}
+			editingSubmitting={raporEditingSubmitting}
+			editingSaveDisabled={raporEditingSaveDisabled}
+			onStartEdit={startRaporEdit}
+			onCancelEdit={cancelRaporEdit}
+			onEditValueChange={(v) => (raporEditingValues = v)}
+			onUpdateSuccess={handleRaporUpdateSuccess}
+			onSubmitStateChange={(v) => (raporEditingSubmitting = v)}
+		/>
+		<AbsenPagination {pages} {currentPage} onPageClick={handlePageClick} />
 	{:else if data.mode === 'persentase_harian'}
-		{#if data.persentaseHarianSubjects.length === 0}
-			<div class="alert alert-soft alert-warning mt-6">
-				<Icon name="alert" />
-				<span
-					>Tidak ada jadwal pelajaran untuk hari ini. Persentase kehadiran per mapel tidak tersedia.</span
-				>
-			</div>
-		{:else}
-			<div
-				class="bg-base-100 dark:bg-base-200 mt-4 overflow-x-auto rounded-md shadow-md dark:shadow-none"
-			>
-				<table class="border-base-200 table border text-xs sm:text-sm dark:border-none">
-					<thead>
-						<tr class="bg-base-200 dark:bg-base-300 text-base-content text-left font-bold">
-							<th class="text-center" style="width: 50px; min-width: 40px;">No</th>
-							<th style="min-width: 160px;">Nama</th>
-							{#each data.persentaseHarianSubjects as subject (subject.kodeKegiatan)}
-								<th class="text-center" style="min-width: 80px;">{subject.label}</th>
-							{/each}
-							<th class="text-center" style="min-width: 100px;">%</th>
-						</tr>
-					</thead>
-					<tbody>
-						{#each data.persentaseHarianRows as row (row.muridId)}
-							<tr>
-								<td class="text-center">{row.no}</td>
-								<td>{row.nama}</td>
-								{#each data.persentaseHarianSubjects as subject (subject.kodeKegiatan)}
-									{@const status = row.subjects[subject.kodeKegiatan] ?? ''}
-									<td class="text-center">
-										{#if status === 'H'}
-											<span class="text-success font-bold">H</span>
-										{:else if status === 'S'}
-											<span class="text-warning font-bold">S</span>
-										{:else if status === 'I'}
-											<span class="text-info font-bold">I</span>
-										{:else if status === 'TK'}
-											<span class="text-error font-bold">TK</span>
-										{:else}
-											<span class="text-base-content/40">-</span>
-										{/if}
-									</td>
-								{/each}
-								<td class="text-center font-semibold">{row.persentase}%</td>
-							</tr>
-						{/each}
-					</tbody>
-				</table>
-			</div>
-		{/if}
+		<TablePersentaseHarian
+			subjects={data.persentaseHarianSubjects}
+			rows={data.persentaseHarianRows}
+		/>
 	{:else}
-		<div
-			class="bg-base-100 dark:bg-base-200 mt-4 overflow-x-auto rounded-md shadow-md dark:shadow-none"
-		>
-			<table class="border-base-200 table border dark:border-none">
-				<thead>
-					<tr class="bg-base-200 dark:bg-base-300 text-base-content text-left font-bold">
-						<th style="width: 50px; min-width: 40px;">No</th>
-						<th class="w-full" style="min-width: 160px;">Nama</th>
-						<th class="text-center" style="min-width: 100px;">Hadir</th>
-						<th class="text-center" style="min-width: 120px;">Keterangan</th>
-						<th class="text-center" style="min-width: 120px;">Aksi</th>
-					</tr>
-				</thead>
-				<tbody>
-					{#each data.daftarMurid as murid (murid.id)}
-						{@const isEditing = editingRowId === murid.id}
-						{@const formId = `kehadiran-form-${murid.id}`}
-						<tr class={isEditing ? 'bg-base-200/40' : undefined}>
-							<td>{murid.no}</td>
-							<td>{@html searchQueryMarker(data.page.search, murid.nama)}</td>
-							<td class="text-center">
-								<span
-									class="badge badge-sm whitespace-nowrap {murid.hadir
-										? 'badge-success'
-										: 'badge-soft badge-error'}"
-								>
-									{murid.hadir ? 'Hadir' : 'Tidak hadir'}
-								</span>
-							</td>
-							<td class="overflow-hidden text-center">
-								{#if isEditing}
-									<select
-										class="select select-sm bg-base-200 dark:bg-base-300 w-full truncate text-center dark:border-none"
-										value={editingValues.keterangan}
-										onchange={(event) =>
-											(editingValues = {
-												keterangan: (event.currentTarget as HTMLSelectElement).value
-											})}
-									>
-										<option value="">-</option>
-										<option value="sakit">Sakit</option>
-										<option value="izin">Izin</option>
-										<option value="alfa">Alfa</option>
-									</select>
-								{:else}
-									{displayKeterangan(murid.keterangan)}
-								{/if}
-							</td>
-							<td>
-								<div class="flex items-center justify-center gap-2">
-									{#if isEditing}
-										<FormEnhance
-											id={formId}
-											action="?/update"
-											submitStateChange={(value) => (editingSubmitting = value)}
-											onsuccess={handleUpdateSuccess}
-											showToast
-										>
-											{#snippet children({ submitting })}
-												<input
-													type="hidden"
-													name="muridId"
-													value={murid.id}
-													data-submitting={submitting ? '1' : '0'}
-												/>
-												<input type="hidden" name="keterangan" value={editingValues.keterangan} />
-												<input type="hidden" name="tanggal" value={data.tanggal} />
-											{/snippet}
-										</FormEnhance>
-										<button
-											type="button"
-											class="btn btn-soft btn-sm btn-error shadow-none"
-											title="Batalkan"
-											onclick={cancelEdit}
-											disabled={editingSubmitting}
-										>
-											<Icon name="close" />
-										</button>
-										<button
-											type="submit"
-											class="btn btn-primary btn-sm shadow-none"
-											title="Simpan"
-											form={formId}
-											disabled={editingSaveDisabled}
-										>
-											{#if editingSubmitting}
-												<span class="loading loading-spinner loading-xs" aria-hidden="true"></span>
-											{/if}
-											<Icon name="save" />
-										</button>
-									{:else}
-										<button
-											type="button"
-											class="btn btn-soft btn-sm shadow-none"
-											onclick={() => startEdit(murid)}
-											disabled={!data.tableReady || !canEdit}
-											title={!canEdit ? 'Anda tidak memiliki izin untuk mengedit' : ''}
-										>
-											<Icon name="edit" />
-											Edit
-										</button>
-									{/if}
-								</div>
-							</td>
-						</tr>
-					{/each}
-				</tbody>
-			</table>
-		</div>
-
-		<div class="join mt-4 sm:mx-auto">
-			{#each pages as pageNumber (pageNumber)}
-				<button
-					type="button"
-					class="join-item btn pointer-events-auto"
-					class:btn-active={pageNumber === currentPage}
-					onclick={() => handlePageClick(pageNumber)}
-					aria-current={pageNumber === currentPage ? 'page' : undefined}
-				>
-					{pageNumber}
-				</button>
-			{/each}
-		</div>
+		<TableHarian
+			rows={data.daftarMurid}
+			search={data.page.search}
+			{canEdit}
+			tableReady={data.tableReady}
+			tanggal={data.tanggal}
+			{editingRowId}
+			{editingValues}
+			{editingSubmitting}
+			editingSaveDisabled
+			onStartEdit={startEdit}
+			onCancelEdit={cancelEdit}
+			onEditValueChange={(v) => (editingValues = v)}
+			onUpdateSuccess={handleUpdateSuccess}
+			onSubmitStateChange={(v) => (editingSubmitting = v)}
+		/>
+		<AbsenPagination {pages} {currentPage} onPageClick={handlePageClick} />
 	{/if}
 </div>
-
-<style>
-	:global(form[id^='kehadiran-form-']) {
-		display: contents;
-	}
-	:global(form[id^='rapor-update-form-']),
-	:global(form[id^='rapor-reset-form-']) {
-		display: contents;
-	}
-</style>
