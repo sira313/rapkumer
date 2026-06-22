@@ -1001,9 +1001,8 @@ export async function load({ parent, locals, url, depends }) {
 	let jadwalSaatIni: JadwalSaatIni | null = null;
 
 	if (jenisPresensi === 'tiap_mapel' && tableReady && semuaMurid.length > 0) {
-		const dayIndex = new Date().getDay();
 		const dayNames = ['minggu', 'senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu'];
-		const todayHari = simHari ?? dayNames[dayIndex];
+		const todayHari = simHari ?? dayNames[new Date(tanggal + 'T00:00:00').getDay()];
 
 		const jadwalHariIni = await db.query.tableJadwalPelajaran.findMany({
 			columns: { kodeKegiatan: true, jamKe: true },
