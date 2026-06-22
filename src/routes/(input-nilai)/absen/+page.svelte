@@ -360,7 +360,6 @@
 			params.set('simHari', simulasiHari);
 			params.set('simJam', simulasiJam);
 		});
-		showSimulasi = false;
 	}
 
 	function resetSimulasi() {
@@ -671,7 +670,21 @@
 									});
 								}}
 							>
-								Isi Sekaligus
+								<Icon name="copy" /> Isi Sekaligus
+							</button>
+						</li>
+						<li>
+							<button
+								type="button"
+								class="w-full text-left {simActive ? 'text-warning' : ''}"
+								aria-label="Simulasi hari & jam"
+								title={simActive
+									? `Simulasi: ${data.simulasiHari} ${data.simulasiJam}`
+									: 'Simulasi hari & jam'}
+								onclick={() => (showSimulasi = !showSimulasi)}
+							>
+								<Icon name={simActive ? 'pause' : 'play'} />
+								Simulasi
 							</button>
 						</li>
 					</ul>
@@ -779,17 +792,7 @@
 				>
 					<Icon name="del" />
 				</button>
-				<button
-					type="button"
-					class="btn btn-soft rounded-none shadow-none {simActive ? 'btn-warning' : ''}"
-					aria-label="Simulasi hari & jam"
-					title={simActive
-						? `Simulasi: ${data.simulasiHari} ${data.simulasiJam}`
-						: 'Simulasi hari & jam'}
-					onclick={() => (showSimulasi = !showSimulasi)}
-				>
-					<Icon name={simActive ? 'pause' : 'play'} />
-				</button>
+
 			</div>
 		</div>
 		<button
@@ -803,27 +806,33 @@
 	</div>
 
 	{#if showSimulasi}
-		<div class="bg-base-200 rounded-box mb-4 flex flex-wrap items-end gap-3 p-3">
-			<label class="flex flex-col gap-1">
-				<span class="text-sm font-semibold">Hari</span>
-				<select class="select select-sm bg-base-100 w-32" bind:value={simulasiHari}>
-					{#each ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'] as h (h)}
-						<option>{h}</option>
-					{/each}
-				</select>
-			</label>
-			<label class="flex flex-col gap-1">
-				<span class="text-sm font-semibold">Jam</span>
-				<input type="time" class="input input-sm bg-base-100 w-32" bind:value={simulasiJam} />
-			</label>
-			<button type="button" class="btn btn-primary btn-sm shadow-none" onclick={applySimulasi}>
-				<Icon name="play" /> Terapkan
-			</button>
+		<div class="bg-base-200 rounded-box mb-4 p-3 shadow-md dark:shadow-none">
+			<div class="flex flex-col sm:flex-row sm:items-end gap-3">
+				<label class="flex flex-col gap-1 sm:flex-1">
+					<span class="text-sm font-semibold">Hari</span>
+					<select class="w-full select select-sm bg-base-100 dark:border-none" bind:value={simulasiHari}>
+						{#each ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'] as h (h)}
+							<option>{h}</option>
+						{/each}
+					</select>
+				</label>
+				<label class="flex flex-col gap-1 sm:flex-1">
+					<span class="text-sm font-semibold">Jam</span>
+					<input type="time" class="w-full input input-sm bg-base-100 dark:border-none" bind:value={simulasiJam} />
+				</label>
+				<button type="button" class="btn btn-primary btn-sm shadow-none" onclick={applySimulasi}>
+					<Icon name="play" /> Terapkan
+				</button>
 			{#if simActive}
 				<button type="button" class="btn btn-soft btn-sm shadow-none" onclick={resetSimulasi}>
 					Reset
 				</button>
+			{:else}
+				<button type="button" class="btn btn-soft btn-sm shadow-none" onclick={() => (showSimulasi = false)}>
+					Tutup
+				</button>
 			{/if}
+			</div>
 		</div>
 	{/if}
 
