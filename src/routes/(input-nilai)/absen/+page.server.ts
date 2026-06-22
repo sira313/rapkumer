@@ -107,6 +107,12 @@ type KehadiranRow = {
 	updatedAt: string | null;
 };
 
+type PersentaseBulananRow = {
+	no: number;
+	nama: string;
+	persentase: number;
+};
+
 type PersentaseHarianSubject = {
 	kodeKegiatan: string;
 	label: string;
@@ -245,7 +251,9 @@ export async function load({ parent, locals, url, depends }) {
 			bulan,
 			tahun: tahunQuery,
 			daysInMonth: 0,
+			totalHariBelajar: 0,
 			bulananRows: [] as BulananRow[],
+			persentaseBulananRows: [] as PersentaseBulananRow[],
 			redDays: [] as number[],
 			presensiReady,
 			presensiWarningMessage,
@@ -484,7 +492,265 @@ export async function load({ parent, locals, url, depends }) {
 			bulan,
 			tahun: tahunQuery,
 			daysInMonth,
+			totalHariBelajar: daysInMonth - redDays.length,
 			bulananRows,
+			persentaseBulananRows: [] as PersentaseBulananRow[],
+			redDays,
+			presensiReady,
+			presensiWarningMessage,
+			jenisPresensi: presensiSettings?.jenisPresensi ?? 'wali_kelas_saja',
+			persentaseHarianSubjects: [] as PersentaseHarianSubject[],
+			persentaseHarianRows: [] as PersentaseHarianRow[],
+			jadwalSaatIni: null,
+			simulasiHari: simHari,
+			simulasiJam: simJam
+		};
+	}
+
+	if (mode === 'persentase_bulanan') {
+		const defaultPersentaseBulanan = {
+			tableReady: true,
+			daftarMurid: [] as KehadiranRow[],
+			page: {
+				search,
+				currentPage: 1,
+				totalPages: 1,
+				totalItems: 0,
+				perPage: PER_PAGE
+			} as PageState,
+			totalMurid: 0,
+			muridCount: 0,
+			tanggal,
+			mode: 'persentase_bulanan' as const,
+			bulan,
+			tahun: tahunQuery,
+			daysInMonth: 0,
+			totalHariBelajar: 0,
+			bulananRows: [] as BulananRow[],
+			persentaseBulananRows: [] as PersentaseBulananRow[],
+			redDays: [] as number[],
+			presensiReady,
+			presensiWarningMessage,
+			jenisPresensi: presensiSettings?.jenisPresensi ?? 'wali_kelas_saja',
+			persentaseHarianSubjects: [] as PersentaseHarianSubject[],
+			persentaseHarianRows: [] as PersentaseHarianRow[],
+			jadwalSaatIni: null,
+			simulasiHari: simHari ?? null,
+			simulasiJam: simJam ?? null
+		};
+
+		if (!sekolahId || !kelasAktif?.id) return defaultPersentaseBulanan;
+
+		if (!Number.isInteger(bulan) || bulan < 1 || bulan > 12) return defaultPersentaseBulanan;
+		if (!Number.isInteger(tahunQuery) || tahunQuery < 2000 || tahunQuery > 2099)
+			return defaultPersentaseBulanan;
+
+		const [{ totalItems }] = await db
+			.select({ totalItems: sql<number>`count(*)` })
+			.from(tableMurid)
+			.where(
+				search
+					? and(
+							eq(tableMurid.sekolahId, sekolahId),
+							eq(tableMurid.kelasId, kelasAktif.id),
+							sql`${tableMurid.nama} LIKE ${'%' + search + '%'} COLLATE NOCASE`
+						)
+					: and(eq(tableMurid.sekolahId, sekolahId), eq(tableMurid.kelasId, kelasAktif.id))
+			);
+
+		const total = totalItems ?? 0;
+		const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
+		const currentPage = Math.min(Math.max(pageNumber, 1), totalPages);
+		const offset = (currentPage - 1) * PER_PAGE;
+
+		if (pageNumber !== currentPage) {
+			const params = new URLSearchParams(url.searchParams);
+			if (currentPage <= 1) {
+				params.delete('page');
+			} else {
+				params.set('page', String(currentPage));
+			}
+			throw redirect(303, `${url.pathname}${params.size ? `?${params}` : ''}`);
+		}
+
+		const [{ muridCount }] = await db
+			.select({ muridCount: sql<number>`count(*)` })
+			.from(tableMurid)
+			.where(and(eq(tableMurid.sekolahId, sekolahId), eq(tableMurid.kelasId, kelasAktif.id)));
+
+		const daysInMonth = getDaysInMonth(tahunQuery, bulan);
+		const monthStart = `${tahunQuery}-${String(bulan).padStart(2, '0')}-01`;
+		const monthEnd = `${tahunQuery}-${String(bulan).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
+
+		const baseFilter = and(
+			eq(tableMurid.sekolahId, sekolahId),
+			eq(tableMurid.kelasId, kelasAktif.id)
+		);
+		const searchFilter = search
+			? and(baseFilter, sql`${tableMurid.nama} LIKE ${'%' + search + '%'} COLLATE NOCASE`)
+			: baseFilter;
+
+		const semuaMurid = await db.query.tableMurid.findMany({
+			columns: { id: true, nama: true },
+			where: searchFilter,
+			orderBy: asc(tableMurid.nama),
+			limit: PER_PAGE,
+			offset
+		});
+
+		const muridIds = semuaMurid.map((m) => m.id);
+
+		const hariSekolah = presensiSettings?.hariSekolah ?? 6;
+
+		// Build libur date set
+		const liburDates = new Set<string>();
+		if (presensiSettings?.liburNasional) {
+			try {
+				const parsed: string[] = JSON.parse(presensiSettings.liburNasional);
+				if (Array.isArray(parsed)) {
+					for (const d of parsed) {
+						if (/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+							const [y, m] = d.split('-').map(Number);
+							if (y === tahunQuery && m === bulan) {
+								liburDates.add(d);
+							}
+						}
+					}
+				}
+			} catch {
+				/* ignore */
+			}
+		}
+		if (presensiSettings?.liburSemester) {
+			try {
+				const parsed: Array<{ start: string; end: string }> = JSON.parse(
+					presensiSettings.liburSemester
+				);
+				if (Array.isArray(parsed)) {
+					for (const range of parsed) {
+						if (
+							range?.start &&
+							range?.end &&
+							/^\d{4}-\d{2}-\d{2}$/.test(range.start) &&
+							/^\d{4}-\d{2}-\d{2}$/.test(range.end)
+						) {
+							const s = new Date(range.start + 'T00:00:00');
+							const e = new Date(range.end + 'T00:00:00');
+							const cur = new Date(s);
+							while (cur <= e) {
+								const y = cur.getFullYear();
+								const m = cur.getMonth() + 1;
+								const day = cur.getDate();
+								const tgl = dateStr(y, m, day);
+								if (y === tahunQuery && m === bulan && !liburDates.has(tgl)) {
+									liburDates.add(tgl);
+								}
+								cur.setDate(cur.getDate() + 1);
+							}
+						}
+					}
+				}
+			} catch {
+				/* ignore */
+			}
+		}
+
+		// Compute red days (weekends + holidays)
+		const redDays: number[] = [];
+		for (let d = 1; d <= daysInMonth; d++) {
+			const isWeekend =
+				hariSekolah === 5
+					? isSaturday(tahunQuery, bulan, d) || isSunday(tahunQuery, bulan, d)
+					: isSunday(tahunQuery, bulan, d);
+			const tgl = dateStr(tahunQuery, bulan, d);
+			if (isWeekend || liburDates.has(tgl)) {
+				redDays.push(d);
+			}
+		}
+
+		const totalHariBelajar = daysInMonth - redDays.length;
+
+		// Fetch ketidakhadiran and absensi for the month (global only)
+		const allKetidakhadiran = await db.query.tableKetidakhadiranHarian.findMany({
+			columns: { muridId: true, tanggal: true, keterangan: true },
+			where: and(
+				inArray(tableKetidakhadiranHarian.muridId, muridIds),
+				sql`${tableKetidakhadiranHarian.tanggal} >= ${monthStart}`,
+				sql`${tableKetidakhadiranHarian.tanggal} <= ${monthEnd}`,
+				sql`${tableKetidakhadiranHarian.mataPelajaranId} IS NULL`
+			)
+		});
+
+		const khMap = new Map<string, string | null>();
+		for (const kh of allKetidakhadiran) {
+			khMap.set(`${kh.muridId}:${kh.tanggal}`, kh.keterangan);
+		}
+
+		const monthStartISO = `${monthStart}T00:00:00.000Z`;
+		const monthEndISO = `${monthEnd}T23:59:59.999Z`;
+
+		const allAbsensi = await db.query.tableAbsensi.findMany({
+			columns: { muridId: true, waktu: true },
+			where: and(
+				inArray(tableAbsensi.muridId, muridIds),
+				sql`${tableAbsensi.waktu} >= ${monthStartISO}`,
+				sql`${tableAbsensi.waktu} <= ${monthEndISO}`,
+				sql`${tableAbsensi.mataPelajaranId} IS NULL`
+			)
+		});
+
+		const absensiSet = new Set<string>();
+		for (const a of allAbsensi) {
+			absensiSet.add(`${a.muridId}:${a.waktu.slice(0, 10)}`);
+		}
+
+		function isHadir(muridId: number, day: number): boolean {
+			const tgl = dateStr(tahunQuery, bulan, day);
+			const keterangan = khMap.get(`${muridId}:${tgl}`);
+			if (keterangan !== undefined) return keterangan === null;
+			if (absensiSet.has(`${muridId}:${tgl}`)) return true;
+			return false;
+		}
+
+		const persentaseBulananRows: PersentaseBulananRow[] = semuaMurid.map((murid, index) => {
+			let countHadir = 0;
+
+			for (let d = 1; d <= daysInMonth; d++) {
+				if (redDays.includes(d)) continue;
+				if (isHadir(murid.id, d)) countHadir++;
+			}
+
+			const persentase = totalHariBelajar > 0 ? Math.round((countHadir / totalHariBelajar) * 100) : 0;
+
+			return {
+				no: index + 1,
+				nama: murid.nama,
+				persentase
+			};
+		});
+
+		return {
+			meta: { title: 'Kehadiran Murid' } satisfies PageMeta,
+			tableReady: true,
+			page: {
+				search,
+				currentPage,
+				totalPages,
+				totalItems: total,
+				perPage: PER_PAGE
+			} satisfies PageState,
+			daftarMurid: [],
+			semuaMurid: [],
+			totalMurid: total,
+			muridCount,
+			tanggal,
+			mode: 'persentase_bulanan' as const,
+			bulan,
+			tahun: tahunQuery,
+			daysInMonth,
+			totalHariBelajar,
+			bulananRows: [] as BulananRow[],
+			persentaseBulananRows,
 			redDays,
 			presensiReady,
 			presensiWarningMessage,
@@ -515,9 +781,11 @@ export async function load({ parent, locals, url, depends }) {
 			bulan: 0,
 			tahun: 0,
 			daysInMonth: 0,
+			totalHariBelajar: 0,
 			bulananRows: [] as BulananRow[],
 			raporRows: [] as RaporRow[],
-			redDays: [] as number[],
+			persentaseBulananRows: [] as PersentaseBulananRow[],
+			redDays: [],
 			tanggalMulaiRapor: '',
 			tanggalAkhirRapor: '',
 			presensiReady,
@@ -803,8 +1071,10 @@ export async function load({ parent, locals, url, depends }) {
 			bulan: 0,
 			tahun: 0,
 			daysInMonth: 0,
+			totalHariBelajar: 0,
 			bulananRows: [] as BulananRow[],
 			raporRows,
+			persentaseBulananRows: [] as PersentaseBulananRow[],
 			redDays: [] as number[],
 			tanggalMulaiRapor,
 			tanggalAkhirRapor,
@@ -835,12 +1105,14 @@ export async function load({ parent, locals, url, depends }) {
 			totalMurid: 0,
 			muridCount: 0,
 			tanggal,
-			mode: (mode === 'persentase_harian' ? 'persentase_harian' : 'harian') as const,
+			mode: (mode === 'persentase_harian' ? 'persentase_harian' : 'harian') as 'harian' | 'persentase_harian',
 			bulan: 0,
 			tahun: 0,
 			daysInMonth: 0,
+			totalHariBelajar: 0,
 			bulananRows: [] as BulananRow[],
 			raporRows: [] as RaporRow[],
+			persentaseBulananRows: [] as PersentaseBulananRow[],
 			redDays: [] as number[],
 			tanggalMulaiRapor: '',
 			tanggalAkhirRapor: '',
@@ -1205,12 +1477,14 @@ export async function load({ parent, locals, url, depends }) {
 		totalMurid: total,
 		muridCount: muridCount ?? 0,
 		tanggal,
-		mode: (mode === 'persentase_harian' ? 'persentase_harian' : 'harian') as const,
+		mode: (mode === 'persentase_harian' ? 'persentase_harian' : 'harian') as 'harian' | 'persentase_harian',
 		bulan: 0,
 		tahun: 0,
 		daysInMonth: 0,
+		totalHariBelajar: 0,
 		bulananRows: [] as BulananRow[],
 		raporRows: [] as RaporRow[],
+		persentaseBulananRows: [] as PersentaseBulananRow[],
 		redDays: [] as number[],
 		tanggalMulaiRapor: '',
 		tanggalAkhirRapor: '',

@@ -11,6 +11,7 @@
 	import TableBulanan from '$lib/components/absen/table-bulanan.svelte';
 	import TableRapor from '$lib/components/absen/table-rapor.svelte';
 	import TablePersentaseHarian from '$lib/components/absen/table-persentase-harian.svelte';
+	import TablePersentaseBulanan from '$lib/components/absen/table-persentase-bulanan.svelte';
 	import AbsenPagination from '$lib/components/absen/absen-pagination.svelte';
 	import { toast } from '$lib/components/toast.svelte';
 	import { onDestroy, onMount } from 'svelte';
@@ -87,7 +88,7 @@
 		totalMurid: number;
 		muridCount: number;
 		tanggal: string;
-		mode: 'harian' | 'bulanan' | 'rapor' | 'persentase_harian';
+		mode: 'harian' | 'bulanan' | 'rapor' | 'persentase_harian' | 'persentase_bulanan';
 		bulan: number;
 		tahun: number;
 		daysInMonth: number;
@@ -102,6 +103,12 @@
 		}>;
 		raporRows: RaporRow[];
 		redDays: number[];
+		totalHariBelajar: number;
+		persentaseBulananRows: Array<{
+			no: number;
+			nama: string;
+			persentase: number;
+		}>;
 		tanggalMulaiRapor: string;
 		tanggalAkhirRapor: string;
 		presensiReady: boolean;
@@ -316,16 +323,16 @@
 		return data.tanggal === `${y}-${m}-${day}`;
 	});
 
-	let selectedMode = $state<'harian' | 'bulanan' | 'rapor' | 'persentase_harian'>(data.mode);
-	let selectedBulan = $state(data.mode === 'bulanan' ? data.bulan : new Date().getMonth() + 1);
-	let selectedTahun = $state(data.mode === 'bulanan' ? data.tahun : new Date().getFullYear());
+	let selectedMode = $state<'harian' | 'bulanan' | 'rapor' | 'persentase_harian' | 'persentase_bulanan'>(data.mode);
+	let selectedBulan = $state(data.mode === 'bulanan' || data.mode === 'persentase_bulanan' ? data.bulan : new Date().getMonth() + 1);
+	let selectedTahun = $state(data.mode === 'bulanan' || data.mode === 'persentase_bulanan' ? data.tahun : new Date().getFullYear());
 
 	$effect(() => {
 		selectedMode = data.mode;
 	});
 
 	$effect(() => {
-		if (data.mode === 'bulanan') {
+		if (data.mode === 'bulanan' || data.mode === 'persentase_bulanan') {
 			selectedBulan = data.bulan;
 			selectedTahun = data.tahun;
 		}
@@ -359,6 +366,11 @@
 				params.set('bulan', String(selectedBulan));
 				params.set('tahun', String(selectedTahun));
 				params.delete('tanggal');
+			} else if (selectedMode === 'persentase_bulanan') {
+				params.set('mode', 'persentase_bulanan');
+				params.set('bulan', String(selectedBulan));
+				params.set('tahun', String(selectedTahun));
+				params.delete('tanggal');
 			} else if (selectedMode === 'rapor') {
 				params.set('mode', 'rapor');
 				params.delete('bulan');
@@ -384,9 +396,9 @@
 	}
 
 	function viewDate() {
-		if (data.mode === 'bulanan') {
+		if (data.mode === 'bulanan' || data.mode === 'persentase_bulanan') {
 			void applyNavigation((params) => {
-				params.set('mode', 'bulanan');
+				params.set('mode', data.mode);
 				params.set('bulan', String(selectedBulan));
 				params.set('tahun', String(selectedTahun));
 				params.delete('page');
@@ -427,7 +439,7 @@
 	}
 
 	const isCurrentBulan = $derived.by(() => {
-		if (data.mode !== 'bulanan') return false;
+		if (data.mode !== 'bulanan' && data.mode !== 'persentase_bulanan') return false;
 		const now = new Date();
 		return data.bulan === now.getMonth() + 1 && data.tahun === now.getFullYear();
 	});
@@ -435,7 +447,7 @@
 	function resetToCurrentBulan() {
 		const now = new Date();
 		void applyNavigation((params) => {
-			params.set('mode', 'bulanan');
+			params.set('mode', data.mode);
 			params.set('bulan', String(now.getMonth() + 1));
 			params.set('tahun', String(now.getFullYear()));
 			params.delete('page');
@@ -550,6 +562,9 @@
 				{#if data.mode === 'bulanan'}
 					Kehadiran murid bulan -
 					<span class="text-primary">{bulanList[data.bulan - 1]} {data.tahun}</span>
+				{:else if data.mode === 'persentase_bulanan'}
+					Persentase Kehadiran bulan -
+					<span class="text-primary">{bulanList[data.bulan - 1]} {data.tahun}</span>
 				{:else if data.mode === 'rapor'}
 					Rekap Kehadiran Rapor
 					{#if data.tanggalMulaiRapor && data.tanggalAkhirRapor}
@@ -575,7 +590,7 @@
 				<p class="text-base-content/80 block text-sm">{kelasAktifLabel}</p>
 			{/if}
 		</div>
-		{#if data.mode === 'rapor'}{:else}
+		{#if data.mode === 'rapor' || data.mode === 'persentase_bulanan'}{:else}
 			{@const currentMapel = data.jadwalSaatIni}
 			<div class="flex max-sm:w-full">
 				<button
@@ -650,7 +665,7 @@
 	<div class="mb-4 flex items-start justify-between gap-2 max-sm:flex-col sm:flex-row">
 		<div class="flex flex-wrap items-center gap-2 max-sm:w-full">
 			<div class="flex flex-row max-sm:w-full">
-				{#if data.mode === 'bulanan'}
+				{#if data.mode === 'bulanan' || data.mode === 'persentase_bulanan'}
 					<div class="min-w-0 flex-1 overflow-hidden">
 						<select
 							class="select bg-base-200 dark:bg-base-300 w-full truncate rounded-r-none max-sm:w-full dark:border-none"
@@ -702,10 +717,10 @@
 				<button
 					type="button"
 					class="btn btn-soft rounded-none shadow-none"
-					aria-label={data.mode === 'bulanan' ? 'Kembali ke bulan ini' : 'Kembali ke hari ini'}
-					title={data.mode === 'bulanan' ? 'Kembali ke bulan ini' : 'Kembali ke hari ini'}
-					onclick={data.mode === 'bulanan' ? resetToCurrentBulan : resetToToday}
-					disabled={data.mode === 'bulanan'
+					aria-label={data.mode === 'bulanan' || data.mode === 'persentase_bulanan' ? 'Kembali ke bulan ini' : 'Kembali ke hari ini'}
+					title={data.mode === 'bulanan' || data.mode === 'persentase_bulanan' ? 'Kembali ke bulan ini' : 'Kembali ke hari ini'}
+					onclick={data.mode === 'bulanan' || data.mode === 'persentase_bulanan' ? resetToCurrentBulan : resetToToday}
+					disabled={data.mode === 'bulanan' || data.mode === 'persentase_bulanan'
 						? isCurrentBulan
 						: data.mode === 'rapor'
 							? true
@@ -721,15 +736,18 @@
 						? 'Guru mapel tidak dapat menghapus presensi'
 						: data.mode === 'bulanan'
 							? 'Tidak dapat menghapus dalam mode bulanan'
-							: data.mode === 'rapor'
-								? 'Tidak dapat menghapus dalam mode rapor'
-								: data.mode === 'persentase_harian'
-									? 'Tidak dapat menghapus dalam mode persentase harian'
-									: !canEdit
-										? 'Anda tidak memiliki izin untuk menghapus presensi'
-										: 'Hapus data presensi tanggal ini'}
+							: data.mode === 'persentase_bulanan'
+								? 'Tidak dapat menghapus dalam mode persentase bulanan'
+								: data.mode === 'rapor'
+									? 'Tidak dapat menghapus dalam mode rapor'
+									: data.mode === 'persentase_harian'
+										? 'Tidak dapat menghapus dalam mode persentase harian'
+										: !canEdit
+											? 'Anda tidak memiliki izin untuk menghapus presensi'
+											: 'Hapus data presensi tanggal ini'}
 					onclick={openDeleteConfirm}
 					disabled={data.mode === 'bulanan' ||
+						data.mode === 'persentase_bulanan' ||
 						data.mode === 'rapor' ||
 						data.mode === 'persentase_harian' ||
 						!canEdit ||
@@ -814,16 +832,18 @@
 						| 'harian'
 						| 'bulanan'
 						| 'rapor'
-						| 'persentase_harian';
+						| 'persentase_harian'
+						| 'persentase_bulanan';
 					handleModeChange();
 				}}
 			>
 				<option value="harian">Harian</option>
 				<option value="bulanan">Bulanan</option>
-				<option value="rapor">Rapor</option>
 				{#if data.jenisPresensi === 'tiap_mapel'}
 					<option value="persentase_harian">Persentase Harian</option>
 				{/if}
+				<option value="persentase_bulanan">Persentase Bulanan</option>
+				<option value="rapor">Rapor</option>
 			</select>
 		</div>
 	</form>
@@ -833,7 +853,7 @@
 			<Icon name="alert" />
 			<span>Belum ada murid di kelas ini. Tambahkan murid terlebih dahulu.</span>
 		</div>
-	{:else if data.mode === 'persentase_harian' && !data.presensiReady && data.presensiWarningMessage}
+	{:else if (data.mode === 'persentase_harian' || data.mode === 'persentase_bulanan') && !data.presensiReady && data.presensiWarningMessage}
 		<div class="alert alert-soft alert-warning mt-6">
 			<Icon name="alert" />
 			<span>{data.presensiWarningMessage}</span>
@@ -878,6 +898,13 @@
 			onEditValueChange={(v) => (raporEditingValues = v)}
 			onUpdateSuccess={handleRaporUpdateSuccess}
 			onSubmitStateChange={(v) => (raporEditingSubmitting = v)}
+		/>
+		<AbsenPagination {pages} {currentPage} onPageClick={handlePageClick} />
+	{:else if data.mode === 'persentase_bulanan'}
+		<TablePersentaseBulanan
+			rows={data.persentaseBulananRows}
+			namaBulan={bulanList[data.bulan - 1] ?? ''}
+			totalHariBelajar={data.totalHariBelajar}
 		/>
 		<AbsenPagination {pages} {currentPage} onPageClick={handlePageClick} />
 	{:else if data.mode === 'persentase_harian'}
