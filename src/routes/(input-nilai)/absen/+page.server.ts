@@ -1402,6 +1402,21 @@ export async function load({ parent, locals, url, depends }) {
 				.map((j) => j.kodeKegiatan)
 				.filter((k) => !tambahanKode.has(k.toUpperCase()));
 
+			// Include UPB if scheduled for any class today (school-wide activity)
+			if (!uniqueKode.includes('UPB')) {
+				const upbAda = await db.query.tableJadwalPelajaran.findFirst({
+					columns: { id: true },
+					where: and(
+						eq(tableJadwalPelajaran.sekolahId, sekolahId),
+						eq(tableJadwalPelajaran.hari, todayHari),
+						eq(tableJadwalPelajaran.kodeKegiatan, 'UPB')
+					)
+				});
+				if (upbAda) {
+					uniqueKode.unshift('UPB');
+				}
+			}
+
 			if (uniqueKode.length === 0) {
 				persentaseHarianSubjects = [];
 				persentaseHarianRows = [];
