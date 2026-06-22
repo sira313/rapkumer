@@ -4,89 +4,164 @@
 
 <a href='https://nodejs.org/en' target="_blank"><img alt='node.js' src='https://img.shields.io/badge/Node.JS-100000?style=for-the-badge&logo=node.js&logoColor=35C354&labelColor=000000&color=35C354'/></a> <a href='https://svelte.dev/' target="_blank"><img alt='Svelte' src='https://img.shields.io/badge/Svelte-100000?style=for-the-badge&logo=Svelte&logoColor=F45A20&labelColor=000000&color=F45A20'/></a> <a href='https://orm.drizzle.team/' target="_blank"><img alt='Drizzle' src='https://img.shields.io/badge/Drizzle_ORM-100000?style=for-the-badge&logo=Drizzle&logoColor=FAF61D&labelColor=000000&color=FAF61D'/></a> <a href='https://sqlite.org/' target="_blank"><img alt='Sqlite' src='https://img.shields.io/badge/SQLite3-100000?style=for-the-badge&logo=Sqlite&logoColor=5EA765&labelColor=000000&color=5EA765'/></a> <a href='https://tailwindcss.com/' target="_blank"><img alt='tailwindcss' src='https://img.shields.io/badge/Tailwind_CSS-100000?style=for-the-badge&logo=tailwindcss&logoColor=36DBFF&labelColor=000000&color=36DBFF'/></a> <a href='https://daisyui.com/' target="_blank"><img alt='DaisyUI' src='https://img.shields.io/badge/Daisy_UI-100000?style=for-the-badge&logo=DaisyUI&logoColor=FFEC25&labelColor=000000&color=FFEC25'/></a>
 
-Rapkumer adalah alternatif E-Rapor Kurikulum Merdeka. Aplikasi ini menawarkan kecepatan, performa, dan UI yang tidak bikin sakit mata.
+> Rapkumer awalnya dibuat sebagai alternatif E-Rapor Kurikulum Merdeka.
 
-Dokumentasi lengkap proyek disusun dalam bahasa Indonesia. File ini memberi ringkasan cepat untuk pengguna
-dan pengembang; bagian teknis dan pedoman kontribusi ada di folder `docs/`.
+Seiring perkembangannya, Rapkumer kini menjadi aplikasi terpadu yang membantu berbagai kebutuhan administrasi guru dan sekolah.
+
+> **Mengapa masih menggunakan Rapkumer jika pemerintah sudah menyediakan E-Rapor resmi?**
+
+Karena E-Rapor resmi berfokus pada input nilai akhir serta penentuan Tujuan Pembelajaran (TP) yang tercapai atau belum tercapai secara manual. Rapkumer hadir sebagai pelengkap proses tersebut dengan menyediakan pencatatan penilaian harian, pengolahan nilai, hingga rekapitulasi secara otomatis sehingga pekerjaan guru menjadi lebih praktis.
+
+Dokumentasi lengkap aplikasi ini disusun dalam bahasa Indonesia. File README ini memberikan gambaran singkat untuk pengguna dan pengembang, sedangkan pembahasan teknis serta panduan kontribusi tersedia di folder `docs/`.
 
 ## Fitur Utama
 
-- Mengelola data sekolah, kelas, pegawai, murid, dan mata pelajaran
-- Input nilai formatif dan sumatif sesuai asesmen yang tersedia
-- Menyimpan catatan wali kelas dan informasi kehadiran
-- Mencetak rapor, piagam, dan dokumen pendukung yang siap cetak
+- Mengelola data sekolah, kelas, dan murid.
+- Input nilai intrakurikuler berdasarkan Tujuan Pembelajaran (TP), meliputi penilaian harian, STS, SAS, dan formatif.
+- Jadwal pembelajaran beserta bell sekolah yang berjalan secara otomatis.
+- Presensi murid menggunakan QR Scan atau input langsung secara massal oleh guru mata pelajaran maupun wali kelas.
+- Jurnal harian guru.
+- Nilai dan rapor keasramaan khusus Sekolah Rakyat.
+- Pembuatan rapor, piagam, dan berbagai dokumen pendukung yang siap dicetak.
+- Mendukung penggunaan campuran huruf latin dan arab pada Capaian Pembelajaran (CP) di rapor.
+- Ekspor nilai dan Tujuan Pembelajaran (TP) ke file Excel yang dapat diimpor ke E-Rapor Kemdikdas.
 
-## Siapa yang Cocok Menggunakan
+## Siapa yang Cocok Menggunakan Rapkumer?
 
-- Mereka yang bosan akan sistem lama yang penuh bug, lelet birokasi dan berani mencoba hal baru.
+- Sekolah yang tidak dapat menggunakan E-Rapor Kemdikdas karena alasan tertentu.
+- Sekolah yang sudah menggunakan E-Rapor tetapi ingin seluruh proses penilaian harian tercatat secara elektronik sehingga rekapitulasi nilai tidak lagi dilakukan secara manual di Excel. Nilai akhir cukup diimpor ke E-Rapor.
+- Sekolah swasta, khususnya sekolah Islam, yang membutuhkan dukungan penulisan Capaian Pembelajaran (CP) dengan kombinasi huruf latin dan arab.
 
-## Quickstart — Versi Pengguna (Windows installer)
+## Quickstart
 
-1. Kunjungi halaman rilis: https://github.com/sira313/raporkumer/releases
-2. Unduh `RapkumerSetup.exe` dan jalankan installer.
-3. Setelah terpasang, buka aplikasi dari shortcut yang tersedia.
+### Versi Pengguna (Windows Installer)
 
-Untuk instruksi instalasi manual dan pengembangan, baca [docs/DEVELOPMENT.md](https://github.com/sira313/raporkumer/blob/main/docs/DEVELOPMENT.md).
+1. Kunjungi halaman rilis:
+   https://github.com/sira313/raporkumer/releases
+2. Unduh file `RapkumerSetup.exe`.
+3. Jalankan installer dan ikuti proses instalasi.
+4. Setelah selesai, buka aplikasi melalui shortcut yang tersedia.
 
-## Menjalankan Versi Pengembangan (untuk pengembang)
+### Versi Linux dan Sistem Operasi Lain (Menggunakan Node.js)
 
-Persyaratan:
+#### Persyaratan
 
 - Node.js 20 LTS (direkomendasikan)
 - pnpm
-- Google Chrome atau Chromium (untuk rendering PDF via PagedJS + Puppeteer)
+- Google Chrome atau Chromium (digunakan untuk proses rendering PDF melalui PagedJS + Puppeteer)
 
-Langkah singkat:
+#### Instalasi
+
+1. Clone repository.
+
+    ```bash
+    git clone https://github.com/sira313/raporkumer && cd raporkumer
+    ```
+
+2. Install seluruh dependency.
+
+    ```bash
+    pnpm install
+    ```
+
+3. Build aplikasi dan jalankan.
+
+    ```bash
+    pnpm build && node build
+    ```
+
+Untuk panduan instalasi manual serta proses pengembangan yang lebih lengkap, silakan baca:
+
+`docs/DEVELOPMENT.md`
+
+## Menjalankan Versi Pengembangan (Untuk Pengembang)
+
+### Persyaratan
+
+- Node.js 20 LTS (direkomendasikan)
+- pnpm
+- Google Chrome atau Chromium (digunakan untuk rendering PDF melalui PagedJS + Puppeteer)
+
+### Langkah Singkat
 
 ```bash
 pnpm install
 pnpm dev -- --port 5173
 ```
 
-Buka http://localhost:5173 di browser. Jika port 5173 sudah digunakan, jalankan dengan `--port 5174`.
+Selanjutnya buka:
 
-Beberapa skrip penting (lihat `package.json`):
+```
+http://localhost:5173
+```
 
-- `pnpm dev` — jalankan server pengembangan (script `node scripts/dev.js` yang juga menjalankan generator ikon)
-- `pnpm build` — buat build produksi
-- `pnpm db:push` — jalankan migrasi database (Drizzle)
-- `pnpm db:studio` — buka Drizzle Studio untuk inspeksi database
-- `pnpm lint` dan `pnpm check` — cek format, lint, dan tipe Svelte
+Jika port `5173` sedang digunakan, jalankan dengan port lain, misalnya:
 
-Lokasi database lokal: `data/database.sqlite3`.
+```
+--port 5174
+```
 
-## Struktur Proyek (singkat)
+### Beberapa Skrip Penting
 
-- `src/` — kode sumber SvelteKit (komponen, rute, server)
-- `static/` — aset statis yang disajikan apa adanya
-- `scripts/` — skrip utilitas (migrasi, seed, generator ikon)
-- `data/` — file database lokal dan upload
-- `drizzle/` — file migrasi SQL yang digunakan oleh Drizzle
+(Lihat juga `package.json`)
 
-Lebih detil tentang pola implementasi (Svelte 5 runes, DaisyUI, Tailwind v4, Drizzle ORM) ada di
-[docs/DEVELOPMENT.md](https://github.com/sira313/raporkumer/blob/main/docs/DEVELOPMENT.md).
+- `pnpm dev` — Menjalankan server pengembangan (`node scripts/dev.js`) sekaligus generator ikon.
+- `pnpm build` — Membuat build produksi.
+- `pnpm db:push` — Menjalankan migrasi database menggunakan Drizzle.
+- `pnpm db:studio` — Membuka Drizzle Studio untuk melihat dan mengelola database.
+- `pnpm lint` dan `pnpm check` — Melakukan pengecekan format, lint, dan tipe Svelte.
+
+Lokasi database lokal:
+
+```
+data/database.sqlite3
+```
+
+## Struktur Proyek (Singkat)
+
+- `src/` — Kode sumber aplikasi SvelteKit (komponen, route, dan server).
+- `static/` — Aset statis yang disajikan apa adanya.
+- `scripts/` — Berisi skrip utilitas seperti migrasi, seed, dan generator ikon.
+- `data/` — Menyimpan database lokal serta file upload.
+- `drizzle/` — File migrasi SQL yang digunakan oleh Drizzle ORM.
+
+Penjelasan lebih lengkap mengenai pola implementasi (Svelte 5 Runes, DaisyUI, Tailwind CSS v4, dan Drizzle ORM) tersedia pada:
+
+`docs/DEVELOPMENT.md`
 
 ## Lisensi & Pengecualian
 
-Perangkat lunak ini menggunakan lisensi khas (custom license). Anda bebas menggunakan, memodifikasi,
-dan membagikannya untuk keperluan nonkomersial selama mencantumkan atribusi. Dilarang menjual atau
-memonetisasi perangkat lunak ini maupun hasil modifikasinya. Lihat file `LICENSE` di root untuk
-ketentuan lengkap dan daftar aset yang dicakup.
+Perangkat lunak ini menggunakan lisensi khusus (custom license).
 
-Ikon pada `src/lib/icons` berasal dari [Feather](https://github.com/feathericons/feather) dan dirilis di bawah
-lisensi MIT — rincian dan kredit ada di [docs/ICON-CREDITS.md](https://github.com/sira313/raporkumer/blob/main/docs/ICON-CREDITS.md).
+Anda bebas menggunakan, memodifikasi, dan membagikan aplikasi ini untuk keperluan nonkomersial dengan tetap mencantumkan atribusi kepada pembuatnya.
+
+Tidak diperbolehkan menjual atau memonetisasi perangkat lunak ini maupun hasil modifikasinya dalam bentuk apa pun.
+
+Silakan lihat file `LICENSE` di root proyek untuk mengetahui ketentuan lengkap beserta daftar aset yang termasuk di dalamnya.
+
+Ikon yang berada pada folder `src/lib/icons` berasal dari Feather dan dirilis di bawah lisensi MIT.
+
+Informasi lisensi dan kredit selengkapnya tersedia di:
+
+`docs/ICON-CREDITS.md`
 
 ## Kontribusi
 
-Terima kasih jika Anda ingin berkontribusi!
+Terima kasih atas minat Anda untuk berkontribusi pada Rapkumer.
 
-- Ikuti panduan kode dan gunakan `pnpm lint` + `pnpm check` sebelum mengirim PR.
-- Gunakan bahasa Indonesia untuk user-facing copy (teks antarmuka dan dokumentasi pengguna).
-- Tambahkan tes kecil atau deskripsi manual langkah verifikasi bila mengubah fungsionalitas kritis.
+Sebelum mengirim Pull Request, mohon perhatikan beberapa hal berikut:
 
-Lihat [docs/DEVELOPMENT.md](https://github.com/sira313/raporkumer/blob/main/docs/DEVELOPMENT.md) untuk alur kerja development yang disarankan dan skrip helper.
+- Ikuti panduan penulisan kode yang berlaku.
+- Jalankan `pnpm lint` dan `pnpm check` untuk memastikan tidak ada masalah pada kode.
+- Gunakan bahasa Indonesia untuk seluruh teks yang ditampilkan kepada pengguna (user-facing copy dan dokumentasi pengguna).
+- Jika mengubah fitur penting, tambahkan pengujian sederhana atau sertakan langkah verifikasi secara manual.
+
+Panduan lengkap alur pengembangan tersedia pada:
+
+`docs/DEVELOPMENT.md`
 
 ## Bantuan
 
-Jika menemukan masalah, buka issue di GitHub repo atau hubungi pemilik/kontributor yang tercantum di halaman
-release atau dalam file [docs/](https://github.com/sira313/raporkumer/blob/main/docs/).
+Apabila menemukan bug, mengalami kendala, atau memiliki pertanyaan, silakan buat Issue pada repository GitHub atau hubungi pemilik maupun kontributor yang tercantum pada halaman rilis atau di dalam folder:
+
+`docs/`
