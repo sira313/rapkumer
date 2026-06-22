@@ -120,8 +120,10 @@
 			muridId: number;
 			nama: string;
 			subjects: Record<string, string>;
+			sessionStatuses: Record<string, { masuk: string; selesai: string }>;
 			persentase: number;
 		}>;
+		tipePresensi: string;
 		jadwalSaatIni: {
 			mataPelajaranId: number | null;
 			namaMataPelajaran: string;
@@ -323,9 +325,19 @@
 		return data.tanggal === `${y}-${m}-${day}`;
 	});
 
-	let selectedMode = $state<'harian' | 'bulanan' | 'rapor' | 'persentase_harian' | 'persentase_bulanan'>(data.mode);
-	let selectedBulan = $state(data.mode === 'bulanan' || data.mode === 'persentase_bulanan' ? data.bulan : new Date().getMonth() + 1);
-	let selectedTahun = $state(data.mode === 'bulanan' || data.mode === 'persentase_bulanan' ? data.tahun : new Date().getFullYear());
+	let selectedMode = $state<
+		'harian' | 'bulanan' | 'rapor' | 'persentase_harian' | 'persentase_bulanan'
+	>(data.mode);
+	let selectedBulan = $state(
+		data.mode === 'bulanan' || data.mode === 'persentase_bulanan'
+			? data.bulan
+			: new Date().getMonth() + 1
+	);
+	let selectedTahun = $state(
+		data.mode === 'bulanan' || data.mode === 'persentase_bulanan'
+			? data.tahun
+			: new Date().getFullYear()
+	);
 
 	$effect(() => {
 		selectedMode = data.mode;
@@ -516,7 +528,11 @@
 			body: ScannerModal,
 			bodyProps: {
 				onscan: () => invalidate('app:absen'),
-				mataPelajaranId: mapelId ?? null
+				mataPelajaranId: mapelId ?? null,
+				kelasId: kelasAktif?.id ?? null,
+				simulasiHari: data.simulasiHari,
+				simulasiJam: data.simulasiJam,
+				simulasiTanggal: data.tanggal
 			},
 			dismissible: false
 		});
@@ -647,7 +663,9 @@
 												: undefined,
 											perkiraanJam: useMapelData
 												? (currentMapel?.perkiraanJam ?? undefined)
-												: undefined
+												: undefined,
+											simulasiHari: data.simulasiHari,
+											simulasiJam: data.simulasiJam
 										},
 										dismissible: true
 									});
@@ -717,9 +735,15 @@
 				<button
 					type="button"
 					class="btn btn-soft rounded-none shadow-none"
-					aria-label={data.mode === 'bulanan' || data.mode === 'persentase_bulanan' ? 'Kembali ke bulan ini' : 'Kembali ke hari ini'}
-					title={data.mode === 'bulanan' || data.mode === 'persentase_bulanan' ? 'Kembali ke bulan ini' : 'Kembali ke hari ini'}
-					onclick={data.mode === 'bulanan' || data.mode === 'persentase_bulanan' ? resetToCurrentBulan : resetToToday}
+					aria-label={data.mode === 'bulanan' || data.mode === 'persentase_bulanan'
+						? 'Kembali ke bulan ini'
+						: 'Kembali ke hari ini'}
+					title={data.mode === 'bulanan' || data.mode === 'persentase_bulanan'
+						? 'Kembali ke bulan ini'
+						: 'Kembali ke hari ini'}
+					onclick={data.mode === 'bulanan' || data.mode === 'persentase_bulanan'
+						? resetToCurrentBulan
+						: resetToToday}
 					disabled={data.mode === 'bulanan' || data.mode === 'persentase_bulanan'
 						? isCurrentBulan
 						: data.mode === 'rapor'
@@ -911,6 +935,7 @@
 		<TablePersentaseHarian
 			subjects={data.persentaseHarianSubjects}
 			rows={data.persentaseHarianRows}
+			tipePresensi={data.tipePresensi}
 		/>
 	{:else}
 		<TableHarian
@@ -919,6 +944,7 @@
 			{canEdit}
 			tableReady={data.tableReady}
 			tanggal={data.tanggal}
+			kelasId={kelasAktif?.id ?? null}
 			{editingRowId}
 			{editingValues}
 			{editingSubmitting}

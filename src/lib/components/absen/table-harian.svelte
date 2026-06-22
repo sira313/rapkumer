@@ -24,6 +24,7 @@
 		canEdit,
 		tableReady,
 		tanggal,
+		kelasId,
 		editingRowId,
 		editingValues,
 		editingSubmitting,
@@ -39,6 +40,7 @@
 		canEdit: boolean;
 		tableReady: boolean;
 		tanggal: string;
+		kelasId: number | null;
 		editingRowId: number | null;
 		editingValues: { keterangan: string };
 		editingSubmitting: boolean;
@@ -128,6 +130,7 @@
 										/>
 										<input type="hidden" name="keterangan" value={editingValues.keterangan} />
 										<input type="hidden" name="tanggal" value={tanggal} />
+										<input type="hidden" name="kelasId" value={kelasId ?? ''} />
 									{/snippet}
 								</FormEnhance>
 								<button

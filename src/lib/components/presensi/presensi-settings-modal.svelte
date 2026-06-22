@@ -87,7 +87,9 @@
 		if (!jamMasukValue || !jamPulangValue) return 'Jam masuk dan jam pulang harus diisi';
 		if (jamMasukValue >= jamPulangValue) return 'Jam masuk harus lebih awal dari jam pulang';
 		if (!['5', '6'].includes(hariSekolahValue)) return 'Pilih hari sekolah';
-		if (!['masuk_pulang', 'masuk_saja', 'awal_mapel', 'awal_akhir_mapel'].includes(tipePresensiValue))
+		if (
+			!['masuk_pulang', 'masuk_saja', 'awal_mapel', 'awal_akhir_mapel'].includes(tipePresensiValue)
+		)
 			return 'Pilih tipe presensi';
 		if (
 			['awal_mapel', 'awal_akhir_mapel'].includes(tipePresensiValue) &&
@@ -112,7 +114,9 @@
 			toast('Pilih hari sekolah', 'warning');
 			return false;
 		}
-		if (!['masuk_pulang', 'masuk_saja', 'awal_mapel', 'awal_akhir_mapel'].includes(tipePresensiValue)) {
+		if (
+			!['masuk_pulang', 'masuk_saja', 'awal_mapel', 'awal_akhir_mapel'].includes(tipePresensiValue)
+		) {
 			toast('Pilih tipe presensi', 'warning');
 			return false;
 		}
@@ -120,7 +124,10 @@
 			['awal_mapel', 'awal_akhir_mapel'].includes(tipePresensiValue) &&
 			jenisPresensiValue !== 'tiap_mapel'
 		) {
-			toast('Tipe presensi Awal/Awal & Akhir Mapel hanya tersedia untuk jenis presensi Tiap Mapel', 'warning');
+			toast(
+				'Tipe presensi Awal/Awal & Akhir Mapel hanya tersedia untuk jenis presensi Tiap Mapel',
+				'warning'
+			);
 			return false;
 		}
 		return true;
@@ -224,19 +231,19 @@
 		</label>
 		<label class="fieldset flex flex-col gap-1 overflow-hidden">
 			<span class="fieldset-legend text-sm font-semibold">Tipe Presensi</span>
-	<select
-			class="select bg-base-200 dark:bg-base-300 w-full truncate dark:border-none"
-			bind:value={tipePresensiValue}
-		>
-			<option value="masuk_pulang">Masuk Pulang</option>
-			<option value="masuk_saja">Masuk Saja</option>
-			<option value="awal_mapel" disabled={jenisPresensiValue !== 'tiap_mapel'}>
-				Awal Mapel
-			</option>
-			<option value="awal_akhir_mapel" disabled={jenisPresensiValue !== 'tiap_mapel'}>
-				Awal & Akhir Mapel
-			</option>
-		</select>
+			<select
+				class="select bg-base-200 dark:bg-base-300 w-full truncate dark:border-none"
+				bind:value={tipePresensiValue}
+			>
+				<option value="masuk_pulang">Masuk Pulang</option>
+				<option value="masuk_saja">Masuk Saja</option>
+				<option value="awal_mapel" disabled={jenisPresensiValue !== 'tiap_mapel'}>
+					Awal Mapel
+				</option>
+				<option value="awal_akhir_mapel" disabled={jenisPresensiValue !== 'tiap_mapel'}>
+					Awal & Akhir Mapel
+				</option>
+			</select>
 		</label>
 	</div>
 

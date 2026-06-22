@@ -2,7 +2,9 @@ import db from '$lib/server/db';
 import {
 	tableAbsensi,
 	tableAuthUserMataPelajaran,
+	tableBellSettings,
 	tableJadwalPelajaran,
+	tableKegiatanCustom,
 	tableKetidakhadiranHarian,
 	tableKetidakhadiranRapor,
 	tableMataPelajaran,
@@ -16,8 +18,14 @@ import { ensureAbsensiSchema } from '$lib/server/db/ensure-absensi';
 import { ensureKetidakhadiranHarianSchema } from '$lib/server/db/ensure-ketidakhadiran-harian';
 import { ensureKetidakhadiranRaporSchema } from '$lib/server/db/ensure-ketidakhadiran-rapor';
 import { ensurePresensiSettingsSchema } from '$lib/server/db/ensure-presensi-settings';
+import {
+	simWriteAbsensi,
+	simWriteKetidakhadiran,
+	simGetAbsensi,
+	simGetKetidakhadiran,
+	simClear
+} from '$lib/server/simulasi-cache';
 import { fail, redirect } from '@sveltejs/kit';
-import { cookieNames } from '$lib/utils';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 
 const PER_PAGE = 20;
@@ -123,6 +131,7 @@ type PersentaseHarianRow = {
 	muridId: number;
 	nama: string;
 	subjects: Record<string, string>;
+	sessionStatuses: Record<string, { masuk: string; selesai: string }>;
 	persentase: number;
 };
 
@@ -140,6 +149,8 @@ type PageState = {
 	totalItems: number;
 	perPage: number;
 };
+
+import { computeJamKeFromTime, type BellSettingsData, type CustomKegiatanData } from '$lib/server/absen-utils';
 
 export async function load({ parent, locals, url, depends }) {
 	depends('app:absen');
@@ -166,6 +177,8 @@ export async function load({ parent, locals, url, depends }) {
 	let presensiReady = true;
 	let presensiWarningMessage = '';
 	let presensiSettings: typeof tablePresensiSettings.$inferSelect | null = null;
+	let bellSettings: BellSettingsData | null = null;
+	let kegiatanCustom: CustomKegiatanData[] = [];
 	if (sekolahId && kelasAktif?.id && tahunAjaranId) {
 		presensiSettings =
 			(await db.query.tablePresensiSettings.findFirst({
@@ -174,6 +187,22 @@ export async function load({ parent, locals, url, depends }) {
 					eq(tablePresensiSettings.tahunAjaranId, tahunAjaranId)
 				)
 			})) ?? null;
+
+		bellSettings =
+			(await db.query.tableBellSettings.findFirst({
+				columns: {
+					jamMulai: true,
+					jamPelajaranMenit: true,
+					durasiIstirahat: true,
+					durasiUpacara: true
+				},
+				where: eq(tableBellSettings.sekolahId, sekolahId)
+			})) ?? null;
+
+		kegiatanCustom = await db.query.tableKegiatanCustom.findMany({
+			columns: { kode: true, durasi: true },
+			where: eq(tableKegiatanCustom.sekolahId, sekolahId)
+		});
 
 		const activeTa = academicContext?.tahunAjaranList.find(
 			(ta) => ta.id === academicContext?.activeTahunAjaranId
@@ -720,7 +749,8 @@ export async function load({ parent, locals, url, depends }) {
 				if (isHadir(murid.id, d)) countHadir++;
 			}
 
-			const persentase = totalHariBelajar > 0 ? Math.round((countHadir / totalHariBelajar) * 100) : 0;
+			const persentase =
+				totalHariBelajar > 0 ? Math.round((countHadir / totalHariBelajar) * 100) : 0;
 
 			return {
 				no: index + 1,
@@ -1105,7 +1135,9 @@ export async function load({ parent, locals, url, depends }) {
 			totalMurid: 0,
 			muridCount: 0,
 			tanggal,
-			mode: (mode === 'persentase_harian' ? 'persentase_harian' : 'harian') as 'harian' | 'persentase_harian',
+			mode: (mode === 'persentase_harian' ? 'persentase_harian' : 'harian') as
+				| 'harian'
+				| 'persentase_harian',
 			bulan: 0,
 			tahun: 0,
 			daysInMonth: 0,
@@ -1238,6 +1270,41 @@ export async function load({ parent, locals, url, depends }) {
 		};
 	});
 
+	// Merge simulation cache into rows (overrides DB data during simulation)
+	if (simHari && simJam && sekolahId && kelasAktif?.id) {
+		const cacheKetidakhadiran = simGetKetidakhadiran(
+			sekolahId,
+			kelasAktif.id,
+			tanggal,
+			simHari,
+			simJam
+		);
+		const cacheAbsensi = simGetAbsensi(sekolahId, kelasAktif.id, tanggal, simHari, simJam);
+		const cacheKhGlobal = new Map<number, { keterangan: string | null; updatedAt: string }>();
+		const cacheAbsenGlobal = new Set<number>();
+		for (const kh of cacheKetidakhadiran) {
+			if (kh.mataPelajaranId == null) {
+				cacheKhGlobal.set(kh.muridId, { keterangan: kh.keterangan, updatedAt: kh.updatedAt });
+			}
+		}
+		for (const a of cacheAbsensi) {
+			if (a.mataPelajaranId == null) {
+				cacheAbsenGlobal.add(a.muridId);
+			}
+		}
+		for (const row of rows) {
+			const ckh = cacheKhGlobal.get(row.id);
+			if (ckh) {
+				row.keterangan = ckh.keterangan;
+				row.hadir = ckh.keterangan === null && cacheAbsenGlobal.has(row.id);
+				row.updatedAt = ckh.updatedAt;
+			} else if (cacheAbsenGlobal.has(row.id)) {
+				row.hadir = true;
+				row.keterangan = null;
+			}
+		}
+	}
+
 	let semuaMurid: Array<{ id: number; nama: string; keterangan: string | null }> = [];
 	if (tableReady) {
 		try {
@@ -1266,11 +1333,35 @@ export async function load({ parent, locals, url, depends }) {
 		}
 	}
 
+	// Merge simulation cache into semuaMurid
+	if (simHari && simJam && sekolahId && kelasAktif?.id) {
+		const cacheKetidakhadiran = simGetKetidakhadiran(
+			sekolahId,
+			kelasAktif.id,
+			tanggal,
+			simHari,
+			simJam
+		);
+		const cacheKhGlobal = new Map<number, string | null>();
+		for (const kh of cacheKetidakhadiran) {
+			if (kh.mataPelajaranId == null) {
+				cacheKhGlobal.set(kh.muridId, kh.keterangan);
+			}
+		}
+		for (const m of semuaMurid) {
+			const ckh = cacheKhGlobal.get(m.id);
+			if (ckh !== undefined) {
+				m.keterangan = ckh;
+			}
+		}
+	}
+
 	const jenisPresensi = presensiSettings?.jenisPresensi ?? 'wali_kelas_saja';
 
 	let persentaseHarianSubjects: PersentaseHarianSubject[] = [];
 	let persentaseHarianRows: PersentaseHarianRow[] = [];
 	let jadwalSaatIni: JadwalSaatIni | null = null;
+	const tipePresensi = presensiSettings?.tipePresensi ?? 'awal_mapel';
 
 	if (jenisPresensi === 'tiap_mapel' && tableReady && semuaMurid.length > 0) {
 		const dayNames = ['minggu', 'senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu'];
@@ -1296,6 +1387,16 @@ export async function load({ parent, locals, url, depends }) {
 		}
 
 		if (uniqueJadwal.length > 0) {
+			const agamaMapelNames = [
+				'Pendidikan Agama dan Budi Pekerti',
+				'Pendidikan Agama Islam dan Budi Pekerti',
+				'Pendidikan Agama Kristen dan Budi Pekerti',
+				'Pendidikan Agama Katolik dan Budi Pekerti',
+				'Pendidikan Agama Buddha dan Budi Pekerti',
+				'Pendidikan Agama Hindu dan Budi Pekerti',
+				'Pendidikan Agama Konghuchu dan Budi Pekerti'
+			];
+			const agamaNameSet = new Set(agamaMapelNames);
 			const tambahanKode = new Set(['IST', 'PLG']);
 			const uniqueKode = uniqueJadwal
 				.map((j) => j.kodeKegiatan)
@@ -1317,6 +1418,20 @@ export async function load({ parent, locals, url, depends }) {
 				const kodeToMpMap = new Map<string, { id: number; nama: string }>();
 				for (const mp of matchingMp) {
 					if (mp.kode) kodeToMpMap.set(mp.kode, { id: mp.id, nama: mp.nama });
+				}
+
+				// Handle synthetic "PAPB" code: match any agama subject in this class
+				if (uniqueKode.includes('PAPB') && !kodeToMpMap.has('PAPB')) {
+					const agamaMp = await db.query.tableMataPelajaran.findMany({
+						columns: { id: true, nama: true },
+						where: and(
+							eq(tableMataPelajaran.kelasId, kelasAktif.id),
+							inArray(tableMataPelajaran.nama, agamaMapelNames)
+						)
+					});
+					if (agamaMp.length > 0) {
+						kodeToMpMap.set('PAPB', { id: agamaMp[0].id, nama: agamaMp[0].nama });
+					}
 				}
 
 				persentaseHarianSubjects = uniqueKode.map((kode) => ({
@@ -1357,66 +1472,164 @@ export async function load({ parent, locals, url, depends }) {
 				}
 
 				const absenGlobal = new Set<number>();
-				const absenPerMapel = new Set<string>();
+				const absenPerMapel = new Map<string, number>();
 				for (const a of allAbsensi) {
 					if (a.mataPelajaranId == null) {
 						absenGlobal.add(a.muridId);
 					} else {
-						absenPerMapel.add(`${a.muridId}:${a.mataPelajaranId}`);
+						const key = `${a.muridId}:${a.mataPelajaranId}`;
+						absenPerMapel.set(key, (absenPerMapel.get(key) ?? 0) + 1);
+					}
+				}
+
+				// Merge simulation cache into persentase_harian maps
+				if (simHari && simJam && sekolahId && kelasAktif?.id) {
+					const cacheKetidakhadiran = simGetKetidakhadiran(
+						sekolahId,
+						kelasAktif.id,
+						tanggal,
+						simHari,
+						simJam
+					);
+					const cacheAbsensi = simGetAbsensi(sekolahId, kelasAktif.id, tanggal, simHari, simJam);
+					for (const kh of cacheKetidakhadiran) {
+						if (kh.mataPelajaranId == null) {
+							khGlobal.set(kh.muridId, kh.keterangan);
+						} else {
+							khPerMapel.set(`${kh.muridId}:${kh.mataPelajaranId}`, kh.keterangan);
+						}
+					}
+					for (const a of cacheAbsensi) {
+						if (a.mataPelajaranId == null) {
+							absenGlobal.add(a.muridId);
+						} else {
+							const key = `${a.muridId}:${a.mataPelajaranId}`;
+							absenPerMapel.set(key, (absenPerMapel.get(key) ?? 0) + 1);
+						}
+					}
+				}
+
+				// Guru mapel: build set of subject kodes the user owns (class-independent)
+				let userKodeSet: Set<string> | null = null;
+				if (locals.user?.type === 'user') {
+					userKodeSet = new Set<string>();
+					const userMpIds = new Set<number>();
+					if (locals.user.mataPelajaranId) userMpIds.add(locals.user.mataPelajaranId);
+					const additional = await db.query.tableAuthUserMataPelajaran.findMany({
+						columns: { mataPelajaranId: true },
+						where: eq(tableAuthUserMataPelajaran.authUserId, locals.user.id)
+					});
+					for (const a of additional) {
+						if (a.mataPelajaranId) userMpIds.add(a.mataPelajaranId);
+					}
+					if (userMpIds.size > 0) {
+						const userMps = await db.query.tableMataPelajaran.findMany({
+							columns: { kode: true, nama: true },
+							where: inArray(tableMataPelajaran.id, [...userMpIds])
+						});
+						for (const mp of userMps) {
+							if (mp.kode) userKodeSet.add(mp.kode.toUpperCase());
+							if (agamaNameSet.has(mp.nama)) userKodeSet.add('PAPB');
+						}
 					}
 				}
 
 				if (presensiSettings?.jamMasuk) {
-					const [h, m] = presensiSettings.jamMasuk.split(':').map(Number);
-					const schoolStart = new Date();
-					schoolStart.setHours(h, m, 0, 0);
-
-					let diffMinutes: number;
-					if (simJam) {
-						const [simH, simM] = simJam.split(':').map(Number);
-						diffMinutes = simH * 60 + simM - (h * 60 + m);
-					} else {
-						diffMinutes = (Date.now() - schoolStart.getTime()) / 60000;
-					}
-
-					const currentJamKe = Math.max(1, Math.floor(diffMinutes / 45) + 1);
-					const jadwalEntry = jadwalHariIni.find((j) => j.jamKe === currentJamKe);
-					if (jadwalEntry) {
+					const currentJamKe = computeJamKeFromTime(
+						simJam,
+						jadwalHariIni,
+						bellSettings,
+						kegiatanCustom,
+						presensiSettings.jamMasuk
+					);
+					const jadwalEntries = jadwalHariIni.filter((j) => j.jamKe === currentJamKe);
+					for (const jadwalEntry of jadwalEntries) {
 						const mpInfo = kodeToMpMap.get(jadwalEntry.kodeKegiatan);
-						if (mpInfo) {
-							const startT = new Date(schoolStart.getTime() + (currentJamKe - 1) * 45 * 60000);
-							const endT = new Date(startT.getTime() + 45 * 60000);
-							const fmt = (d: Date) =>
-								`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+						if (
+							mpInfo &&
+							(!userKodeSet || userKodeSet.has(jadwalEntry.kodeKegiatan.toUpperCase()))
+						) {
+							const jamMulai = bellSettings?.jamMulai ?? presensiSettings.jamMasuk;
+							const jamPelajaranMenit = bellSettings?.jamPelajaranMenit ?? 45;
+							const durasiIstirahat = bellSettings?.durasiIstirahat ?? 30;
+							const durasiUpacara = bellSettings?.durasiUpacara ?? 40;
+							const customDurasi = new Map<string, number>();
+							for (const c of kegiatanCustom) {
+								if (c.kode && c.durasi != null) customDurasi.set(c.kode.toUpperCase(), c.durasi);
+							}
+
+							const jamKeKode = new Map<number, string>();
+							for (const j of jadwalHariIni) {
+								if (!jamKeKode.has(j.jamKe)) jamKeKode.set(j.jamKe, j.kodeKegiatan.toUpperCase());
+							}
+
+							const [jh, jm] = jamMulai.split(':').map(Number);
+							let startMin = jh * 60 + jm;
+							for (let jk = 1; jk < currentJamKe; jk++) {
+								const kode = jamKeKode.get(jk);
+								let dur = jamPelajaranMenit;
+								if (kode === 'UPB') dur = durasiUpacara;
+								else if (kode === 'IST') dur = durasiIstirahat;
+								else if (kode && customDurasi.has(kode)) dur = customDurasi.get(kode)!;
+								startMin += dur;
+							}
+							const kode2 = jamKeKode.get(currentJamKe);
+							let curDur = jamPelajaranMenit;
+							if (kode2 === 'UPB') curDur = durasiUpacara;
+							else if (kode2 === 'IST') curDur = durasiIstirahat;
+							else if (kode2 && customDurasi.has(kode2)) curDur = customDurasi.get(kode2)!;
+							const endMin = startMin + curDur;
+							const fmt = (min: number) =>
+								`${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
 							jadwalSaatIni = {
 								mataPelajaranId: mpInfo.id,
-								namaMataPelajaran: mpInfo.nama,
-								jamKe: currentJamKe,
-								perkiraanJam: `${fmt(startT)}-${fmt(endT)}`
+								namaMataPelajaran: agamaNameSet.has(mpInfo.nama)
+									? 'Pendidikan Agama dan Budi Pekerti'
+									: mpInfo.nama,
+								jamKe: jadwalEntry.jamKe,
+								perkiraanJam: `${fmt(startMin)}-${fmt(endMin)}`
 							};
+							break;
 						}
 					}
 				}
 
 				const totalSubjects = uniqueKode.length;
+				const useHalfWeight = tipePresensi === 'awal_akhir_mapel';
+
 				persentaseHarianRows = semuaMurid.map((murid, index) => {
 					const subjectStatus: Record<string, string> = {};
-					let attendedCount = 0;
+					const sessionStatuses: Record<string, { masuk: string; selesai: string }> = {};
+					let attendedPoints = 0;
 
 					for (const kode of uniqueKode) {
 						const mpInfo = kodeToMpMap.get(kode);
 						const mpId = mpInfo?.id;
 						let status = '';
+						let masuk = '';
+						let selesai = '';
 
 						if (mpId != null) {
 							const mapelKey = khPerMapel.get(`${murid.id}:${mpId}`);
 							if (mapelKey !== undefined) {
 								if (mapelKey === null) {
 									status = 'H';
-									attendedCount++;
-								} else if (mapelKey === 'sakit') status = 'S';
-								else if (mapelKey === 'izin') status = 'I';
-								else if (mapelKey === 'alfa') status = 'TK';
+									attendedPoints++;
+									masuk = 'H';
+									selesai = 'H';
+								} else if (mapelKey === 'sakit') {
+									status = 'S';
+									masuk = 'S';
+									selesai = 'S';
+								} else if (mapelKey === 'izin') {
+									status = 'I';
+									masuk = 'I';
+									selesai = 'I';
+								} else if (mapelKey === 'alfa') {
+									status = 'TK';
+									masuk = 'TK';
+									selesai = 'TK';
+								}
 							}
 						}
 
@@ -1425,34 +1638,53 @@ export async function load({ parent, locals, url, depends }) {
 							if (globalKeterangan !== undefined) {
 								if (globalKeterangan === null) {
 									status = 'H';
-									attendedCount++;
-								} else if (globalKeterangan === 'sakit') status = 'S';
-								else if (globalKeterangan === 'izin') status = 'I';
-								else if (globalKeterangan === 'alfa') status = 'TK';
+									attendedPoints++;
+									masuk = 'H';
+									selesai = 'H';
+								} else if (globalKeterangan === 'sakit') {
+									status = 'S';
+									masuk = 'S';
+									selesai = 'S';
+								} else if (globalKeterangan === 'izin') {
+									status = 'I';
+									masuk = 'I';
+									selesai = 'I';
+								} else if (globalKeterangan === 'alfa') {
+									status = 'TK';
+									masuk = 'TK';
+									selesai = 'TK';
+								}
 							}
 						}
 
 						if (!status && mpId != null && absenPerMapel.has(`${murid.id}:${mpId}`)) {
 							status = 'H';
-							attendedCount++;
+							const count = absenPerMapel.get(`${murid.id}:${mpId}`)!;
+							attendedPoints += useHalfWeight ? count * 0.5 : 1;
+							masuk = 'H';
+							if (count >= 2) selesai = 'H';
 						}
 
 						if (!status && absenGlobal.has(murid.id)) {
 							status = 'H';
-							attendedCount++;
+							attendedPoints++;
+							masuk = 'H';
+							selesai = 'H';
 						}
 
 						subjectStatus[kode] = status;
+						sessionStatuses[kode] = { masuk, selesai };
 					}
 
 					const persentase =
-						totalSubjects > 0 ? Math.round((attendedCount / totalSubjects) * 100) : 0;
+						totalSubjects > 0 ? Math.round((attendedPoints / totalSubjects) * 100) : 0;
 
 					return {
 						no: index + 1,
 						muridId: murid.id,
 						nama: murid.nama,
 						subjects: subjectStatus,
+						sessionStatuses,
 						persentase
 					};
 				});
@@ -1477,7 +1709,9 @@ export async function load({ parent, locals, url, depends }) {
 		totalMurid: total,
 		muridCount: muridCount ?? 0,
 		tanggal,
-		mode: (mode === 'persentase_harian' ? 'persentase_harian' : 'harian') as 'harian' | 'persentase_harian',
+		mode: (mode === 'persentase_harian' ? 'persentase_harian' : 'harian') as
+			| 'harian'
+			| 'persentase_harian',
 		bulan: 0,
 		tahun: 0,
 		daysInMonth: 0,
@@ -1491,6 +1725,7 @@ export async function load({ parent, locals, url, depends }) {
 		presensiReady,
 		presensiWarningMessage,
 		jenisPresensi,
+		tipePresensi,
 		persentaseHarianSubjects,
 		persentaseHarianRows,
 		jadwalSaatIni,
@@ -1500,7 +1735,7 @@ export async function load({ parent, locals, url, depends }) {
 }
 
 export const actions = {
-	update: async ({ request, locals, cookies }) => {
+	update: async ({ request, locals, url }) => {
 		const sekolahId = locals.sekolah?.id ?? null;
 		if (!sekolahId) {
 			return fail(401, { fail: 'Sekolah tidak ditemukan' });
@@ -1530,6 +1765,12 @@ export const actions = {
 		const mataPelajaranIdRaw = formData.get('mataPelajaranId')?.toString();
 		const mataPelajaranId = mataPelajaranIdRaw ? Number(mataPelajaranIdRaw) : null;
 
+		const kelasIdRaw = formData.get('kelasId')?.toString();
+		const kelasId = kelasIdRaw ? Number(kelasIdRaw) : null;
+
+		const simHari = url.searchParams.get('simHari');
+		const simJam = url.searchParams.get('simJam');
+
 		const muridRecord = await db.query.tableMurid.findFirst({
 			columns: { id: true },
 			where: and(eq(tableMurid.id, muridId), eq(tableMurid.sekolahId, sekolahId))
@@ -1537,6 +1778,23 @@ export const actions = {
 
 		if (!muridRecord) {
 			return fail(404, { fail: 'Murid tidak ditemukan atau bukan bagian dari sekolah ini' });
+		}
+
+		if (simHari) {
+			if (!kelasId) {
+				return fail(400, { fail: 'Kelas tidak ditemukan' });
+			}
+			simWriteKetidakhadiran(
+				sekolahId,
+				kelasId,
+				tanggal,
+				muridId,
+				keterangan,
+				mataPelajaranId,
+				simHari,
+				simJam
+			);
+			return { message: 'Ketidakhadiran berhasil diperbarui (simulasi)' };
 		}
 
 		try {
@@ -1601,31 +1859,104 @@ export const actions = {
 
 		const mataPelajaranIdRaw = formData.get('mataPelajaranId')?.toString();
 		const mataPelajaranId = mataPelajaranIdRaw ? Number(mataPelajaranIdRaw) : null;
+		const simHari = formData.get('simHari')?.toString() ?? null;
+		const simJam = formData.get('simJam')?.toString() ?? null;
 
-		// Guru mapel only: validate schedule match
+		// Guru mapel only: validate schedule match + own subject
 		if (locals.user?.type === 'user') {
 			const settings = await db.query.tablePresensiSettings.findFirst({
 				columns: { jenisPresensi: true, jamMasuk: true },
 				where: eq(tablePresensiSettings.sekolahId, sekolahId)
 			});
 			if (settings?.jenisPresensi === 'tiap_mapel' && settings.jamMasuk) {
-				const dayIdx = new Date().getDay();
-				const dayN = ['minggu', 'senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu'][dayIdx];
-				const [h, m] = settings.jamMasuk.split(':').map(Number);
-				const diff = (Date.now() - new Date().setHours(h, m, 0, 0)) / 60000;
-				const jamKe = Math.max(1, Math.floor(diff / 45) + 1);
-				const jadwal = await db.query.tableJadwalPelajaran.findFirst({
-					columns: { kodeKegiatan: true },
-					where: and(
-						eq(tableJadwalPelajaran.sekolahId, sekolahId),
-						eq(tableJadwalPelajaran.kelasId, kelasId),
-						eq(tableJadwalPelajaran.hari, dayN),
-						eq(tableJadwalPelajaran.jamKe, jamKe)
-					)
-				});
+				const dayNames = ['minggu', 'senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu'];
+				const dayN = simHari ? simHari.toLowerCase() : dayNames[new Date().getDay()];
+				const [bellSettingsRaw, kegiatanCustom, jadwalHariIni] = await Promise.all([
+					db.query.tableBellSettings.findFirst({
+						columns: {
+							jamMulai: true,
+							jamPelajaranMenit: true,
+							durasiIstirahat: true,
+							durasiUpacara: true
+						},
+						where: eq(tableBellSettings.sekolahId, sekolahId)
+					}),
+					db.query.tableKegiatanCustom.findMany({
+						columns: { kode: true, durasi: true },
+						where: eq(tableKegiatanCustom.sekolahId, sekolahId)
+					}),
+					db.query.tableJadwalPelajaran.findMany({
+						columns: { kodeKegiatan: true, jamKe: true },
+						where: and(
+							eq(tableJadwalPelajaran.sekolahId, sekolahId),
+							eq(tableJadwalPelajaran.kelasId, kelasId),
+							eq(tableJadwalPelajaran.hari, dayN)
+						),
+						orderBy: [asc(tableJadwalPelajaran.jamKe)]
+					})
+				]);
+				const jamKe = computeJamKeFromTime(
+					simJam,
+					jadwalHariIni,
+					bellSettingsRaw ?? null,
+					kegiatanCustom,
+					settings.jamMasuk
+				);
+				const jadwal = jadwalHariIni.find((j) => j.jamKe === jamKe);
 				const tambahan = new Set(['IST', 'PLG']);
 				if (!jadwal || tambahan.has(jadwal.kodeKegiatan.toUpperCase())) {
 					return fail(403, { fail: 'Jam pelajaran bapak/ibu belum dimulai' });
+				}
+				// Verify the teacher owns this subject (by kode, not per-class ID)
+				if (mataPelajaranId) {
+					const agamaMapelNames = [
+						'Pendidikan Agama dan Budi Pekerti',
+						'Pendidikan Agama Islam dan Budi Pekerti',
+						'Pendidikan Agama Kristen dan Budi Pekerti',
+						'Pendidikan Agama Katolik dan Budi Pekerti',
+						'Pendidikan Agama Buddha dan Budi Pekerti',
+						'Pendidikan Agama Hindu dan Budi Pekerti',
+						'Pendidikan Agama Konghuchu dan Budi Pekerti'
+					];
+					const agamaNameSet = new Set(agamaMapelNames);
+					// Look up the kode and nama of the submitted mataPelajaranId
+					const mpRecord = await db.query.tableMataPelajaran.findFirst({
+						columns: { kode: true, nama: true },
+						where: eq(tableMataPelajaran.id, mataPelajaranId)
+					});
+					// Build user's kode set from their assigned IDs (across all classes)
+					const userKodeSet = new Set<string>();
+					const userMpIds = new Set<number>();
+					if (locals.user.mataPelajaranId) userMpIds.add(locals.user.mataPelajaranId);
+					const additional = await db.query.tableAuthUserMataPelajaran.findMany({
+						columns: { mataPelajaranId: true },
+						where: eq(tableAuthUserMataPelajaran.authUserId, locals.user.id)
+					});
+					for (const a of additional) {
+						if (a.mataPelajaranId) userMpIds.add(a.mataPelajaranId);
+					}
+					if (userMpIds.size > 0) {
+						const userMps = await db.query.tableMataPelajaran.findMany({
+							columns: { kode: true, nama: true },
+							where: inArray(tableMataPelajaran.id, [...userMpIds])
+						});
+						for (const mp of userMps) {
+							if (mp.kode) userKodeSet.add(mp.kode.toUpperCase());
+							if (agamaNameSet.has(mp.nama)) userKodeSet.add('PAPB');
+						}
+					}
+					const mpKode = mpRecord?.kode?.toUpperCase();
+					const isAgama = mpRecord?.nama && agamaNameSet.has(mpRecord.nama);
+					const allowed = mpKode
+						? userKodeSet.has(mpKode)
+						: isAgama
+							? userKodeSet.has('PAPB')
+							: false;
+					if (!allowed) {
+						return fail(403, {
+							fail: 'Anda tidak memiliki izin untuk melakukan presensi pada mata pelajaran ini'
+						});
+					}
 				}
 			}
 		}
@@ -1642,6 +1973,30 @@ export const actions = {
 			});
 
 			if (mode === 'hadir_semua') {
+				if (simHari) {
+					for (const murid of semuaMurid) {
+						simWriteKetidakhadiran(
+							sekolahId,
+							kelasId,
+							tanggal,
+							murid.id,
+							null,
+							mataPelajaranId,
+							simHari,
+							simJam
+						);
+						simWriteAbsensi(
+							sekolahId,
+							kelasId,
+							tanggal,
+							murid.id,
+							mataPelajaranId,
+							simHari,
+							simJam
+						);
+					}
+					return { message: 'Semua murid ditandai hadir (simulasi)' };
+				}
 				for (const murid of semuaMurid) {
 					await db
 						.insert(tableKetidakhadiranHarian)
@@ -1698,6 +2053,22 @@ export const actions = {
 					}
 				}
 
+				if (simHari) {
+					for (const [muridId, keterangan] of entryMap) {
+						simWriteKetidakhadiran(
+							sekolahId,
+							kelasId,
+							tanggal,
+							muridId,
+							keterangan,
+							mataPelajaranId,
+							simHari,
+							simJam
+						);
+					}
+					return { message: 'Kehadiran berhasil diperbarui (simulasi)' };
+				}
+
 				const selectedIds = Array.from(entryMap.keys());
 				if (selectedIds.length > 0) {
 					const deleteAbsensiConditions = [
@@ -1735,7 +2106,7 @@ export const actions = {
 		}
 	},
 
-	deletePresensi: async ({ request, locals }) => {
+	deletePresensi: async ({ request, locals, url }) => {
 		const sekolahId = locals.sekolah?.id ?? null;
 		if (!sekolahId) {
 			return fail(401, { fail: 'Sekolah tidak ditemukan' });
@@ -1752,6 +2123,14 @@ export const actions = {
 		const kelasId = kelasIdRaw ? Number(kelasIdRaw) : null;
 		if (!kelasId || !Number.isInteger(kelasId)) {
 			return fail(400, { fail: 'Kelas tidak ditemukan' });
+		}
+
+		const simHari = url.searchParams.get('simHari');
+		const simJam = url.searchParams.get('simJam');
+
+		if (simHari) {
+			simClear(sekolahId, kelasId, tanggal, simHari, simJam);
+			return { message: 'Semua data presensi berhasil dihapus (simulasi)' };
 		}
 
 		const muridIds = await db

@@ -1,17 +1,21 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import db from '$lib/server/db';
 import {
 	tableAbsensi,
 	tableAuthUserMataPelajaran,
+	tableBellSettings,
 	tableJadwalPelajaran,
+	tableKegiatanCustom,
 	tableKelas,
+	tableMataPelajaran,
 	tableMurid,
 	tablePresensiSettings
 } from '$lib/server/db/schema';
 import { ensureAbsensiSchema } from '$lib/server/db/ensure-absensi';
 import { ensurePresensiSettingsSchema } from '$lib/server/db/ensure-presensi-settings';
 import { cookieNames } from '$lib/utils';
+import { simWriteAbsensi } from '$lib/server/simulasi-cache';
 
 function parseTime(timeStr: string) {
 	const [h, m] = timeStr.split(':').map(Number);
@@ -92,6 +96,8 @@ function isHoliday(
 	return false;
 }
 
+import { computeJamKeFromTime } from '$lib/server/absen-utils';
+
 export const POST = (async ({ request, locals, cookies, url }) => {
 	if (!locals.user) {
 		return json({ error: 'Sesi tidak valid. Silakan login ulang.' }, { status: 401 });
@@ -129,39 +135,107 @@ export const POST = (async ({ request, locals, cookies, url }) => {
 		}
 	}
 
-	const kelasId = Number(cookies.get(cookieNames.ACTIVE_KELAS_ID) ?? '');
+	const kelasIdRaw =
+		url.searchParams.get('kelasId') ?? cookies.get(cookieNames.ACTIVE_KELAS_ID) ?? '';
+	const kelasId = Number(kelasIdRaw);
 	if (!kelasId) {
 		return json({ error: 'Kelas tidak ditemukan.' }, { status: 400 });
 	}
 
 	const mataPelajaranIdRaw = url.searchParams.get('mataPelajaranId');
 	const mataPelajaranId = mataPelajaranIdRaw ? Number(mataPelajaranIdRaw) : null;
+	const simHari = url.searchParams.get('simHari');
+	const simJam = url.searchParams.get('simJam');
+	const tanggalParam = url.searchParams.get('tanggal');
 
-	// Guru mapel: validate schedule match
+	// Guru mapel: validate schedule match + own subject
 	if (user.type === 'user' && mataPelajaranId) {
 		const s = await db.query.tablePresensiSettings.findFirst({
 			columns: { jenisPresensi: true, jamMasuk: true },
 			where: eq(tablePresensiSettings.sekolahId, sekolahId)
 		});
 		if (s?.jenisPresensi === 'tiap_mapel' && s.jamMasuk) {
-			const dayIdx = new Date().getDay();
-			const dayN = ['minggu', 'senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu'][dayIdx];
-			const [h, m] = s.jamMasuk.split(':').map(Number);
-			const now = new Date();
-			const diff = (now.getTime() - new Date(now).setHours(h, m, 0, 0)) / 60000;
-			const jamKe = Math.max(1, Math.floor(diff / 45) + 1);
-			const jadwal = await db.query.tableJadwalPelajaran.findFirst({
-				columns: { kodeKegiatan: true },
-				where: and(
-					eq(tableJadwalPelajaran.sekolahId, sekolahId),
-					eq(tableJadwalPelajaran.kelasId, kelasId),
-					eq(tableJadwalPelajaran.hari, dayN),
-					eq(tableJadwalPelajaran.jamKe, jamKe)
-				)
-			});
+			const dayNames = ['minggu', 'senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu'];
+			const dayN = simHari ? simHari.toLowerCase() : dayNames[new Date().getDay()];
+			const [bellSettingsRaw, kegiatanCustom, jadwalHariIni] = await Promise.all([
+				db.query.tableBellSettings.findFirst({
+					columns: {
+						jamMulai: true,
+						jamPelajaranMenit: true,
+						durasiIstirahat: true,
+						durasiUpacara: true
+					},
+					where: eq(tableBellSettings.sekolahId, sekolahId)
+				}),
+				db.query.tableKegiatanCustom.findMany({
+					columns: { kode: true, durasi: true },
+					where: eq(tableKegiatanCustom.sekolahId, sekolahId)
+				}),
+				db.query.tableJadwalPelajaran.findMany({
+					columns: { kodeKegiatan: true, jamKe: true },
+					where: and(
+						eq(tableJadwalPelajaran.sekolahId, sekolahId),
+						eq(tableJadwalPelajaran.kelasId, kelasId),
+						eq(tableJadwalPelajaran.hari, dayN)
+					),
+					orderBy: [asc(tableJadwalPelajaran.jamKe)]
+				})
+			]);
+			const jamKe = computeJamKeFromTime(
+				simJam,
+				jadwalHariIni,
+				bellSettingsRaw ?? null,
+				kegiatanCustom,
+				s.jamMasuk
+			);
+			const jadwal = jadwalHariIni.find((j) => j.jamKe === jamKe);
 			const tambahan = new Set(['IST', 'PLG']);
 			if (!jadwal || tambahan.has(jadwal.kodeKegiatan.toUpperCase())) {
 				return json({ error: 'Jam pelajaran bapak/ibu belum dimulai' }, { status: 403 });
+			}
+			// Verify the teacher owns this subject (by kode, not per-class ID)
+			const agamaMapelNames = [
+				'Pendidikan Agama dan Budi Pekerti',
+				'Pendidikan Agama Islam dan Budi Pekerti',
+				'Pendidikan Agama Kristen dan Budi Pekerti',
+				'Pendidikan Agama Katolik dan Budi Pekerti',
+				'Pendidikan Agama Buddha dan Budi Pekerti',
+				'Pendidikan Agama Hindu dan Budi Pekerti',
+				'Pendidikan Agama Konghuchu dan Budi Pekerti'
+			];
+			const agamaNameSet = new Set(agamaMapelNames);
+			const mpRecord = await db.query.tableMataPelajaran.findFirst({
+				columns: { kode: true, nama: true },
+				where: eq(tableMataPelajaran.id, mataPelajaranId)
+			});
+			const userKodeSet = new Set<string>();
+			const userMpIds = new Set<number>();
+			if (user.mataPelajaranId) userMpIds.add(user.mataPelajaranId);
+			const additionalMp = await db.query.tableAuthUserMataPelajaran.findMany({
+				columns: { mataPelajaranId: true },
+				where: eq(tableAuthUserMataPelajaran.authUserId, user.id)
+			});
+			for (const a of additionalMp) {
+				if (a.mataPelajaranId) userMpIds.add(a.mataPelajaranId);
+			}
+			if (userMpIds.size > 0) {
+				const userMps = await db.query.tableMataPelajaran.findMany({
+					columns: { kode: true, nama: true },
+					where: inArray(tableMataPelajaran.id, [...userMpIds])
+				});
+				for (const mp of userMps) {
+					if (mp.kode) userKodeSet.add(mp.kode.toUpperCase());
+					if (agamaNameSet.has(mp.nama)) userKodeSet.add('PAPB');
+				}
+			}
+			const mpKode = mpRecord?.kode?.toUpperCase();
+			const isAgama = mpRecord?.nama && agamaNameSet.has(mpRecord.nama);
+			const allowed = mpKode ? userKodeSet.has(mpKode) : isAgama ? userKodeSet.has('PAPB') : false;
+			if (!allowed) {
+				return json(
+					{ error: 'Anda tidak memiliki izin untuk melakukan presensi pada mata pelajaran ini' },
+					{ status: 403 }
+				);
 			}
 		}
 	}
@@ -187,7 +261,7 @@ export const POST = (async ({ request, locals, cookies, url }) => {
 
 	const now = new Date();
 
-	if (settings && isHoliday(settings, now)) {
+	if (settings && isHoliday(settings, now) && !simHari) {
 		return json({ error: 'Tidak dapat melakukan absensi di hari libur.' }, { status: 403 });
 	}
 
@@ -220,14 +294,14 @@ export const POST = (async ({ request, locals, cookies, url }) => {
 	if (!murid) {
 		return json({ error: 'Murid tidak ditemukan.' }, { status: 404 });
 	}
-	let isMorningWindow = false;
-	let isAfternoonWindow = false;
+	let isMorningWindow = true;
+	let isAfternoonWindow = true;
 	let morningEnd: Date | undefined;
 	let jamPulangThreshold: Date | undefined;
 	let afternoonStart: Date | undefined;
 	let afternoonEnd: Date | undefined;
 
-	if (settings?.jamMasuk) {
+	if (settings?.jamMasuk && !simHari) {
 		const jamMasukDate = getDateTime(settings.jamMasuk, now);
 		morningEnd = addMinutes(jamMasukDate, 60);
 
@@ -264,10 +338,16 @@ export const POST = (async ({ request, locals, cookies, url }) => {
 					{ status: 403 }
 				);
 			}
-		} else if (settings.tipePresensi === 'awal_mapel' || settings.tipePresensi === 'awal_akhir_mapel') {
+		} else if (
+			settings.tipePresensi === 'awal_mapel' ||
+			settings.tipePresensi === 'awal_akhir_mapel'
+		) {
 			const dayIdx = now.getDay();
 			const dayN = ['minggu', 'senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu'][dayIdx];
-			const diff = (now.getTime() - new Date(now).setHours(jamMasukDate.getHours(), jamMasukDate.getMinutes(), 0, 0)) / 60000;
+			const diff =
+				(now.getTime() -
+					new Date(now).setHours(jamMasukDate.getHours(), jamMasukDate.getMinutes(), 0, 0)) /
+				60000;
 			const jamKe = Math.max(1, Math.floor(diff / 45) + 1);
 			const jadwal = await db.query.tableJadwalPelajaran.findFirst({
 				columns: { kodeKegiatan: true },
@@ -290,7 +370,9 @@ export const POST = (async ({ request, locals, cookies, url }) => {
 			if (settings.tipePresensi === 'awal_mapel') {
 				if (now < jamKeStart || now > awalEnd) {
 					return json(
-						{ error: `Presensi hanya tersedia dari ${formatTime(jamKeStart)} sampai ${formatTime(awalEnd)}.` },
+						{
+							error: `Presensi hanya tersedia dari ${formatTime(jamKeStart)} sampai ${formatTime(awalEnd)}.`
+						},
 						{ status: 403 }
 					);
 				}
@@ -317,12 +399,22 @@ export const POST = (async ({ request, locals, cookies, url }) => {
 
 	await ensureAbsensiSchema();
 
+	const todayDateString = formatDateString(new Date());
+
+	if (simHari) {
+		const simTanggal =
+			tanggalParam && /^\d{4}-\d{2}-\d{2}$/.test(tanggalParam) ? tanggalParam : todayDateString;
+		simWriteAbsensi(sekolahId, kelasId, simTanggal, murid.id, mataPelajaranId, simHari, simJam);
+		return json({ message: `Absensi berhasil untuk ${murid.nama} (simulasi)` });
+	}
+
 	const todayStart = new Date();
 	todayStart.setHours(0, 0, 0, 0);
 	const todayEnd = new Date();
 	todayEnd.setHours(23, 59, 59, 999);
 
-	const duaWindow = settings?.tipePresensi === 'masuk_pulang' || settings?.tipePresensi === 'awal_akhir_mapel';
+	const duaWindow =
+		settings?.tipePresensi === 'masuk_pulang' || settings?.tipePresensi === 'awal_akhir_mapel';
 	if (duaWindow && morningEnd && afternoonStart && afternoonEnd) {
 		if (isMorningWindow) {
 			const existing = await db

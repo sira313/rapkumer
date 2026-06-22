@@ -1241,7 +1241,11 @@ export const actions: Actions = {
 		}
 
 		const validTipe = ['masuk_pulang', 'masuk_saja', 'awal_mapel', 'awal_akhir_mapel'];
-		const tipePresensiEnum = tipePresensi as 'masuk_pulang' | 'masuk_saja' | 'awal_mapel' | 'awal_akhir_mapel';
+		const tipePresensiEnum = tipePresensi as
+			| 'masuk_pulang'
+			| 'masuk_saja'
+			| 'awal_mapel'
+			| 'awal_akhir_mapel';
 		if (!validTipe.includes(tipePresensiEnum)) {
 			return fail(400, { fail: 'Tipe presensi tidak valid' });
 		}

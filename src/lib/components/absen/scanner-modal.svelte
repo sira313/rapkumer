@@ -4,8 +4,21 @@
 	import { toast } from '$lib/components/toast.svelte';
 	import { hideModal } from '$lib/components/global-modal.svelte';
 
-	let { onscan, mataPelajaranId }: { onscan?: () => void; mataPelajaranId?: number | null } =
-		$props();
+	let {
+		onscan,
+		mataPelajaranId,
+		kelasId,
+		simulasiHari,
+		simulasiJam,
+		simulasiTanggal
+	}: {
+		onscan?: () => void;
+		mataPelajaranId?: number | null;
+		kelasId?: number | null;
+		simulasiHari?: string | null;
+		simulasiJam?: string | null;
+		simulasiTanggal?: string | null;
+	} = $props();
 
 	let videoEl: HTMLVideoElement;
 	let canvasEl: HTMLCanvasElement;
@@ -76,6 +89,10 @@
 		try {
 			const params = new URLSearchParams();
 			if (mataPelajaranId != null) params.set('mataPelajaranId', String(mataPelajaranId));
+			if (kelasId != null) params.set('kelasId', String(kelasId));
+			if (simulasiHari) params.set('simHari', simulasiHari);
+			if (simulasiJam) params.set('simJam', simulasiJam);
+			if (simulasiTanggal) params.set('tanggal', simulasiTanggal);
 			const url = `/api/absen${params.toString() ? `?${params.toString()}` : ''}`;
 			const res = await fetch(url, {
 				method: 'POST',

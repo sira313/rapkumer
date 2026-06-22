@@ -17,7 +17,9 @@
 		tanggal,
 		mataPelajaranId,
 		namaMataPelajaran,
-		perkiraanJam
+		perkiraanJam,
+		simulasiHari,
+		simulasiJam
 	}: {
 		daftarMurid: MuridItem[];
 		kelasId?: number;
@@ -25,6 +27,8 @@
 		mataPelajaranId?: number | null;
 		namaMataPelajaran?: string;
 		perkiraanJam?: string;
+		simulasiHari?: string | null;
+		simulasiJam?: string | null;
 	} = $props();
 
 	let step = $state<'pilih-mode' | 'pilih-murid'>('pilih-mode');
@@ -126,6 +130,8 @@
 			fd.set('kelasId', String(kelasId));
 			fd.set('tanggal', tanggal);
 			if (mataPelajaranId != null) fd.set('mataPelajaranId', String(mataPelajaranId));
+			if (simulasiHari) fd.set('simHari', simulasiHari);
+			if (simulasiJam) fd.set('simJam', simulasiJam);
 			const res = await fetch('?/isiSekaligus', { method: 'POST', body: fd, redirect: 'error' });
 			if (!res.ok) {
 				const err = await res.json().catch(() => ({ fail: 'Gagal menyimpan' }));
@@ -153,6 +159,8 @@
 			fd.set('kelasId', String(kelasId));
 			fd.set('tanggal', tanggal);
 			if (mataPelajaranId != null) fd.set('mataPelajaranId', String(mataPelajaranId));
+			if (simulasiHari) fd.set('simHari', simulasiHari);
+			if (simulasiJam) fd.set('simJam', simulasiJam);
 			fd.set('entries', JSON.stringify(entries));
 			const res = await fetch('?/isiSekaligus', { method: 'POST', body: fd, redirect: 'error' });
 			if (!res.ok) {
