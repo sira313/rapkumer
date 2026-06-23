@@ -35,7 +35,7 @@ export const load: PageServerLoad = async ({ locals, depends }) => {
 	await ensureJadwalBellSchema();
 	await ensurePresensiSettingsSchema();
 
-	const [bellSettings, kegiatanCustom, jadwalPelajaran, bellSounds, presensiSettings] =
+	const [bellSettings, kegiatanCustom, jadwalPelajaran, bellSounds, presensiSettings, kelasRows] =
 		await Promise.all([
 			db.query.tableBellSettings.findFirst({
 				where: eq(tableBellSettings.sekolahId, sekolahId)
@@ -52,6 +52,10 @@ export const load: PageServerLoad = async ({ locals, depends }) => {
 			db.query.tablePresensiSettings.findFirst({
 				where: eq(tablePresensiSettings.sekolahId, sekolahId),
 				orderBy: [desc(tablePresensiSettings.id)]
+			}),
+			db.query.tableKelas.findMany({
+				where: eq(tableKelas.sekolahId, sekolahId),
+				columns: { id: true }
 			})
 		]);
 
@@ -75,18 +79,21 @@ export const load: PageServerLoad = async ({ locals, depends }) => {
 		}
 	}
 
-	const kelasIds = await db.query.tableKelas.findMany({
-		where: eq(tableKelas.sekolahId, sekolahId),
-		columns: { id: true }
-	});
-	const kelasIdList = kelasIds.map((k) => k.id);
-	const daftarMapel =
+	const kelasIdList = kelasRows.map((k) => k.id);
+	const [daftarMapel, daftarKokurikulerRows] = await Promise.all([
 		kelasIdList.length > 0
-			? await db.query.tableMataPelajaran.findMany({
+			? db.query.tableMataPelajaran.findMany({
 					where: inArray(tableMataPelajaran.kelasId, kelasIdList),
 					columns: { kode: true, nama: true }
 				})
-			: [];
+			: Promise.resolve([]),
+		kelasIdList.length > 0
+			? db.query.tableKokurikuler.findMany({
+					columns: { kode: true },
+					where: inArray(tableKokurikuler.kelasId, kelasIdList)
+				})
+			: Promise.resolve([])
+	]);
 	const agamaMapelNames = [
 		'Pendidikan Agama dan Budi Pekerti',
 		'Pendidikan Agama Islam dan Budi Pekerti',
@@ -107,14 +114,7 @@ export const load: PageServerLoad = async ({ locals, depends }) => {
 	}
 	const daftarKodeMapel = [...kodeSet].sort() as string[];
 
-	const daftarKodeKokurikuler = (
-		kelasIdList.length > 0
-			? await db.query.tableKokurikuler.findMany({
-					columns: { kode: true },
-					where: inArray(tableKokurikuler.kelasId, kelasIdList)
-				})
-			: []
-	).map((k) => k.kode);
+	const daftarKodeKokurikuler = daftarKokurikulerRows.map((k) => k.kode);
 
 	return {
 		meta: { title: 'Jadwal Pelajaran & Bell Sekolah' },

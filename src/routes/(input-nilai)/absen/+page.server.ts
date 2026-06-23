@@ -150,7 +150,11 @@ type PageState = {
 	perPage: number;
 };
 
-import { computeJamKeFromTime, type BellSettingsData, type CustomKegiatanData } from '$lib/server/absen-utils';
+import {
+	computeJamKeFromTime,
+	type BellSettingsData,
+	type CustomKegiatanData
+} from '$lib/server/absen-utils';
 
 export async function load({ parent, locals, url, depends }) {
 	depends('app:absen');

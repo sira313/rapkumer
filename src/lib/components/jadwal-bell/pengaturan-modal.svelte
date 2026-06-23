@@ -3,6 +3,7 @@
 	import { hideModal, setLoading } from '$lib/components/global-modal.svelte';
 	import { toast } from '$lib/components/toast.svelte';
 	import Icon from '$lib/components/icon.svelte';
+	import { isValidTime } from '$lib/utils';
 
 	interface Props {
 		jamPelajaranMenit?: number;
@@ -249,6 +250,10 @@
 	}
 
 	async function handleSubmit() {
+		if (!isValidTime(jamMulaiValue)) {
+			toast('Format jam mulai tidak valid (HH:mm)', 'warning');
+			return;
+		}
 		submitting = true;
 		setLoading(true);
 		const formData = new FormData();
@@ -329,10 +334,13 @@
 			<label class="flex flex-col gap-1">
 				<span class="fieldset-legend text-sm font-semibold">Jam Mulai Sekolah</span>
 				<input
-					type="time"
+					type="text"
 					class="input bg-base-200 dark:bg-base-300 w-full dark:border-none"
 					bind:value={jamMulaiValue}
 					disabled={submitting}
+					pattern="[0-9]{2}:[0-9]{2}"
+					inputmode="numeric"
+					placeholder="HH:mm"
 				/>
 			</label>
 		</div>

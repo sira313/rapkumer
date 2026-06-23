@@ -4,6 +4,8 @@
 	import { invalidate } from '$app/navigation';
 	import { showModal, hideModal } from '$lib/components/global-modal.svelte';
 	import { toast } from '$lib/components/toast.svelte';
+	import { computeNextEventMessage } from '$lib/utils/next-event-message';
+	import BellStatus from '$lib/components/jadwal-bell/bell-status.svelte';
 	import Icon from '$lib/components/icon.svelte';
 	import KodeKegiatan from '$lib/components/jadwal-bell/kode-kegiatan.svelte';
 	import PengaturanModal from '$lib/components/jadwal-bell/pengaturan-modal.svelte';
@@ -518,6 +520,23 @@
 	function startBell() {
 		_lastTriggeredPeriod = new Set();
 		_lastPergantianPeriod = new Set();
+		const now = new Date();
+		if (!isHoliday(now)) {
+			const today = dayNameMap[now.getDay()];
+			if (today) {
+				const currentMinutes = now.getHours() * 60 + now.getMinutes();
+				const dateStr = toDateStr(now);
+				for (let jamKe = 1; jamKe <= (hariMaxJam[today] ?? maxJam); jamKe++) {
+					const waktu = computeWaktu(today, jamKe);
+					if (!waktu) continue;
+					const endMinutes = timeToMinutes(waktu.end);
+					if (currentMinutes >= endMinutes + 1) {
+						const key = `${dateStr}-${today}-${jamKe}`;
+						_lastPergantianPeriod.add(key);
+					}
+				}
+			}
+		}
 		if (_bellTimer) clearInterval(_bellTimer);
 		_bellTimer = setInterval(tickBell, 15000);
 	}
@@ -978,7 +997,7 @@
 			if (!waktu) continue;
 			const startMinutes = timeToMinutes(waktu.start);
 			const endMinutes = timeToMinutes(waktu.end);
-			const dateStr = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
+			const dateStr = toDateStr(now);
 			const key = `${dateStr}-${today}-${jamKe}`;
 
 			if (
@@ -997,14 +1016,25 @@
 				_lastTriggeredPeriod.add(key);
 			}
 
-			if (
-				currentMinutes >= endMinutes &&
-				_lastTriggeredPeriod.has(key) &&
-				!_lastPergantianPeriod.has(key)
-			) {
+			if (currentMinutes >= endMinutes && !_lastPergantianPeriod.has(key)) {
 				_lastPergantianPeriod.add(key);
 				if (isSubjectCode(kode)) {
-					playTipeSound('pergantian');
+					const nextJamKe = jamKe + 1;
+					let isAdjacent = false;
+					if (nextJamKe <= (hariMaxJam[today] ?? maxJam)) {
+						const nextKode =
+							isAllSame(today, nextJamKe) ||
+							kelasTerurut.map((k) => getKode(today, nextJamKe, k.id)).find(Boolean);
+						if (nextKode) {
+							const nextWaktu = computeWaktu(today, nextJamKe);
+							if (nextWaktu && timeToMinutes(nextWaktu.start) === endMinutes) {
+								isAdjacent = true;
+							}
+						}
+					}
+					if (!isAdjacent) {
+						playTipeSound('pergantian');
+					}
 				}
 			}
 
@@ -1013,6 +1043,30 @@
 			}
 		}
 	}
+
+	let nextEventMessage = $state('');
+	$effect(() => {
+		nextEventMessage = computeNextEventMessage({
+			now: _now,
+			bellActive,
+			isHoliday,
+			hariList,
+			getTodayHari: (dayIdx) => dayNameMap[dayIdx],
+			maxJam,
+			getFirstKode: (hari, jamKe) => {
+				let kode = isAllSame(hari, jamKe);
+				if (!kode) {
+					const firstNonEmpty = kelasTerurut.map((k) => getKode(hari, jamKe, k.id)).find(Boolean);
+					if (firstNonEmpty) return firstNonEmpty;
+				}
+				return kode;
+			},
+			computeWaktu: (hari, jamKe) => waktuMatrix[hari]?.[jamKe] ?? null,
+			daftarKodeMapel: daftarKodeMapel as string[],
+			isFirstSubjectPeriod,
+			kegiatanCustom
+		});
+	});
 </script>
 
 <svelte:head>
@@ -1153,15 +1207,12 @@
 				{/if}
 			</div>
 
-			{#if bellActive}
-				<div class="alert alert-soft alert-success flex items-center gap-2">
-					<Icon name="play" class="h-4 w-4 shrink-0" />
-					<div class="flex flex-col gap-0.5 text-sm">
-						<span>Sistem bell aktif — memonitor jadwal secara otomatis.</span>
-						<span class="opacity-70">{hariIni}</span>
-					</div>
-				</div>
-			{/if}
+			<BellStatus
+				{bellActive}
+				{hariIni}
+				{nextEventMessage}
+				class="alert alert-soft alert-info"
+			/>
 
 			<div
 				bind:this={tableScrollEl}

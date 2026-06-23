@@ -104,6 +104,12 @@ export function searchQueryMarker(query?: string | null, target?: string | null)
 	return target.replace(pattern, (match) => `<mark>${match}</mark>`);
 }
 
+const timeRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+export function isValidTime(value: string): boolean {
+	return timeRegex.test(value);
+}
+
 export async function delay(ms = 500) {
 	return new Promise((r) => setTimeout(r, ms));
 }

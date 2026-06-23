@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
 	import Icon from '$lib/components/icon.svelte';
+import { isValidTime } from '$lib/utils';
 
 	type SimEvent = {
 		jamKe: number;
@@ -88,6 +89,11 @@
 
 	function startSimulasi() {
 		stopSimulasi();
+		if (!isValidTime(simulasiJam)) {
+			simulasiNextLabel = '—';
+			simulasiNextSound = 'Format jam tidak valid (HH:mm)';
+			return;
+		}
 		const [h, m] = simulasiJam.split(':').map(Number);
 		const currentMinutes = h * 60 + m;
 
@@ -209,10 +215,13 @@
 		<label class="flex flex-1 flex-col gap-1">
 			<span class="fieldset-legend text-sm font-semibold">Jam</span>
 			<input
-				type="time"
+				type="text"
 				class="input bg-base-200 dark:bg-base-300 w-full dark:border-none"
 				bind:value={simulasiJam}
 				disabled={simulasiRunning}
+				pattern="[0-9]{2}:[0-9]{2}"
+				inputmode="numeric"
+				placeholder="HH:mm"
 			/>
 		</label>
 		<div class="flex gap-2">

@@ -8,7 +8,9 @@ import {
 	tableEkstrakurikuler,
 	tableKokurikuler,
 	tableKehadiranMurid,
+	tableKegiatanCustom,
 	tableKelas,
+	tableJadwalPelajaran,
 	tableMataPelajaran,
 	tableMurid,
 	tablePresensiSettings
@@ -273,21 +275,44 @@ export async function load(event) {
 		};
 	}
 
-	const [bellRow, presensiRow] = await Promise.all([
+	const [bellRow, presensiRow, kegiatanCustom, jadwalPelajaran] = await Promise.all([
 		sekolahId
 			? db.query.tableBellSettings.findFirst({
-					columns: { isActive: true },
 					where: eq(tableBellSettings.sekolahId, sekolahId)
 				})
 			: Promise.resolve(null),
 		sekolahId
 			? db.query.tablePresensiSettings.findFirst({
-					columns: { hariSekolah: true, liburNasional: true, liburSemester: true },
+					columns: { hariSekolah: true, jamPulang: true, liburNasional: true, liburSemester: true },
 					where: eq(tablePresensiSettings.sekolahId, sekolahId),
 					orderBy: [desc(tablePresensiSettings.id)]
 				})
-			: Promise.resolve(null)
+			: Promise.resolve(null),
+		sekolahId
+			? db.query.tableKegiatanCustom.findMany({
+					where: eq(tableKegiatanCustom.sekolahId, sekolahId),
+					columns: { kode: true, nama: true, durasi: true }
+				})
+			: Promise.resolve([]),
+		sekolahId
+			? db.query.tableJadwalPelajaran.findMany({
+					where: eq(tableJadwalPelajaran.sekolahId, sekolahId),
+					columns: { hari: true, jamKe: true, kelasId: true, kodeKegiatan: true }
+				})
+			: Promise.resolve([])
 	]);
+
+	let daftarKodeMapel: string[] = [];
+	if (sekolahId) {
+		const kelasIds = daftarKelas.map((k) => k.id);
+		if (kelasIds.length > 0) {
+			const mapelRows = await db.query.tableMataPelajaran.findMany({
+				where: inArray(tableMataPelajaran.kelasId, kelasIds),
+				columns: { kode: true }
+			});
+			daftarKodeMapel = [...new Set(mapelRows.map((r) => r.kode).filter(Boolean))] as string[];
+		}
+	}
 
 	const hariSekolah = presensiRow?.hariSekolah ?? 6;
 
@@ -314,6 +339,17 @@ export async function load(event) {
 		bellActive: bellRow?.isActive === 1,
 		hariSekolah,
 		liburNasional,
-		liburSemester
+		liburSemester,
+		bellSettings: bellRow
+			? {
+					jamMulai: bellRow.jamMulai,
+					jamPelajaranMenit: bellRow.jamPelajaranMenit,
+					durasiIstirahat: bellRow.durasiIstirahat,
+					durasiUpacara: bellRow.durasiUpacara
+				}
+			: null,
+		kegiatanCustom,
+		jadwalPelajaran,
+		daftarKodeMapel
 	};
 }

@@ -356,6 +356,10 @@
 	const simActive = $derived(!!page.url.searchParams.get('simHari'));
 
 	function applySimulasi() {
+		if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(simulasiJam)) {
+			toast('Format jam tidak valid (HH:mm)', 'warning');
+			return;
+		}
 		void applyNavigation((params) => {
 			params.set('simHari', simulasiHari);
 			params.set('simJam', simulasiJam);
@@ -792,7 +796,6 @@
 				>
 					<Icon name="del" />
 				</button>
-
 			</div>
 		</div>
 		<button
@@ -807,10 +810,13 @@
 
 	{#if showSimulasi}
 		<div class="bg-base-200 rounded-box mb-4 p-3 shadow-md dark:shadow-none">
-			<div class="flex flex-col sm:flex-row sm:items-end gap-3">
+			<div class="flex flex-col gap-3 sm:flex-row sm:items-end">
 				<label class="flex flex-col gap-1 sm:flex-1">
 					<span class="text-sm font-semibold">Hari</span>
-					<select class="w-full select select-sm bg-base-100 dark:border-none" bind:value={simulasiHari}>
+					<select
+						class="select select-sm bg-base-100 w-full dark:border-none"
+						bind:value={simulasiHari}
+					>
 						{#each ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'] as h (h)}
 							<option>{h}</option>
 						{/each}
@@ -818,20 +824,31 @@
 				</label>
 				<label class="flex flex-col gap-1 sm:flex-1">
 					<span class="text-sm font-semibold">Jam</span>
-					<input type="time" class="w-full input input-sm bg-base-100 dark:border-none" bind:value={simulasiJam} />
+					<input
+						type="text"
+						class="input input-sm bg-base-100 w-full dark:border-none"
+						bind:value={simulasiJam}
+						pattern="[0-9]{2}:[0-9]{2}"
+						inputmode="numeric"
+						placeholder="HH:mm"
+					/>
 				</label>
 				<button type="button" class="btn btn-primary btn-sm shadow-none" onclick={applySimulasi}>
 					<Icon name="play" /> Terapkan
 				</button>
-			{#if simActive}
-				<button type="button" class="btn btn-soft btn-sm shadow-none" onclick={resetSimulasi}>
-					Reset
-				</button>
-			{:else}
-				<button type="button" class="btn btn-soft btn-sm shadow-none" onclick={() => (showSimulasi = false)}>
-					Tutup
-				</button>
-			{/if}
+				{#if simActive}
+					<button type="button" class="btn btn-soft btn-sm shadow-none" onclick={resetSimulasi}>
+						Reset
+					</button>
+				{:else}
+					<button
+						type="button"
+						class="btn btn-soft btn-sm shadow-none"
+						onclick={() => (showSimulasi = false)}
+					>
+						Tutup
+					</button>
+				{/if}
 			</div>
 		</div>
 	{/if}

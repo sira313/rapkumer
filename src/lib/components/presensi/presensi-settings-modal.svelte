@@ -3,6 +3,7 @@
 	import { hideModal, setLoading } from '$lib/components/global-modal.svelte';
 	import { toast } from '$lib/components/toast.svelte';
 	import Icon from '$lib/components/icon.svelte';
+	import { isValidTime } from '$lib/utils';
 
 	interface SemesterRange {
 		start: string;
@@ -85,6 +86,10 @@
 
 	const validationError = $derived.by(() => {
 		if (!jamMasukValue || !jamPulangValue) return 'Jam masuk dan jam pulang harus diisi';
+		if (!isValidTime(jamMasukValue))
+			return 'Format jam masuk tidak valid (HH:mm)';
+		if (!isValidTime(jamPulangValue))
+			return 'Format jam pulang tidak valid (HH:mm)';
 		if (jamMasukValue >= jamPulangValue) return 'Jam masuk harus lebih awal dari jam pulang';
 		if (!['5', '6'].includes(hariSekolahValue)) return 'Pilih hari sekolah';
 		if (
@@ -104,6 +109,14 @@
 	function validateBeforeSubmit() {
 		if (!jamMasukValue || !jamPulangValue) {
 			toast('Jam masuk dan jam pulang harus diisi', 'warning');
+			return false;
+		}
+		if (!isValidTime(jamMasukValue)) {
+			toast('Format jam masuk tidak valid (HH:mm)', 'warning');
+			return false;
+		}
+		if (!isValidTime(jamPulangValue)) {
+			toast('Format jam pulang tidak valid (HH:mm)', 'warning');
 			return false;
 		}
 		if (jamMasukValue >= jamPulangValue) {
@@ -203,17 +216,23 @@
 		<label class="fieldset flex flex-col gap-1">
 			<span class="fieldset-legend text-sm font-semibold">Jam Masuk</span>
 			<input
-				type="time"
-				class="time-input-bypass input bg-base-200 dark:bg-base-300 w-full dark:border-none"
+				type="text"
+				class="input bg-base-200 dark:bg-base-300 w-full dark:border-none"
 				bind:value={jamMasukValue}
+				pattern="[0-9]{2}:[0-9]{2}"
+				inputmode="numeric"
+				placeholder="HH:mm"
 			/>
 		</label>
 		<label class="fieldset flex flex-col gap-1">
 			<span class="fieldset-legend text-sm font-semibold">Jam Pulang</span>
 			<input
-				type="time"
-				class="time-input-bypass input bg-base-200 dark:bg-base-300 w-full dark:border-none"
+				type="text"
+				class="input bg-base-200 dark:bg-base-300 w-full dark:border-none"
 				bind:value={jamPulangValue}
+				pattern="[0-9]{2}:[0-9]{2}"
+				inputmode="numeric"
+				placeholder="HH:mm"
 			/>
 		</label>
 	</div>
@@ -362,9 +381,3 @@
 		</div>
 	{/if}
 </div>
-
-<style>
-	:global(.time-input-bypass::-webkit-calendar-picker-indicator) {
-		display: none;
-	}
-</style>

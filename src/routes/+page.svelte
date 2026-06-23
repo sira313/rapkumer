@@ -5,6 +5,8 @@
 	import ProgressCard from '$lib/components/dashboard/progress-card.svelte';
 	import QuickActionsCard from '$lib/components/dashboard/quick-actions-card.svelte';
 	import TimeCard from '$lib/components/dashboard/time-card.svelte';
+	import { computeNextEventMessage } from '$lib/utils/next-event-message';
+	import BellStatus from '$lib/components/jadwal-bell/bell-status.svelte';
 
 	let { data } = $props();
 	const sekolah = (data.sekolah ?? null) as Sekolah | null;
@@ -39,6 +41,45 @@
 		(data.liburSemester as Array<{ start: string; end: string }>) ?? []
 	);
 
+	const bellSettings = $derived(
+		(data.bellSettings as {
+			jamMulai: string;
+			jamPelajaranMenit: number;
+			durasiIstirahat: number;
+			durasiUpacara: number;
+		} | null) ?? null
+	);
+	const kegiatanCustom = $derived(
+		(data.kegiatanCustom as Array<{ kode: string; nama: string; durasi: number | null }>) ?? []
+	);
+	const jadwalPelajaran = $derived(
+		(data.jadwalPelajaran as Array<{
+			hari: string;
+			jamKe: number;
+			kelasId: number;
+			kodeKegiatan: string;
+		}>) ?? []
+	);
+	const daftarKodeMapel = $derived((data.daftarKodeMapel as string[]) ?? []);
+	const daftarKelas = $derived((data.daftarKelas as Array<{ id: number; nama: string }>) ?? []);
+
+	const hariList = $derived(
+		hariSekolah === 5
+			? ['senin', 'selasa', 'rabu', 'kamis', 'jumat']
+			: ['senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu']
+	);
+
+	const hariNamaList = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+
+	const hariIndexMap: Record<number, string> = {
+		1: 'senin',
+		2: 'selasa',
+		3: 'rabu',
+		4: 'kamis',
+		5: 'jumat',
+		6: 'sabtu'
+	};
+
 	function toDateStr(date: Date): string {
 		const y = date.getFullYear();
 		const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -58,17 +99,140 @@
 		return false;
 	}
 
+	function timeToMinutes(t: string): number {
+		const [h, m] = t.split(':').map(Number);
+		return h * 60 + m;
+	}
+
+	function minutesToTime(m: number): string {
+		const h = Math.floor(m / 60);
+		const min = m % 60;
+		return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+	}
+
+
+	function getDurasiKode(kode: string, defaultDur: number): number {
+		if (kode === 'UPB') return bellSettings?.durasiUpacara ?? 70;
+		if (kode === 'IST') return bellSettings?.durasiIstirahat ?? 30;
+		const custom = kegiatanCustom.find((k) => k.kode === kode);
+		if (custom?.durasi != null) return custom.durasi;
+		return defaultDur;
+	}
+
+	const kelasTerurut = $derived(
+		[...daftarKelas].sort((a, b) => {
+			const aNum = parseInt(a.nama.replace(/\D/g, '')) || 0;
+			const bNum = parseInt(b.nama.replace(/\D/g, '')) || 0;
+			return aNum - bNum;
+		})
+	);
+
+	const jadwalMatrix = $derived.by(() => {
+		const matrix: Record<string, Record<number, Record<number, string>>> = {};
+		for (const entry of jadwalPelajaran) {
+			if (!matrix[entry.hari]) matrix[entry.hari] = {};
+			if (!matrix[entry.hari][entry.jamKe]) matrix[entry.hari][entry.jamKe] = {};
+			matrix[entry.hari][entry.jamKe][entry.kelasId] = entry.kodeKegiatan;
+		}
+		return matrix;
+	});
+
+	function isAllSame(hari: string, jamKe: number): string | null {
+		const codes = kelasTerurut.map((k) => jadwalMatrix[hari]?.[jamKe]?.[k.id] ?? '');
+		const unique = [...new Set(codes.filter(Boolean))];
+		if (unique.length === 1) return unique[0];
+		return null;
+	}
+
+	function isFirstSubjectPeriod(hari: string, jamKe: number): boolean {
+		for (let j = 1; j < jamKe; j++) {
+			const codes = kelasTerurut.map((k) => jadwalMatrix[hari]?.[j]?.[k.id] ?? '');
+			for (const c of codes) {
+				if (c && daftarKodeMapel.includes(c)) return false;
+			}
+		}
+		return true;
+	}
+
+	function computeWaktu(hari: string, jamKe: number): { start: string; end: string } | null {
+		const jamMulai = bellSettings?.jamMulai ?? '07:00';
+		const jamPelajaranMenit = bellSettings?.jamPelajaranMenit ?? 35;
+		const jamMulaiMinutes = timeToMinutes(jamMulai);
+		const daySchedule = jadwalMatrix[hari] ?? {};
+
+		let currentMinutes = jamMulaiMinutes;
+		for (let prevJamKe = 1; prevJamKe < jamKe; prevJamKe++) {
+			const prevCodes = kelasTerurut.map((k) => daySchedule[prevJamKe]?.[k.id] ?? '');
+			const uniquePrev = [...new Set(prevCodes.filter(Boolean))];
+			let dur = jamPelajaranMenit;
+			if (uniquePrev.length === 1) {
+				dur = getDurasiKode(uniquePrev[0], dur);
+			}
+			currentMinutes += dur;
+		}
+
+		const codes = kelasTerurut.map((k) => daySchedule[jamKe]?.[k.id] ?? '');
+		const unique = [...new Set(codes.filter(Boolean))];
+		let dur = jamPelajaranMenit;
+		if (unique.length === 1) {
+			dur = getDurasiKode(unique[0], dur);
+		}
+
+		return { start: minutesToTime(currentMinutes), end: minutesToTime(currentMinutes + dur) };
+	}
+
+	const maxJam = $derived.by(() => {
+		let max = 0;
+		for (const hari of hariList) {
+			const daySchedule = jadwalMatrix[hari];
+			if (daySchedule) {
+				const periods = Object.keys(daySchedule).map(Number);
+				if (periods.length > 0) {
+					max = Math.max(max, ...periods);
+				}
+			}
+		}
+		return max;
+	});
+
 	let _now = $state(new Date());
 	$effect(() => {
 		const id = setInterval(() => (_now = new Date()), 60_000);
 		return () => clearInterval(id);
 	});
 
+	let nextEventMessage = $state('');
+	$effect(() => {
+		nextEventMessage = computeNextEventMessage({
+			now: _now,
+			bellActive,
+			isHoliday,
+			hariList,
+			getTodayHari: (dayIdx) => hariIndexMap[dayIdx],
+			maxJam,
+			getFirstKode: (hari, jamKe) => {
+				let kode = isAllSame(hari, jamKe);
+				if (!kode) {
+					const daySchedule = jadwalMatrix[hari]?.[jamKe];
+					if (daySchedule) {
+						for (const kelas of kelasTerurut) {
+							const c = daySchedule[kelas.id];
+							if (c) return c;
+						}
+					}
+				}
+				return kode;
+			},
+			computeWaktu,
+			daftarKodeMapel,
+			isFirstSubjectPeriod,
+			kegiatanCustom
+		});
+	});
+
 	const hariIni = $derived.by(() => {
 		const status = isHoliday(_now) ? 'Libur' : 'Hari Belajar';
-		const hariNama = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][
-			_now.getDay()
-		];
+		const hariNama = hariNamaList[_now.getDay()];
 		const tgl = _now.toLocaleDateString('id-ID', {
 			day: 'numeric',
 			month: 'long',
@@ -78,25 +242,7 @@
 	});
 </script>
 
-{#if bellActive}
-	<div class="alert alert-info alert-soft mb-4 flex items-center gap-2 text-sm">
-		<svg
-			xmlns="http://www.w3.org/2000/svg"
-			class="h-5 w-5 shrink-0"
-			viewBox="0 0 24 24"
-			fill="none"
-			stroke="currentColor"
-			stroke-width="2"
-			><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path
-				d="M13.73 21a2 2 0 0 1-3.46 0"
-			/></svg
-		>
-		<div class="flex flex-col gap-0.5">
-			<span>Sistem bell sedang berjalan — memonitor jadwal pelajaran secara otomatis.</span>
-			<span class="opacity-70">{hariIni}</span>
-		</div>
-	</div>
-{/if}
+<BellStatus {bellActive} {hariIni} {nextEventMessage} class="alert alert-info alert-soft mb-4" />
 
 <!-- Kontainer Utama Grid -->
 <div class="grid w-full grid-cols-1 gap-5 md:grid-cols-2">

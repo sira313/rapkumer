@@ -11,7 +11,7 @@
 	});
 
 	const timeString = $derived(
-		now?.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) ?? ''
+		now?.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }) ?? ''
 	);
 	const dateString = $derived(
 		now?.toLocaleDateString('id-ID', {

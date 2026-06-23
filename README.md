@@ -54,21 +54,21 @@ Dokumentasi lengkap aplikasi ini disusun dalam bahasa Indonesia. File README ini
 
 1. Clone repository.
 
-    ```bash
-    git clone https://github.com/sira313/raporkumer && cd raporkumer
-    ```
+   ```bash
+   git clone https://github.com/sira313/raporkumer && cd raporkumer
+   ```
 
 2. Install seluruh dependency.
 
-    ```bash
-    pnpm install
-    ```
+   ```bash
+   pnpm install
+   ```
 
 3. Build aplikasi dan jalankan.
 
-    ```bash
-    pnpm build && node build
-    ```
+   ```bash
+   pnpm build && node build
+   ```
 
 Untuk panduan instalasi manual serta proses pengembangan yang lebih lengkap, silakan baca:
 
