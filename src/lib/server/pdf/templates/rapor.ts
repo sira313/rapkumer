@@ -81,11 +81,11 @@ export function renderRaporHTML(data: RaporPrintData): string {
 	}
 
 	const isSMK = data.sekolah.jenjangVariant === 'SMK';
-	const jenisLabels: Record<string, string> = {
-		wajib: isSMK ? 'A. Mata Pelajaran Umum' : 'A. Mata Pelajaran Wajib',
-		pilihan: 'B. Mata Pelajaran Pilihan',
-		kejuruan: 'C. Mata Pelajaran Kejuruan',
-		mulok: 'D. Muatan Lokal'
+	const jenisLabelText: Record<string, string> = {
+		wajib: isSMK ? 'Mata Pelajaran Umum' : 'Mata Pelajaran Wajib',
+		pilihan: 'Mata Pelajaran Pilihan',
+		kejuruan: 'Mata Pelajaran Kejuruan',
+		mulok: 'Muatan Lokal'
 	};
 	const jenisOrder = ['wajib', 'pilihan', 'kejuruan', 'mulok'];
 
@@ -329,10 +329,11 @@ ${bgLogoSrc ? `<img src="${bgLogoSrc}" alt="" class="watermark">` : ''}
 	<tbody>
 ${jenisOrder
 	.filter((j) => kelompokMap[j]?.items.length)
-	.map((jenis) => {
+	.map((jenis, idx) => {
 		const group = kelompokMap[jenis];
+		const letter = String.fromCharCode(65 + idx);
 		return `		<tr class="group-header">
-			<td colspan="4">${jenisLabels[jenis]}</td>
+			<td colspan="4">${letter}. ${jenisLabelText[jenis]}</td>
 		</tr>
 ${group.items
 	.map(
