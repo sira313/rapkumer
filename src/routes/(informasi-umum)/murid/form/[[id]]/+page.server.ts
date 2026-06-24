@@ -155,6 +155,26 @@ export const actions = {
 				formMurid.ibuId = await upsertWaliMurid(db, formMurid.ibu, murid.ibuId);
 				formMurid.ayahId = await upsertWaliMurid(db, formMurid.ayah, murid.ayahId);
 				formMurid.waliId = await upsertWaliMurid(db, formMurid.wali, murid.waliId);
+
+				const alamatBaru = formMurid.alamat;
+				if (alamatBaru) {
+					const alamatLengkap = [alamatBaru.jalan, alamatBaru.desa, alamatBaru.kecamatan, alamatBaru.kabupaten]
+						.filter((v) => v && v !== 'Belum diisi')
+						.join(', ');
+					if (formMurid.ayahId) {
+						await db
+							.update(tableWaliMurid)
+							.set({ alamat: alamatLengkap })
+							.where(eq(tableWaliMurid.id, formMurid.ayahId));
+					}
+					if (formMurid.ibuId) {
+						await db
+							.update(tableWaliMurid)
+							.set({ alamat: alamatLengkap })
+							.where(eq(tableWaliMurid.id, formMurid.ibuId));
+					}
+				}
+
 				await db.update(tableMurid).set(formMurid).where(eq(tableMurid.id, +params.id));
 			} else {
 				// insert
@@ -169,6 +189,26 @@ export const actions = {
 				formMurid.ibuId = await upsertWaliMurid(db, formMurid.ibu);
 				formMurid.ayahId = await upsertWaliMurid(db, formMurid.ayah);
 				formMurid.waliId = await upsertWaliMurid(db, formMurid.wali);
+
+				const alamatBaru = formMurid.alamat;
+				if (alamatBaru) {
+					const alamatLengkap = [alamatBaru.jalan, alamatBaru.desa, alamatBaru.kecamatan, alamatBaru.kabupaten]
+						.filter((v) => v && v !== 'Belum diisi')
+						.join(', ');
+					if (formMurid.ayahId) {
+						await db
+							.update(tableWaliMurid)
+							.set({ alamat: alamatLengkap })
+							.where(eq(tableWaliMurid.id, formMurid.ayahId));
+					}
+					if (formMurid.ibuId) {
+						await db
+							.update(tableWaliMurid)
+							.set({ alamat: alamatLengkap })
+							.where(eq(tableWaliMurid.id, formMurid.ibuId));
+					}
+				}
+
 				formMurid.updatedAt = new Date().toISOString();
 				const [murid] = await db
 					.insert(tableMurid)
