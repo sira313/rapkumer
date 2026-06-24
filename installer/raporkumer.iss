@@ -94,7 +94,7 @@ end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
 var
-	EnvPath, DbPath, DbDir, S, SrcDb, LogDir, LogFile: string;
+	EnvPath, DbPath, DbDir, S, SrcDb, LogDir, LogFile, SoundDir: string;
 begin
 	if CurStep = ssPostInstall then
 	begin
@@ -118,8 +118,13 @@ begin
 			LogFile := LogDir + '\\rapkumer.log';
 			if not FileExists(LogFile) then
 				SaveStringToFile(LogFile, '', False);
+		// Ensure sounds directory exists
+			SoundDir := ExpandConstant('{localappdata}\Rapkumer-data\sounds');
+			if not DirExists(SoundDir) then
+				ForceDirectories(SoundDir);
+
 		EnvPath := ExpandConstant('{app}\.env');
-		S := 'DB_URL="file:' + DbPath + '"' + #13#10 + 'BODY_SIZE_LIMIT=5M' + #13#10 + 'photo="file:' + ExpandConstant('{localappdata}\Rapkumer-data\uploads') + '"';
+		S := 'DB_URL="file:' + DbPath + '"' + #13#10 + 'BODY_SIZE_LIMIT=5M' + #13#10 + 'photo="file:' + ExpandConstant('{localappdata}\Rapkumer-data\uploads') + '"' + #13#10 + 'sounds="file:' + ExpandConstant('{localappdata}\Rapkumer-data\sounds') + '"';
 		if SaveStringToFile(EnvPath, S, False) then
 			Log(Format('Wrote .env to %s', [EnvPath]))
 		else

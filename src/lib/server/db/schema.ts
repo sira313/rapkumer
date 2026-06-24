@@ -1129,7 +1129,6 @@ export const tableBellSounds = sqliteTable(
 			.references(() => tableSekolah.id),
 		tipe: text().notNull(),
 		fileName: text().notNull(),
-		fileData: blob({ mode: 'buffer' }).$type<ArrayBuffer>(),
 		mimeType: text().notNull().default('audio/mpeg'),
 		ttsMessage: text(),
 		...audit
