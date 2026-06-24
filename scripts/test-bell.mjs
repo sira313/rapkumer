@@ -188,6 +188,32 @@ function getSoundType(kode, today, jamKe) {
 
 // === Run bell test ===
 const today = hari;
+
+// === Auto-PLG (matches web client's getKode auto-return 'PLG' for last row) ===
+function computePlgAutoJam(hari) {
+	for (let j = maxJam; j >= 1; j--) {
+		const waktu = computeWaktu(hari, j);
+		if (waktu) {
+			const startMinutes = timeToMinutes(waktu.start);
+			if (startMinutes < jamPulangMinutes) {
+				return j;
+			}
+		}
+	}
+	return 1;
+}
+
+const hariMaxJam = computePlgAutoJam(today);
+
+function getKode(hari, jamKe) {
+	if (jamKe === hariMaxJam) return 'PLG';
+	const k = isAllSame(hari, jamKe);
+	if (k) return k;
+	const firstNonEmpty = kelasTerurut
+		.map((k) => jadwalMatrix[hari]?.[jamKe]?.[k.id] ?? '')
+		.find(Boolean);
+	return firstNonEmpty || null;
+}
 const nowStr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 
 console.log(`\n=== SIMULASI BELL ===`);
@@ -200,19 +226,14 @@ console.log(`Kode Mapel: ${[...daftarKodeMapel].join(', ')}`);
 if (kegiatanCustom.length > 0) {
 	console.log(`Kegiatan Custom: ${kegiatanCustom.map((k) => `${k.kode}(${k.nama})`).join(', ')}`);
 }
+console.log(`HariMaxJam (PLG di jamKe): ${hariMaxJam}`);
 
 console.log(`\n--- Pengecekan tiap jamKe ---`);
 let anyTrigger = false;
 
-for (let jamKe = 1; jamKe <= maxJam; jamKe++) {
-	let kode = isAllSame(today, jamKe);
-	if (!kode) {
-		const firstNonEmpty = kelasTerurut
-			.map((k) => jadwalMatrix[today]?.[jamKe]?.[k.id] ?? '')
-			.find(Boolean);
-		if (!firstNonEmpty) continue;
-		kode = firstNonEmpty;
-	}
+for (let jamKe = 1; jamKe <= hariMaxJam; jamKe++) {
+	const kode = getKode(today, jamKe);
+	if (!kode) continue;
 	const waktu = computeWaktu(today, jamKe);
 	const startMin = timeToMinutes(waktu.start);
 	const endMin = timeToMinutes(waktu.end);
@@ -224,8 +245,9 @@ for (let jamKe = 1; jamKe <= maxJam; jamKe++) {
 
 	if (isInRange) anyTrigger = true;
 
+	const waktuStr = kode === 'PLG' ? waktu.start : `${waktu.start}-${waktu.end}`;
 	console.log(
-		`  jamKe=${jamKe}: ${waktu.start}-${waktu.end} | kode='${kode}' | ${soundLabel}${marker}`
+		`  jamKe=${jamKe}: ${waktuStr} | kode='${kode}' | ${soundLabel}${marker}`
 	);
 }
 
@@ -235,19 +257,14 @@ if (!anyTrigger) {
 
 // Also show what would trigger if we walked through the day
 console.log(`\n--- Simulasi per jam untuk hari ${today} ---`);
-for (let jamKe = 1; jamKe <= maxJam; jamKe++) {
-	let kode = isAllSame(today, jamKe);
-	if (!kode) {
-		const firstNonEmpty = kelasTerurut
-			.map((k) => jadwalMatrix[today]?.[jamKe]?.[k.id] ?? '')
-			.find(Boolean);
-		if (!firstNonEmpty) continue;
-		kode = firstNonEmpty;
-	}
+for (let jamKe = 1; jamKe <= hariMaxJam; jamKe++) {
+	const kode = getKode(today, jamKe);
+	if (!kode) continue;
 	const waktu = computeWaktu(today, jamKe);
 	const soundType = getSoundType(kode, today, jamKe);
 	const soundLabel = soundType.startsWith('TTS:') ? soundType : `suara "${soundType}"`;
-	console.log(`  ${waktu.start}-${waktu.end} | ${kode} → ${soundLabel}`);
+	const waktuStr = kode === 'PLG' ? waktu.start : `${waktu.start}-${waktu.end}`;
+	console.log(`  ${waktuStr} | ${kode} → ${soundLabel}`);
 }
 
 await db.close();

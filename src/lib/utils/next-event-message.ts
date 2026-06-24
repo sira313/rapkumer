@@ -45,6 +45,7 @@ export function computeNextEventMessage(params: NextEventParams): string {
 	type Event = { minutes: number; kode: string; type: 'start' | 'end'; jamKe: number };
 	let nearest: Event | null = null;
 	let lastEndMinutes = -1;
+	let plgStartMinutes = -1;
 
 	for (let jamKe = 1; jamKe <= maxJam; jamKe++) {
 		const kode = getFirstKode(todayHari, jamKe);
@@ -59,21 +60,32 @@ export function computeNextEventMessage(params: NextEventParams): string {
 			lastEndMinutes = endMinutes;
 		}
 
-		if (nowMinutes < startMinutes) {
-			if (!nearest || startMinutes < nearest.minutes) {
-				nearest = { minutes: startMinutes, kode, type: 'start', jamKe };
+		if (kode === 'PLG') {
+			if (plgStartMinutes < 0) plgStartMinutes = startMinutes;
+			if (nowMinutes < startMinutes) {
+				if (!nearest || startMinutes < nearest.minutes) {
+					nearest = { minutes: startMinutes, kode, type: 'start', jamKe };
+				}
 			}
-		}
-
-		if (nowMinutes < endMinutes) {
-			if (!nearest || endMinutes < nearest.minutes) {
-				nearest = { minutes: endMinutes, kode, type: 'end', jamKe };
+		} else {
+			if (nowMinutes < startMinutes) {
+				if (!nearest || startMinutes < nearest.minutes) {
+					nearest = { minutes: startMinutes, kode, type: 'start', jamKe };
+				}
+			}
+			if (nowMinutes < endMinutes) {
+				if (!nearest || endMinutes < nearest.minutes) {
+					nearest = { minutes: endMinutes, kode, type: 'end', jamKe };
+				}
 			}
 		}
 	}
 
 	if (!nearest) {
 		if (lastEndMinutes >= 0 && nowMinutes >= lastEndMinutes) {
+			return 'Jam pelajaran telah usai';
+		}
+		if (plgStartMinutes >= 0 && nowMinutes >= plgStartMinutes) {
 			return 'Jam pelajaran telah usai';
 		}
 		return '';
