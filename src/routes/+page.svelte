@@ -110,7 +110,6 @@
 		return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
 	}
 
-
 	function getDurasiKode(kode: string, defaultDur: number): number {
 		if (kode === 'UPB') return bellSettings?.durasiUpacara ?? 70;
 		if (kode === 'IST') return bellSettings?.durasiIstirahat ?? 30;

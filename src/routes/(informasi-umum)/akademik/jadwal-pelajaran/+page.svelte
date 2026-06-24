@@ -1207,12 +1207,7 @@
 				{/if}
 			</div>
 
-			<BellStatus
-				{bellActive}
-				{hariIni}
-				{nextEventMessage}
-				class="alert alert-soft alert-info"
-			/>
+			<BellStatus {bellActive} {hariIni} {nextEventMessage} class="alert alert-soft alert-info" />
 
 			<div
 				bind:this={tableScrollEl}

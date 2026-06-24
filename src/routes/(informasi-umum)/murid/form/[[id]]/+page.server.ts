@@ -158,7 +158,12 @@ export const actions = {
 
 				const alamatBaru = formMurid.alamat;
 				if (alamatBaru) {
-					const alamatLengkap = [alamatBaru.jalan, alamatBaru.desa, alamatBaru.kecamatan, alamatBaru.kabupaten]
+					const alamatLengkap = [
+						alamatBaru.jalan,
+						alamatBaru.desa,
+						alamatBaru.kecamatan,
+						alamatBaru.kabupaten
+					]
 						.filter((v) => v && v !== 'Belum diisi')
 						.join(', ');
 					if (formMurid.ayahId) {
@@ -192,7 +197,12 @@ export const actions = {
 
 				const alamatBaru = formMurid.alamat;
 				if (alamatBaru) {
-					const alamatLengkap = [alamatBaru.jalan, alamatBaru.desa, alamatBaru.kecamatan, alamatBaru.kabupaten]
+					const alamatLengkap = [
+						alamatBaru.jalan,
+						alamatBaru.desa,
+						alamatBaru.kecamatan,
+						alamatBaru.kabupaten
+					]
 						.filter((v) => v && v !== 'Belum diisi')
 						.join(', ');
 					if (formMurid.ayahId) {

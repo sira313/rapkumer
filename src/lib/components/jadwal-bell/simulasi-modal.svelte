@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
 	import Icon from '$lib/components/icon.svelte';
-import { isValidTime } from '$lib/utils';
+	import { isValidTime } from '$lib/utils';
 
 	type SimEvent = {
 		jamKe: number;

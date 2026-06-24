@@ -86,10 +86,8 @@
 
 	const validationError = $derived.by(() => {
 		if (!jamMasukValue || !jamPulangValue) return 'Jam masuk dan jam pulang harus diisi';
-		if (!isValidTime(jamMasukValue))
-			return 'Format jam masuk tidak valid (HH:mm)';
-		if (!isValidTime(jamPulangValue))
-			return 'Format jam pulang tidak valid (HH:mm)';
+		if (!isValidTime(jamMasukValue)) return 'Format jam masuk tidak valid (HH:mm)';
+		if (!isValidTime(jamPulangValue)) return 'Format jam pulang tidak valid (HH:mm)';
 		if (jamMasukValue >= jamPulangValue) return 'Jam masuk harus lebih awal dari jam pulang';
 		if (!['5', '6'].includes(hariSekolahValue)) return 'Pilih hari sekolah';
 		if (

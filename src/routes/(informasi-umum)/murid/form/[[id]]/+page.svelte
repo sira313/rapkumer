@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { invalidate } from '$app/navigation';
+	import { invalidate, preloadData } from '$app/navigation';
 	import FormEnhance from '$lib/components/form-enhance.svelte';
 	import Icon from '$lib/components/icon.svelte';
 	import { jenisKelamin } from '$lib/statics';
@@ -19,21 +19,19 @@
 		await invalidate('app:murid');
 		// navigate back to detail modal first, then dispatch update event
 		history.back();
-		try {
-			const foto = res?.foto ?? null;
-			const id = res?.id ?? data.murid?.id;
-			const t = Date.now();
-			const waliAsuhNama = res?.waliAsuhNama ?? null;
-			const waliAsuhNip = res?.waliAsuhNip ?? null;
-			// delay dispatch slightly so the detail modal can mount its listener
-			setTimeout(() => {
-				window.dispatchEvent(
-					new CustomEvent('murid:updated', { detail: { id, foto, t, waliAsuhNama, waliAsuhNip } })
-				);
-			}, 120);
-		} catch {
-			void 0;
-		}
+		const id = res?.id ?? data.murid?.id;
+		if (!id) return;
+		// delay refetch slightly so the detail modal can mount its listener
+		setTimeout(async () => {
+			try {
+				const result = await preloadData('/murid/' + id);
+				if (result.type === 'loaded' && result.status === 200 && result.data?.murid) {
+					window.dispatchEvent(new CustomEvent('murid:updated', { detail: result.data.murid }));
+				}
+			} catch {
+				void 0;
+			}
+		}, 120);
 	}}
 >
 	{#snippet children({ submitting, invalid })}

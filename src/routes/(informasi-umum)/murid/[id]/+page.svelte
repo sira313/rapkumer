@@ -50,22 +50,13 @@
 				if (!detail) return;
 				// match by id
 				if (String(detail.id) === String(data?.murid?.id)) {
-					// include timestamp in foto field to bust cache when filename unchanged
-					const newFoto = detail?.foto ? `${detail.foto}${detail.t ? `?t=${detail.t}` : ''}` : null;
-					// reassign `data` so runes reactivity picks up change
-					const waliAsuhNama =
-						typeof detail.waliAsuhNama === 'string'
-							? detail.waliAsuhNama
-							: data.murid?.waliAsuhNama;
-					const waliAsuhNip =
-						typeof detail.waliAsuhNip === 'string' ? detail.waliAsuhNip : data.murid?.waliAsuhNip;
+					// replace all fields with the fresh data from the server
 					data = {
 						...data,
 						murid: {
 							...(data.murid ?? {}),
-							foto: newFoto,
-							waliAsuhNama,
-							waliAsuhNip
+							...detail,
+							foto: typeof detail.foto === 'string' ? detail.foto : null
 						}
 					};
 					// Mark that data was updated, will force refresh on next modal open
@@ -113,7 +104,7 @@
 							// Dispatch custom event to notify other components
 							window.dispatchEvent(
 								new CustomEvent('murid:updated', {
-									detail: { id: data.murid.id, foto: null, t: Date.now() }
+									detail: { id: data.murid.id, foto: null }
 								})
 							);
 							toast({ message: 'Foto berhasil dihapus', type: 'success' });
