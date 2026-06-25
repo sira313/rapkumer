@@ -354,7 +354,7 @@ ${logoUrl ? `<img src="${logoUrl}" alt="Watermark" class="watermark">` : ''}
 
 	<div class="label">NIS / NISN</div>
 	<div>:</div>
-	<div>${formatValue(data.murid.nisn)} / ${formatValue(data.murid.nis)}</div>
+	<div>${formatValue(data.murid.nis)} / ${formatValue(data.murid.nisn)}</div>
 	<div class="label">Fase</div>
 	<div>:</div>
 	<div>${faseLabel}</div>
