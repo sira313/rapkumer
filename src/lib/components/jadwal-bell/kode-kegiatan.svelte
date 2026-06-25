@@ -25,10 +25,20 @@
 		kodeMapel: string[];
 		kodeTambahan: string[];
 		kodeKokurikuler: string[];
-		kegiatanCustom: Array<{ kode: string; nama: string; durasi: number | null }>;
+		kegiatanCustom: Array<{
+			kode: string;
+			nama: string;
+			durasi: number | null;
+			soundFileName?: string | null;
+		}>;
 		canManage: boolean;
 		onHapusKegiatan: (kode: string) => void;
-		onEditKegiatan?: (kegiatan: { kode: string; nama: string; durasi: number | null }) => void;
+		onEditKegiatan?: (kegiatan: {
+			kode: string;
+			nama: string;
+			durasi: number | null;
+			soundFileName?: string | null;
+		}) => void;
 		onDrag?: () => void;
 	} = $props();
 

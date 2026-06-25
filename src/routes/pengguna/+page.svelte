@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { showModal, updateModal } from '$lib/components/global-modal.svelte';
 	import { toast } from '$lib/components/toast.svelte';
+	import AlertWarning from '$lib/components/alert-warning.svelte';
 	import UsersHeader from '$lib/components/pengguna/UsersHeader.svelte';
 	import AddUserModal from '$lib/components/pengguna/AddUserModal.svelte';
 	import ExistingUserRow from '$lib/components/pengguna/ExistingUserRow.svelte';
@@ -47,100 +48,112 @@
 			const type = (u as { type?: string }).type;
 			return type === 'wali_kelas' || type === 'wali_asuh';
 		});
-		let bodyContent = `Yakin ingin menghapus ${ids.length} pengguna yang dipilih?`;
-		let positive: ModalAction = {
-			label: 'Hapus',
-			icon: 'del',
-			action: async ({ close }: { close: () => void }) => {
-				const idsToDelete = ids.filter((n) => n > 0);
-				if (!idsToDelete.length) {
-					toast({ message: 'Tidak ada pengguna valid untuk dihapus', type: 'error' });
-					return;
-				}
-				const form = new FormData();
-				form.set('ids', idsToDelete.join(','));
-				const res = await fetch('?/delete_users', { method: 'POST', body: form });
-				if (res.ok) {
-					await res.json().catch(() => ({}));
-					users = users.filter((x) => !idsToDelete.includes(x.id as number));
-					// remove deleted ids from selectedIds
-					selectedIds = selectedIds.filter((n) => !idsToDelete.includes(n));
-					users = [...users];
-					toast({ message: `Berhasil menghapus ${idsToDelete.length} pengguna`, type: 'success' });
-					close();
-				} else {
-					let msg = 'Gagal menghapus';
-					let parsedBody: unknown = null;
-					try {
-						parsedBody = await res.json().catch(() => null);
-						if (parsedBody && typeof parsedBody === 'object') {
-							const pb = parsedBody as Record<string, unknown>;
-							if (typeof pb.message === 'string' && pb.message.trim()) msg = pb.message;
-							else if (pb.type === 'warning' && typeof pb.message === 'string') msg = pb.message;
-							else if (
-								pb.error &&
-								typeof (pb.error as Record<string, unknown>).message === 'string'
-							)
-								msg = (pb.error as Record<string, unknown>).message as string;
-							else msg = JSON.stringify(pb);
-						} else {
-							const text = await res.text().catch(() => 'Gagal');
-							msg = text;
-						}
-					} catch {
-						const text = await res.text().catch(() => 'Gagal');
-						msg = text;
-					}
-					try {
-						if (
-							parsedBody &&
-							typeof parsedBody === 'object' &&
-							(parsedBody as Record<string, unknown>).type === 'warning' &&
-							typeof (parsedBody as Record<string, unknown>).message === 'string'
-						) {
-							const pb = parsedBody as Record<string, unknown>;
-							const escapeHtml = (s: string) =>
-								s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-							const safe = escapeHtml(pb.message as string);
-							updateModal({
-								title: 'Hapus pengguna',
-								body: `<div class="alert alert-warning flex items-start gap-3"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="none" viewBox="0 0 24 24" class="h-5 w-5 shrink-0"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg><div class="flex-1">${safe}</div></div>`,
-								onPositive: {
-									label: 'Atur Wali Kelas',
-									icon: 'key',
-									action: ({ close }: { close: () => void }) => {
-										close();
-										window.location.href = '/kelas';
-									}
-								},
-								onNegative: { label: 'Tutup', icon: 'close' },
-								dismissible: true
-							});
-							return;
-						}
-					} catch {
-						// ignore
-					}
-					toast({ message: msg, type: 'warning' });
-				}
-			}
-		};
+
 		if (hasWali) {
-			bodyContent = `<div class="alert alert-warning flex items-center gap-3"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="none" viewBox="0 0 24 24" class="h-5 w-5 shrink-0"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg><div class="flex-1">Tidak dapat menghapus karena satu atau lebih pengguna terpilih berperan sebagai Wali Kelas atau Wali Asuh. Untuk menggantinya, klik tombol <strong>Atur Data Kelas</strong></div>`;
-			positive = {
-				label: 'Atur Data Kelas',
-				icon: 'edit',
-				action: ({ close }: { close: () => void }) => {
-					close();
-					window.location.href = '/kelas';
-				}
-			};
+			showModal({
+				title: 'Hapus pengguna',
+				body: AlertWarning,
+				bodyProps: {
+					message:
+						'Tidak dapat menghapus karena satu atau lebih pengguna terpilih berperan sebagai Wali Kelas atau Wali Asuh. Untuk menggantinya, klik tombol <strong>Atur Data Kelas</strong>'
+				},
+				onPositive: {
+					label: 'Atur Data Kelas',
+					icon: 'edit',
+					action: ({ close }: { close: () => void }) => {
+						close();
+						window.location.href = '/kelas';
+					}
+				},
+				onNegative: { label: 'Batal', icon: 'close' },
+				dismissible: true
+			});
+			return;
 		}
 
 		showModal({
 			title: 'Hapus pengguna',
-			body: bodyContent,
-			onPositive: positive,
+			body: `Yakin ingin menghapus ${ids.length} pengguna yang dipilih?`,
+			onPositive: {
+				label: 'Hapus',
+				icon: 'del',
+				action: async ({ close }: { close: () => void }) => {
+					const idsToDelete = ids.filter((n) => n > 0);
+					if (!idsToDelete.length) {
+						toast({ message: 'Tidak ada pengguna valid untuk dihapus', type: 'error' });
+						return;
+					}
+					const form = new FormData();
+					form.set('ids', idsToDelete.join(','));
+					const res = await fetch('?/delete_users', { method: 'POST', body: form });
+					if (res.ok) {
+						await res.json().catch(() => ({}));
+						users = users.filter((x) => !idsToDelete.includes(x.id as number));
+						selectedIds = selectedIds.filter((n) => !idsToDelete.includes(n));
+						users = [...users];
+						toast({
+							message: `Berhasil menghapus ${idsToDelete.length} pengguna`,
+							type: 'success'
+						});
+						close();
+					} else {
+						let msg = 'Gagal menghapus';
+						let parsedBody: unknown = null;
+						try {
+							parsedBody = await res.json().catch(() => null);
+							if (parsedBody && typeof parsedBody === 'object') {
+								const pb = parsedBody as Record<string, unknown>;
+								if (typeof pb.message === 'string' && pb.message.trim()) msg = pb.message;
+								else if (pb.type === 'warning' && typeof pb.message === 'string') msg = pb.message;
+								else if (
+									pb.error &&
+									typeof (pb.error as Record<string, unknown>).message === 'string'
+								)
+									msg = (pb.error as Record<string, unknown>).message as string;
+								else msg = JSON.stringify(pb);
+							} else {
+								const text = await res.text().catch(() => 'Gagal');
+								msg = text;
+							}
+						} catch {
+							const text = await res.text().catch(() => 'Gagal');
+							msg = text;
+						}
+						try {
+							if (
+								parsedBody &&
+								typeof parsedBody === 'object' &&
+								(parsedBody as Record<string, unknown>).type === 'warning' &&
+								typeof (parsedBody as Record<string, unknown>).message === 'string'
+							) {
+								const pb = parsedBody as Record<string, unknown>;
+								const escapeHtml = (s: string) =>
+									s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+								const safe = escapeHtml(pb.message as string);
+								updateModal({
+									title: 'Hapus pengguna',
+									body: AlertWarning,
+									bodyProps: { message: safe },
+									onPositive: {
+										label: 'Atur Wali Kelas',
+										icon: 'key',
+										action: ({ close: c }: { close: () => void }) => {
+											c();
+											window.location.href = '/kelas';
+										}
+									},
+									onNegative: { label: 'Tutup', icon: 'close' },
+									dismissible: true
+								});
+								return;
+							}
+						} catch {
+							// ignore
+						}
+						toast({ message: msg, type: 'warning' });
+					}
+				}
+			},
 			onNegative: { label: 'Batal', icon: 'close' },
 			dismissible: true
 		});

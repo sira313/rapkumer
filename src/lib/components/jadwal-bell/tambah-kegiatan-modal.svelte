@@ -2,10 +2,16 @@
 	import { invalidate } from '$app/navigation';
 	import { hideModal, setLoading } from '$lib/components/global-modal.svelte';
 	import { toast } from '$lib/components/toast.svelte';
+	import Icon from '$lib/components/icon.svelte';
 
 	interface Props {
 		onAction?: (actions: { submit: () => Promise<void>; cancel: () => void }) => void;
-		existingKegiatan?: { kode: string; nama: string; durasi: number | null };
+		existingKegiatan?: {
+			kode: string;
+			nama: string;
+			durasi: number | null;
+			soundFileName?: string | null;
+		};
 	}
 
 	let { onAction, existingKegiatan }: Props = $props();
@@ -16,11 +22,30 @@
 	let nama = $state(existingKegiatan?.nama ?? '');
 	let kode = $state(existingKegiatan?.kode ?? '');
 	let durasi = $state(existingKegiatan?.durasi?.toString() ?? '');
+	let soundFile: File | null = $state(null);
+	let soundFileName = $state(existingKegiatan?.soundFileName ?? '');
+	let hapusSound = $state(false);
 
 	function normalizeKode(e: Event) {
 		const input = e.currentTarget as HTMLInputElement;
 		input.value = input.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
 		kode = input.value;
+	}
+
+	function handleFileSelect(e: Event) {
+		const input = e.currentTarget as HTMLInputElement;
+		const file = input.files?.[0];
+		if (file) {
+			soundFile = file;
+			soundFileName = file.name;
+			hapusSound = false;
+		}
+	}
+
+	function handleHapusSound() {
+		soundFile = null;
+		soundFileName = '';
+		hapusSound = true;
 	}
 
 	async function handleSubmit() {
@@ -35,7 +60,11 @@
 		formData.append('nama', nama.trim());
 		formData.append('kode', kode.trim());
 		if (durasi) formData.append('durasi', durasi);
-		if (isEdit) formData.append('kodeLama', existingKegiatan!.kode);
+		if (isEdit) {
+			formData.append('kodeLama', existingKegiatan!.kode);
+			if (hapusSound) formData.append('hapusSound', '1');
+		}
+		if (soundFile) formData.append('sound', soundFile);
 
 		try {
 			const action = isEdit ? '?/editKegiatan' : '?/tambahKegiatan';
@@ -119,4 +148,29 @@
 			>
 		</fieldset>
 	</div>
+	<fieldset class="fieldset">
+		<legend class="fieldset-legend">Sound Kegiatan (opsional)</legend>
+		<div class="flex items-center gap-2">
+			<input
+				type="file"
+				class="file-input file-input-soft bg-base-200 file-input-sm w-full dark:border-none"
+				accept=".mp3,audio/*"
+				onchange={handleFileSelect}
+				disabled={submitting}
+			/>
+			{#if soundFileName}
+				<button
+					type="button"
+					class="btn btn-ghost btn-sm text-error shadow-none"
+					onclick={handleHapusSound}
+					aria-label="Hapus sound"
+				>
+					<Icon name="del" />
+				</button>
+			{/if}
+		</div>
+		<label class="label w-full text-wrap">
+			MP3/audio, maksimal 2MB. Akan dibunyikan saat kegiatan ini dimulai.
+		</label>
+	</fieldset>
 </div>

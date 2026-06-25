@@ -1115,6 +1115,8 @@ export const tableKegiatanCustom = sqliteTable(
 		nama: text().notNull(),
 		kode: text().notNull(),
 		durasi: int(),
+		soundFileName: text(),
+		soundMimeType: text(),
 		...audit
 	},
 	(table) => [uniqueIndex('kegiatan_custom_sekolah_kode_idx').on(table.sekolahId, table.kode)]

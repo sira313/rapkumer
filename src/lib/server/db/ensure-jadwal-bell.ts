@@ -59,4 +59,16 @@ export async function ensureJadwalBellSchema() {
 	} catch {
 		// column already exists
 	}
+
+	try {
+		await db.$client.execute(`ALTER TABLE kegiatan_custom ADD COLUMN sound_file_name TEXT`);
+	} catch {
+		// column already exists
+	}
+
+	try {
+		await db.$client.execute(`ALTER TABLE kegiatan_custom ADD COLUMN sound_mime_type TEXT`);
+	} catch {
+		// column already exists
+	}
 }

@@ -12,6 +12,9 @@ import {
 	readCombinedOriginsFromEnvAndFile,
 	normalizeOrigin as normalizeFileOrigin
 } from '$lib/server/csrf-origins';
+import { startBellScheduler } from '$lib/server/bell-scheduler';
+
+setTimeout(() => startBellScheduler(), 1000);
 
 // Prevent crash from socket write-after-close errors
 process.on('uncaughtException', (err) => {

@@ -43,7 +43,7 @@ pnpm format                  # prettier --write . (tabs, single quotes, no trail
 
 - **Forms**: use `form-enhance.svelte` with `flatten`/`unflatten`/`populateForm` from `$lib/utils.ts`.
 - **Toasts**: `import { toast } from '$lib/components/toast.svelte'`.
-- **Icons**: add SVG to `src/lib/icons/`, then `node scripts/icon.js` generates `__icons.d.ts` (gitignored, don't commit).
+- **Icons**: add SVG to `src/lib/icons/`, then `node scripts/icon.js` generates `__icons.d.ts` (gitignored, don't commit). Use `<Icon name="..." />` in Svelte markup. For modal HTML body, use component-based body instead of string (e.g., `body: MyComponent, bodyProps: {...}`) so `<Icon name="..." />` works inside it. Do not use `import svg from '$lib/icons/name.svg?raw'`.
 - **Text**: Indonesian for users, English for code/comments.
 - **Dark mode**: `data-theme` attribute on `<html>`, persisted in localStorage.
 

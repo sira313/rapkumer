@@ -11,6 +11,8 @@ import {
 	tableKelas,
 	tablePresensiSettings
 } from '$lib/server/db/schema';
+import fs from 'node:fs';
+import path from 'node:path';
 import { fail } from '@sveltejs/kit';
 import { and, desc, eq, inArray } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
@@ -193,6 +195,8 @@ export const actions: Actions = {
 		const kode = formData.get('kode')?.toString().trim().toUpperCase() ?? '';
 		const durasiRaw = formData.get('durasi')?.toString().trim();
 		const durasi = durasiRaw ? parseInt(durasiRaw, 10) : null;
+		const soundEntry = formData.get('sound');
+		const soundFile = soundEntry instanceof File ? soundEntry : null;
 
 		if (!nama || !kode) return fail(400, { fail: 'Nama dan kode harus diisi' });
 		if (kode.length > 10) return fail(400, { fail: 'Kode maksimal 10 karakter' });
@@ -207,9 +211,31 @@ export const actions: Actions = {
 		});
 		if (existing) return fail(400, { fail: 'Kode sudah digunakan' });
 
-		await db
-			.insert(tableKegiatanCustom)
-			.values({ sekolahId, nama, kode, durasi: durasi ?? undefined });
+		let soundFileName: string | null = null;
+		let soundMimeType: string | null = null;
+
+		if (soundFile && soundFile.size > 0) {
+			const maxSize = 2 * 1024 * 1024;
+			if (soundFile.size > maxSize) return fail(400, { fail: 'Ukuran file sound maksimal 2MB' });
+			if (!soundFile.type.startsWith('audio/')) {
+				return fail(400, { fail: 'Hanya file audio yang diperbolehkan' });
+			}
+			const buffer = Buffer.from(await soundFile.arrayBuffer());
+			const soundDir = path.resolve(process.env.sounds?.replace(/^file:/, '') || './data/sounds');
+			fs.mkdirSync(soundDir, { recursive: true });
+			fs.writeFileSync(path.join(soundDir, `${sekolahId}_custom_${kode}.mp3`), buffer);
+			soundFileName = soundFile.name;
+			soundMimeType = soundFile.type || 'audio/mpeg';
+		}
+
+		await db.insert(tableKegiatanCustom).values({
+			sekolahId,
+			nama,
+			kode,
+			durasi,
+			soundFileName,
+			soundMimeType
+		});
 
 		return { message: 'Kegiatan berhasil ditambahkan' };
 	},
@@ -226,6 +252,12 @@ export const actions: Actions = {
 		const kode = formData.get('kode')?.toString().trim() ?? '';
 
 		if (!kode) return fail(400, { fail: 'Kode tidak valid' });
+
+		const soundDir = path.resolve(process.env.sounds?.replace(/^file:/, '') || './data/sounds');
+		const soundPath = path.join(soundDir, `${sekolahId}_custom_${kode}.mp3`);
+		try {
+			fs.unlinkSync(soundPath);
+		} catch {}
 
 		await db
 			.delete(tableKegiatanCustom)
@@ -248,6 +280,9 @@ export const actions: Actions = {
 		const kode = formData.get('kode')?.toString().trim().toUpperCase() ?? '';
 		const durasiRaw = formData.get('durasi')?.toString().trim();
 		const durasi = durasiRaw ? parseInt(durasiRaw, 10) : null;
+		const soundEntry = formData.get('sound');
+		const soundFile = soundEntry instanceof File ? soundEntry : null;
+		const hapusSound = formData.get('hapusSound') === '1';
 
 		if (!kodeLama || !nama || !kode) return fail(400, { fail: 'Nama dan kode harus diisi' });
 		if (kode.length > 10) return fail(400, { fail: 'Kode maksimal 10 karakter' });
@@ -262,9 +297,48 @@ export const actions: Actions = {
 			if (existing) return fail(400, { fail: 'Kode sudah digunakan' });
 		}
 
+		const soundDir = path.resolve(process.env.sounds?.replace(/^file:/, '') || './data/sounds');
+		let soundFileName: string | null | undefined = undefined;
+		let soundMimeType: string | null | undefined = undefined;
+
+		if (soundFile && soundFile.size > 0) {
+			const maxSize = 2 * 1024 * 1024;
+			if (soundFile.size > maxSize) return fail(400, { fail: 'Ukuran file sound maksimal 2MB' });
+			if (!soundFile.type.startsWith('audio/')) {
+				return fail(400, { fail: 'Hanya file audio yang diperbolehkan' });
+			}
+			try {
+				fs.unlinkSync(path.join(soundDir, `${sekolahId}_custom_${kodeLama}.mp3`));
+			} catch {}
+			const buffer = Buffer.from(await soundFile.arrayBuffer());
+			fs.mkdirSync(soundDir, { recursive: true });
+			fs.writeFileSync(path.join(soundDir, `${sekolahId}_custom_${kode}.mp3`), buffer);
+			soundFileName = soundFile.name;
+			soundMimeType = soundFile.type || 'audio/mpeg';
+		} else if (hapusSound) {
+			try {
+				fs.unlinkSync(path.join(soundDir, `${sekolahId}_custom_${kodeLama}.mp3`));
+			} catch {}
+			soundFileName = null;
+			soundMimeType = null;
+		}
+
+		if (kode !== kodeLama && !soundFile) {
+			try {
+				fs.renameSync(
+					path.join(soundDir, `${sekolahId}_custom_${kodeLama}.mp3`),
+					path.join(soundDir, `${sekolahId}_custom_${kode}.mp3`)
+				);
+			} catch {}
+		}
+
+		const updateData: Record<string, unknown> = { nama, kode, durasi };
+		if (soundFileName !== undefined) updateData.soundFileName = soundFileName;
+		if (soundMimeType !== undefined) updateData.soundMimeType = soundMimeType;
+
 		await db
 			.update(tableKegiatanCustom)
-			.set({ nama, kode, durasi: durasi ?? null })
+			.set(updateData)
 			.where(
 				and(eq(tableKegiatanCustom.sekolahId, sekolahId), eq(tableKegiatanCustom.kode, kodeLama))
 			);
@@ -311,59 +385,6 @@ export const actions: Actions = {
 		});
 
 		return { message: 'Jadwal berhasil disimpan' };
-	},
-
-	saveTts: async ({ request, locals }) => {
-		const sekolahId = locals.sekolah?.id;
-		if (!sekolahId) return fail(401, { fail: 'Sekolah tidak ditemukan' });
-
-		if (locals.user?.type === 'user' || locals.user?.type === 'wali_asuh') {
-			return fail(403, { fail: 'Anda tidak memiliki izin' });
-		}
-
-		const formData = await request.formData();
-		const tipe = formData.get('tipe')?.toString().trim();
-		const message = formData.get('message')?.toString().trim();
-
-		const allowedTypes = [
-			'upacara',
-			'istirahat',
-			'selesai_istirahat',
-			'pergantian',
-			'masuk',
-			'pulang'
-		];
-		if (!tipe || !allowedTypes.includes(tipe)) return fail(400, { fail: 'Tipe tidak valid' });
-
-		if (message && message.length > 500)
-			return fail(400, { fail: 'Teks terlalu panjang, maksimal 500 karakter' });
-
-		await ensureJadwalBellSchema();
-
-		const existing = await db.query.tableBellSounds.findFirst({
-			where: and(eq(tableBellSounds.sekolahId, sekolahId), eq(tableBellSounds.tipe, tipe))
-		});
-
-		const ttsMessage = message || null;
-
-		if (existing) {
-			await db
-				.update(tableBellSounds)
-				.set({ ttsMessage, updatedAt: new Date().toISOString() })
-				.where(and(eq(tableBellSounds.sekolahId, sekolahId), eq(tableBellSounds.tipe, tipe)));
-		} else {
-			if (!ttsMessage) return { message: 'Tidak ada perubahan' };
-			await db.insert(tableBellSounds).values({
-				sekolahId,
-				tipe,
-				fileName: '',
-				mimeType: 'audio/mpeg',
-				ttsMessage,
-				updatedAt: new Date().toISOString()
-			});
-		}
-
-		return { message: 'Teks berhasil disimpan' };
 	},
 
 	toggleBell: async ({ request, locals }) => {
