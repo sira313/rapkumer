@@ -31,7 +31,7 @@ export interface PiagamPrintData {
 		subjudul: string;
 		motivasi: string;
 	};
-	periode: { semester: string; tahunAjaran: string };
+	periode: { semester: string; tahunAjaran: string; namaKelas: string | null };
 	ttd: {
 		tempat: string;
 		tanggal: string;
@@ -378,7 +378,7 @@ export function renderPiagamHTML(data: PiagamPrintData, template: '1' | '2'): st
 	const ttd = data.ttd;
 	const sekolahId = data.sekolah.id;
 
-	const achievementText = `Dengan total nilai rata-rata ${penghargaan.rataRataFormatted} pada ${periode.semester} tahun ajaran ${periode.tahunAjaran}.`;
+	const achievementText = `Dengan total nilai rata-rata ${penghargaan.rataRataFormatted}${periode.namaKelas ? ` di ${periode.namaKelas}` : ''} pada ${periode.semester} tahun ajaran ${periode.tahunAjaran}.`;
 
 	function footerHTML(): string {
 		return `

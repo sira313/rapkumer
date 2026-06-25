@@ -203,6 +203,7 @@ interface PiagamPrintData {
 	periode: {
 		semester: string;
 		tahunAjaran: string;
+		namaKelas: string | null;
 	};
 	ttd: {
 		tempat: string;
