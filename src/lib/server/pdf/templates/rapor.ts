@@ -296,7 +296,7 @@ ${bgLogoSrc ? `<img src="${bgLogoSrc}" alt="" class="watermark">` : ''}
 
 	<div class="font-bold">NIS / NISN</div>
 	<div>:</div>
-	<div>${formatValue(data.murid.nisn)} / ${formatValue(data.murid.nis)}</div>
+	<div>${formatValue(data.murid.nis)} / ${formatValue(data.murid.nisn)}</div>
 	<div class="font-bold">Fase</div>
 	<div>:</div>
 	<div>${data.rombel.fase}</div>
