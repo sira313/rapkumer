@@ -5,6 +5,7 @@
 ```sh
 pnpm dev -- --port 5173      # vite dev + icon generator (scripts/dev.js)
 pnpm build                   # adapter-node → build/index.js
+pnpm preview                 # vite preview (quick built-app check without full start script)
 pnpm start                   # run built app (scripts/start-build.mjs)
 pnpm db:push                 # custom migration script, not raw drizzle-kit push
 pnpm db:studio               # drizzle-kit studio
@@ -15,7 +16,7 @@ pnpm prepare                 # svelte-kit sync (auto-runs on install)
 pnpm check                   # svelte-kit sync + svelte-check
 pnpm check:watch             # svelte-kit sync + svelte-check --watch
 pnpm lint                    # prettier --check . && eslint .
-pnpm format                  # prettier --write . (tabs, single quotes, no trailing comma)
+pnpm format                  # prettier --write . (tabs, single quotes, no trailing comma, width 100)
 ```
 
 ## Stack
@@ -23,7 +24,7 @@ pnpm format                  # prettier --write . (tabs, single quotes, no trail
 - **SvelteKit 2 + Svelte 5 runes** — use `$props()`, `$state`, `$derived`. No `export let`, `$:`, or `(on:click)`.
 - **PagedJS + puppeteer-core** — server-side PDF gen from `src/lib/server/pdf/templates/`. Needs system Chrome/Chromium; set path via `PUPPETEER_EXECUTABLE_PATH`.
 - **TailwindCSS 4 + DaisyUI 5** — CSS via `@import "tailwindcss"` + `@plugin "daisyui"` in `src/app.css`. No tailwind.config.js.
-- **Drizzle ORM + SQLite** — `@libsql/client`. `snake_case` in DB, camelCase in schema (`drizzle.config.js` sets `casing: 'snake_case'`).
+- **Drizzle ORM + SQLite** — `@libsql/client`. `snake_case` in DB, camelCase in schema (`drizzle.config.js` sets `casing: 'snake_case'`). Env vars: `DB_URL` (default `file:./data/database.sqlite3`), `DB_AUTH_TOKEN` (for Turso/remote), `BODY_SIZE_LIMIT` (default `512K`, parsed in `hooks.server.ts`). Three scripts (`db/index.ts`, `start-build.mjs`, `prepare-windows.mjs`) load `.env` independently — don't rely on a single loader.
 - **mdsvex** — `.md` files render as Svelte components. `svelte.config.js` sets `extensions: ['.svelte', '.md']`.
 - **pnpm** only. `engine-strict=true`.
 - **`opencode.json`** has `"plugin": ["@sveltejs/opencode"]` — Svelte MCP tools available.
@@ -65,7 +66,7 @@ pnpm format                  # prettier --write . (tabs, single quotes, no trail
 - `pnpm db:push` applies schema changes (custom orchestration, not raw `drizzle-kit push`).
 - Use `db.query.tableX` with Drizzle query builder. Avoid raw SQL.
 - Logos: `Uint8Array` blob + mime type string on `tableSekolah`.
-- Two `.env` loaders exist (`load-env.ts`, `db/index.ts`) — don't add a third.
+- `.env` loaders exist in `db/index.ts`, `start-build.mjs`, and `prepare-windows.mjs` — each handles its own subset; don't rely on a single loader.
 
 ## Windows installer
 
@@ -75,6 +76,7 @@ pnpm format                  # prettier --write . (tabs, single quotes, no trail
 
 ## Gotchas
 
+- **`scripts/dev.js` runs two processes** — the icon generator and Vite dev server are spawned in parallel. Either crashing kills the whole dev session. `start-build.mjs` reads `.env` manually and resolves `build/index.js` from multiple candidate paths (scripts/, parent/, cwd/) so it works both in-repo and in installed-app layouts.
 - **DaisyUI `.fieldset` has `padding: 0`** — inputs are flush against container edge. Inside a scrollable container (`overflow-y: auto`), the focus outline (`outline-offset: 2px`) gets clipped. Fix: `global-modal.svelte` overrides `outline-offset: -2px` via `:global(.modal input:focus)`.
 - **Disabled buttons** with `title` for tooltip use `aria-disabled` alongside `disabled` (project convention).
 

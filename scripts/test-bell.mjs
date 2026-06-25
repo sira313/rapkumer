@@ -1,4 +1,7 @@
 import { createClient } from '@libsql/client';
+import { exec, execFile } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
 
 const db = createClient({ url: process.env.DB_URL || 'file:./data/database.sqlite3' });
 
@@ -6,10 +9,56 @@ const HARI_LIST = ['senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu'];
 const HARI_MAP = ['minggu', 'senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu'];
 
 const args = process.argv[2];
+let playEnabled = process.argv.includes('--play');
+
 if (!args || !args.includes(',')) {
-	console.log('Usage: node scripts/test-bell.mjs <hari>,<HH:mm>');
-	console.log('Example: node scripts/test-bell.mjs senin,07:50');
+	console.log('Usage: node scripts/test-bell.mjs <hari>,<HH:mm> [--play]');
+	console.log('Example: node scripts/test-bell.mjs senin,07:50 --play');
+	console.log('');
+	console.log('  --play    Also play the sound file for the active schedule');
 	process.exit(1);
+}
+
+function execAsync(cmd, opts) {
+	return new Promise((resolve) => {
+		exec(cmd, { ...opts, timeout: opts?.timeout ?? 10_000 }, (err) => {
+			if (err && err.code !== 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER') {
+				console.error('[bell] exec error:', err.message);
+			}
+			resolve();
+		});
+	});
+}
+
+function playWin32(soundPath) {
+	const exePath = path.resolve(process.cwd(), 'scripts', 'playmp3.exe');
+	if (fs.existsSync(exePath)) {
+		return new Promise((resolve) => {
+			execFile(exePath, [soundPath], { timeout: 10_000 }, (err) => {
+				if (err) console.error('[bell] execFile error:', err.message);
+				resolve();
+			});
+		});
+	}
+	const psPath = soundPath.replace(/\\/g, '\\\\');
+	return execAsync(`powershell -c (New-Object Media.SoundPlayer "${psPath}").PlaySync()`);
+}
+
+function playSound(sekolahId, tipe) {
+	let soundPath = path.resolve(process.cwd(), 'data', 'sounds', `${sekolahId}_${tipe}.mp3`);
+	if (!fs.existsSync(soundPath)) {
+		soundPath = path.resolve(process.cwd(), 'static', 'sounds', `${tipe}.mp3`);
+		if (!fs.existsSync(soundPath)) {
+			console.error(`  Sound file not found: static/sounds/${tipe}.mp3`);
+			return;
+		}
+	}
+	console.log(`  Playing: static/sounds/${tipe}.mp3`);
+	if (process.platform === 'win32') {
+		playWin32(soundPath);
+	} else {
+		execAsync(`ffplay -nodisp -autoexit "${soundPath}"`);
+	}
 }
 
 const parts = args.split(',');
@@ -33,7 +82,11 @@ const currentMinutes = h * 60 + m;
 const schools = await db.execute('SELECT id FROM sekolah LIMIT 1');
 if (schools.rows.length === 0) {
 	console.error('Tidak ada data sekolah.');
-	await db.close();
+if (soundPromises.length > 0) {
+	await Promise.all(soundPromises);
+}
+
+await db.close();
 	process.exit(1);
 }
 const sekolahId = Number(schools.rows[0].id);
@@ -178,12 +231,74 @@ function getSoundType(kode, today, jamKe) {
 	if (kode === 'UPB') return 'upacara';
 	if (kode === 'IST') return 'istirahat';
 	if (kode === 'PLG') return 'pulang';
-	if (kegiatanCustom.some((k) => k.kode === kode))
-		return `TTS: Waktunya ${kegiatanCustom.find((k) => k.kode === kode).nama}.`;
+	if (kegiatanCustom.some((k) => k.kode === kode)) {
+		const c = kegiatanCustom.find((k) => k.kode === kode);
+		return c?.durasi != null ? `kegiatan_custom:${c.nama}` : `kegiatan_custom:${c.nama}`;
+	}
 	if (isSubjectCode(kode)) {
 		return isFirstSubjectPeriod(today, jamKe) ? 'masuk' : 'pergantian';
 	}
 	return 'pergantian';
+}
+
+const soundPromises = [];
+
+function playSoundSequence(sekolahId, kode, today, jamKe, isInRange) {
+	const label = isInRange ? '▶ ACTIVE' : '  SIM';
+	if (jamKe > 1) {
+		const prevKode = isAllSame(today, jamKe - 1);
+		if (prevKode === 'IST') {
+			console.log(`  ${label} → bell (custom) + selesai_istirahat`);
+			if (isInRange) {
+				soundPromises.push(playSound(sekolahId, 'custom'));
+				soundPromises.push(
+					new Promise((resolve) => setTimeout(() => resolve(playSound(sekolahId, 'selesai_istirahat')), 1500))
+				);
+			}
+			return;
+		}
+	}
+
+	if (kode === 'UPB') {
+		console.log(`  ${label} → bell (custom) + upacara`);
+		if (isInRange) {
+			soundPromises.push(playSound(sekolahId, 'custom'));
+			soundPromises.push(
+				new Promise((resolve) => setTimeout(() => resolve(playSound(sekolahId, 'upacara')), 1500))
+			);
+		}
+	} else if (kode === 'IST') {
+		console.log(`  ${label} → bell (custom) + istirahat`);
+		if (isInRange) {
+			soundPromises.push(playSound(sekolahId, 'custom'));
+			soundPromises.push(
+				new Promise((resolve) => setTimeout(() => resolve(playSound(sekolahId, 'istirahat')), 1500))
+			);
+		}
+	} else if (kode === 'PLG') {
+		console.log(`  ${label} → bell (custom) + pulang`);
+		if (isInRange) {
+			soundPromises.push(playSound(sekolahId, 'custom'));
+			soundPromises.push(
+				new Promise((resolve) => setTimeout(() => resolve(playSound(sekolahId, 'pulang')), 1500))
+			);
+		}
+	} else if (kegiatanCustom.some((k) => k.kode === kode)) {
+		const custom = kegiatanCustom.find((k) => k.kode === kode);
+		console.log(`  ${label} → bell (custom) + ${custom.nama}`);
+		if (isInRange) {
+			soundPromises.push(playSound(sekolahId, 'custom'));
+		}
+	} else {
+		const tipe = isSubjectCode(kode) && isFirstSubjectPeriod(today, jamKe) ? 'masuk' : 'pergantian';
+		console.log(`  ${label} → bell (custom) + ${tipe}`);
+		if (isInRange) {
+			soundPromises.push(playSound(sekolahId, 'custom'));
+			soundPromises.push(
+				new Promise((resolve) => setTimeout(() => resolve(playSound(sekolahId, tipe)), 1500))
+			);
+		}
+	}
 }
 
 // === Run bell test ===
@@ -241,14 +356,17 @@ for (let jamKe = 1; jamKe <= hariMaxJam; jamKe++) {
 	const soundType = getSoundType(kode, today, jamKe);
 
 	const marker = isInRange ? ' ← AKTIF' : '';
-	const soundLabel = soundType.startsWith('TTS:') ? soundType : `suara "${soundType}"`;
-
+	const soundLabel = typeof soundType === 'string' ? soundType : `suara "${soundType}"`;
 	if (isInRange) anyTrigger = true;
 
 	const waktuStr = kode === 'PLG' ? waktu.start : `${waktu.start}-${waktu.end}`;
 	console.log(
 		`  jamKe=${jamKe}: ${waktuStr} | kode='${kode}' | ${soundLabel}${marker}`
 	);
+
+	if (isInRange && playEnabled) {
+		playSoundSequence(sekolahId, kode, today, jamKe, true);
+	}
 }
 
 if (!anyTrigger) {
@@ -261,10 +379,8 @@ for (let jamKe = 1; jamKe <= hariMaxJam; jamKe++) {
 	const kode = getKode(today, jamKe);
 	if (!kode) continue;
 	const waktu = computeWaktu(today, jamKe);
-	const soundType = getSoundType(kode, today, jamKe);
-	const soundLabel = soundType.startsWith('TTS:') ? soundType : `suara "${soundType}"`;
 	const waktuStr = kode === 'PLG' ? waktu.start : `${waktu.start}-${waktu.end}`;
-	console.log(`  ${waktuStr} | ${kode} → ${soundLabel}`);
+	playSoundSequence(sekolahId, kode, today, jamKe, false);
 }
 
 await db.close();

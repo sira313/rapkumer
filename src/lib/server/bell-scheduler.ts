@@ -1,4 +1,4 @@
-import { exec } from 'node:child_process';
+import { exec, execFile } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import db from '$lib/server/db';
@@ -9,7 +9,8 @@ import {
 	tableBellSounds,
 	tablePresensiSettings,
 	tableKelas,
-	tableMataPelajaran
+	tableMataPelajaran,
+	tableTahunAjaran
 } from '$lib/server/db/schema';
 import { eq, and, inArray } from 'drizzle-orm';
 
@@ -53,10 +54,21 @@ function execAsync(cmd: string, options?: { timeout?: number }): Promise<void> {
 	});
 }
 
+function execFileAsync(file: string, args: string[], options?: { timeout?: number }): Promise<void> {
+	return new Promise((resolve) => {
+		execFile(file, args, { ...options, timeout: options?.timeout ?? 10_000 }, (err) => {
+			if (err && (err as NodeJS.ErrnoException).code !== 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER') {
+				console.error('[bell] execFile error:', err.message);
+			}
+			resolve();
+		});
+	});
+}
+
 async function playWin32(soundPath: string) {
 	const exePath = path.resolve(process.cwd(), 'scripts', 'playmp3.exe');
 	if (fs.existsSync(exePath)) {
-		await execAsync(`"${exePath}" "${soundPath}"`);
+		await execFileAsync(exePath, [soundPath]);
 	} else {
 		const psPath = soundPath.replace(/\\/g, '\\\\');
 		await execAsync(`powershell -c (New-Object Media.SoundPlayer "${psPath}").PlaySync()`);
@@ -139,7 +151,22 @@ async function checkSekolah(
 	const durasiIstirahat = setting.durasiIstirahat ?? 30;
 	const durasiUpacara = setting.durasiUpacara ?? 70;
 
-	const presensiSettings = await db.query.tablePresensiSettings.findFirst({
+	let presensiSettings = await db.query.tablePresensiSettings.findFirst({
+		where: eq(tablePresensiSettings.sekolahId, sekolahId),
+		orderBy: (t, { desc }) => [desc(t.id)]
+	});
+	if (!presensiSettings) {
+		const ta = await db.query.tableTahunAjaran.findFirst({
+			where: and(eq(tableTahunAjaran.sekolahId, sekolahId), eq(tableTahunAjaran.isAktif, true))
+		});
+		if (!ta) return;
+		await db.insert(tablePresensiSettings).values({
+			sekolahId,
+			tahunAjaranId: ta.id,
+			createdAt: new Date().toISOString()
+		});
+	}
+	presensiSettings = await db.query.tablePresensiSettings.findFirst({
 		where: eq(tablePresensiSettings.sekolahId, sekolahId),
 		orderBy: (t, { desc }) => [desc(t.id)]
 	});
