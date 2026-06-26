@@ -46,7 +46,7 @@
 			<div class="flex flex-col gap-3 sm:flex-row">
 				<a
 					class="btn btn-outline shadow-none"
-					href="https://kurikulum.kemdikbud.go.id/"
+					href="https://kurikulum.kemendikdasmen.go.id/"
 					target="_blank"
 					rel="noreferrer">Pelajari Kurikulum</a
 				>
