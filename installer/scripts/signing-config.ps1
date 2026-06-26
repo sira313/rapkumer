@@ -50,7 +50,7 @@ $CertConfig = @{
     DigestAlgorithm = "SHA256"
     
     # Description for signed files
-    Description = "Rapor Kurikulum Merdeka"
+    Description = "Administrasi guru terpadu"
     DescriptionUrl = "https://github.com/sira313/raporkumer"
 }
 

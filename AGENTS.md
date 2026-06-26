@@ -1,4 +1,4 @@
-# Rapkumer (Rapor Kurikulum Merdeka)
+# Rapkumer (Administrasi guru terpadu)
 
 ## Commands
 
