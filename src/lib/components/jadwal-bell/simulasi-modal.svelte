@@ -22,7 +22,7 @@
 		getKode: (hari: string, jamKe: number, kelasId: number) => string;
 		computeWaktu: (hari: string, jamKe: number) => { start: string; end: string };
 		timeToMinutes: (t: string) => number;
-		kegiatanCustom: Array<{ kode: string; nama: string; durasi?: number | null }>;
+		kegiatanCustom: Array<{ kode: string; nama: string; durasi?: number | null; soundFileName?: string | null }>;
 		daftarKodeMapel: string[];
 		isFirstSubjectPeriod: (today: string, jamKe: number) => boolean;
 	}
@@ -103,8 +103,9 @@
 				extraTipe = 'pulang';
 				desc = 'Bell → Pulang';
 			} else if (kegiatanCustom.some((k) => k.kode === kode)) {
-				const nama = kegiatanCustom.find((k) => k.kode === kode)?.nama ?? kode;
-				extraTipe = `custom_${kode}`;
+				const kcg = kegiatanCustom.find((k) => k.kode === kode);
+				const nama = kcg?.nama ?? kode;
+				extraTipe = kcg?.soundFileName ? `custom_${kode}` : 'pergantian';
 				desc = `Bell → ${nama}`;
 			} else if (daftarKodeMapel.includes(kode)) {
 				extraTipe = isFirstSubjectPeriod(simulasiHari, jamKe) ? 'masuk' : 'pergantian';

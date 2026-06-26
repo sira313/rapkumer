@@ -401,6 +401,8 @@ function playSoundForKode(
 		playSoundOnServer(sekolahId, 'custom');
 		if (custom?.soundFileName) {
 			setTimeout(() => playSoundOnServer(sekolahId, `custom_${kode}`), 1500);
+		} else {
+			setTimeout(() => playSoundOnServer(sekolahId, 'pergantian'), 1500);
 		}
 		return;
 	} else if (daftarKodeMapel.has(kode)) {
