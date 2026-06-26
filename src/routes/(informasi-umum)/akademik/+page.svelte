@@ -228,7 +228,7 @@
 
 	type PresensiSettingRow =
 		typeof import('$lib/server/db/schema').tablePresensiSettings.$inferSelect;
-	const presensiSettingsList = data.presensiSettingsList as PresensiSettingRow[];
+	const presensiSettingsList = $derived(data.presensiSettingsList as PresensiSettingRow[]);
 	const presensiTahunSet = $derived(new Set(presensiSettingsList.map((p) => p.tahunAjaranId)));
 
 	const selectedTahunAjaranNum = $derived(Number(selectedTahunAjaranId));
