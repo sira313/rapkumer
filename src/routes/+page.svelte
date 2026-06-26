@@ -4,7 +4,6 @@
 	import MapelEkstrakurikulerStats from '$lib/components/dashboard/mapel-ekstrakurikuler-stats.svelte';
 	import ProgressCard from '$lib/components/dashboard/progress-card.svelte';
 	import QuickActionsCard from '$lib/components/dashboard/quick-actions-card.svelte';
-	import TimeCard from '$lib/components/dashboard/time-card.svelte';
 	import FavoriteMenusCard from '$lib/components/dashboard/favorite-menus-card.svelte';
 	import { computeNextEventMessage } from '$lib/utils/next-event-message';
 	import BellStatus from '$lib/components/jadwal-bell/bell-status.svelte';
@@ -257,7 +256,6 @@
 	<!-- Kolom 2: Progress & Aksi -->
 	<div class="flex flex-col gap-4">
 		<ProgressCard progress={progressStats} />
-		<TimeCard />
 		<QuickActionsCard />
 	</div>
 </div>

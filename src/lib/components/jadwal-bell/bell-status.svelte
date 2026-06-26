@@ -26,8 +26,8 @@
 			/></svg
 		>
 		<div class="flex flex-col gap-0.5 text-sm">
-			<span>Sistem bell aktif - memonitor jadwal secara otomatis.</span>
-			<span class="opacity-70">
+			<span>Sistem bell aktif - memonitor jadwal secara otomatis. Pastikan waktu dan tanggal pada sistem sesuai real time.</span>
+			<span class="font-bold">
 				{hariIni}
 				{#if nextEventMessage}
 					- {nextEventMessage}

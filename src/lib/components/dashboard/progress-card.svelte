@@ -27,7 +27,7 @@
 
 		<div>
 			<label class="label" for="progress-akademik">
-				<span class="label-text">Nilai Akademik</span>
+				<span class="label-text">Nilai Intrakurikuler</span>
 				<span class="label-text-alt font-semibold">{progress.akademik.percentage}%</span>
 			</label>
 			<progress
