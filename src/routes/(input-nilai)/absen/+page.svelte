@@ -14,7 +14,8 @@
 	import TablePersentaseBulanan from '$lib/components/absen/table-persentase-bulanan.svelte';
 	import AbsenPagination from '$lib/components/absen/absen-pagination.svelte';
 	import { toast } from '$lib/components/toast.svelte';
-	import { onDestroy, onMount } from 'svelte';
+	import { onDestroy } from 'svelte';
+	import { serverTime } from '$lib/server-time.svelte';
 
 	const hariList = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 	const bulanList = [
@@ -31,27 +32,10 @@
 		'November',
 		'Desember'
 	];
-	let waktuSekarang = $state('');
-	let intervalTimer: ReturnType<typeof setInterval> | undefined;
 
-	function updateWaktu() {
-		const now = new Date();
-		const hari = hariList[now.getDay()];
-		const tgl = now.getDate();
-		const bln = bulanList[now.getMonth()];
-		const thn = now.getFullYear();
-		const jam = String(now.getHours()).padStart(2, '0');
-		const menit = String(now.getMinutes()).padStart(2, '0');
-		waktuSekarang = `${hari}, ${tgl} ${bln} ${thn} ${jam}:${menit}`;
-	}
-
-	onMount(() => {
-		updateWaktu();
-		intervalTimer = setInterval(updateWaktu, 60000);
-		return () => {
-			if (intervalTimer) clearInterval(intervalTimer);
-		};
-	});
+	const waktuSekarang = $derived(
+		`${hariList[serverTime.now.getDay()]}, ${serverTime.now.getDate()} ${bulanList[serverTime.now.getMonth()]} ${serverTime.now.getFullYear()} ${String(serverTime.now.getHours()).padStart(2, '0')}:${String(serverTime.now.getMinutes()).padStart(2, '0')}`
+	);
 
 	type KehadiranRow = {
 		id: number;
@@ -318,10 +302,9 @@
 	});
 
 	const isToday = $derived.by(() => {
-		const d = new Date();
-		const y = d.getFullYear();
-		const m = String(d.getMonth() + 1).padStart(2, '0');
-		const day = String(d.getDate()).padStart(2, '0');
+		const y = serverTime.now.getFullYear();
+		const m = String(serverTime.now.getMonth() + 1).padStart(2, '0');
+		const day = String(serverTime.now.getDate()).padStart(2, '0');
 		return data.tanggal === `${y}-${m}-${day}`;
 	});
 
@@ -331,12 +314,12 @@
 	let selectedBulan = $state(
 		data.mode === 'bulanan' || data.mode === 'persentase_bulanan'
 			? data.bulan
-			: new Date().getMonth() + 1
+			: serverTime.now.getMonth() + 1
 	);
 	let selectedTahun = $state(
 		data.mode === 'bulanan' || data.mode === 'persentase_bulanan'
 			? data.tahun
-			: new Date().getFullYear()
+			: serverTime.now.getFullYear()
 	);
 
 	$effect(() => {
@@ -455,16 +438,14 @@
 
 	const isCurrentBulan = $derived.by(() => {
 		if (data.mode !== 'bulanan' && data.mode !== 'persentase_bulanan') return false;
-		const now = new Date();
-		return data.bulan === now.getMonth() + 1 && data.tahun === now.getFullYear();
+		return data.bulan === serverTime.now.getMonth() + 1 && data.tahun === serverTime.now.getFullYear();
 	});
 
 	function resetToCurrentBulan() {
-		const now = new Date();
 		void applyNavigation((params) => {
 			params.set('mode', data.mode);
-			params.set('bulan', String(now.getMonth() + 1));
-			params.set('tahun', String(now.getFullYear()));
+			params.set('bulan', String(serverTime.now.getMonth() + 1));
+			params.set('tahun', String(serverTime.now.getFullYear()));
 			params.delete('page');
 			params.delete('tanggal');
 			params.delete('q');

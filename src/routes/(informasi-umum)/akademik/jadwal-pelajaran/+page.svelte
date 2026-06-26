@@ -138,18 +138,14 @@
 		return false;
 	}
 
-	let _now = $state(new Date());
-	$effect(() => {
-		const id = setInterval(() => (_now = new Date()), 60_000);
-		return () => clearInterval(id);
-	});
+import { serverTime } from '$lib/server-time.svelte';
 
-	const hariIni = $derived.by(() => {
-		const status = isHoliday(_now) ? 'Libur' : 'Hari Belajar';
+const hariIni = $derived.by(() => {
+		const status = isHoliday(serverTime.now) ? 'Libur' : 'Hari Belajar';
 		const hariNama = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][
-			_now.getDay()
+			serverTime.now.getDay()
 		];
-		const tgl = _now.toLocaleDateString('id-ID', {
+		const tgl = serverTime.now.toLocaleDateString('id-ID', {
 			day: 'numeric',
 			month: 'long',
 			year: 'numeric'
@@ -805,7 +801,7 @@
 	let nextEventMessage = $state('');
 	$effect(() => {
 		nextEventMessage = computeNextEventMessage({
-			now: _now,
+			now: serverTime.now,
 			bellActive,
 			isHoliday,
 			hariList,

@@ -13,7 +13,7 @@ import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 
 export async function load({ url, locals, cookies }) {
 	const meta: PageMeta = {
-		title: url.pathname === '/' ? 'Rapor Kurikulum Merdeka' : findTitleByPath(url.pathname),
+		title: url.pathname === '/' ? 'Administrasi Guru Terpadu' : findTitleByPath(url.pathname),
 		description: ''
 	};
 
