@@ -22,7 +22,12 @@
 		getKode: (hari: string, jamKe: number, kelasId: number) => string;
 		computeWaktu: (hari: string, jamKe: number) => { start: string; end: string };
 		timeToMinutes: (t: string) => number;
-		kegiatanCustom: Array<{ kode: string; nama: string; durasi?: number | null; soundFileName?: string | null }>;
+		kegiatanCustom: Array<{
+			kode: string;
+			nama: string;
+			durasi?: number | null;
+			soundFileName?: string | null;
+		}>;
 		daftarKodeMapel: string[];
 		isFirstSubjectPeriod: (today: string, jamKe: number) => boolean;
 	}

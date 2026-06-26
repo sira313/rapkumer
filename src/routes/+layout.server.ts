@@ -9,11 +9,12 @@ import {
 } from '$lib/server/db/schema';
 import { cookieNames, findTitleByPath } from '$lib/utils.js';
 import { redirect } from '@sveltejs/kit';
+import type { LayoutServerLoad } from './$types';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 
-export async function load({ url, locals, cookies }) {
+export const load: LayoutServerLoad = async ({ url, locals, cookies }) => {
 	const meta: PageMeta = {
-		title: url.pathname === '/' ? 'Administrasi Guru Terpadu' : findTitleByPath(url.pathname),
+		title: url.pathname === '/' ? 'Rapkumer - Administrasi Guru Terpadu' : findTitleByPath(url.pathname),
 		description: ''
 	};
 

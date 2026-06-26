@@ -6,6 +6,8 @@
 	import TasksModal from '$lib/components/modal-tasks.svelte';
 	import { toast } from '$lib/components/toast.svelte';
 	import { showModal } from '$lib/components/global-modal.svelte';
+	import { favoritesStore } from '$lib/stores/favorites.svelte';
+	import { onMount } from 'svelte';
 	import type { Component } from 'svelte';
 
 	type NavbarProps = {
@@ -113,6 +115,64 @@
 		};
 	}
 
+	let loadingFav = $state(true);
+
+	onMount(async () => {
+		loadingFav = true;
+		const ssrFavorites = page.data.favorites;
+		if (Array.isArray(ssrFavorites) && ssrFavorites.length > 0) {
+			favoritesStore.items = ssrFavorites;
+			loadingFav = false;
+			return;
+		}
+		try {
+			const res = await fetch('/api/favorites');
+			if (res.ok) {
+				const data = await res.json();
+				favoritesStore.items = data.favorites;
+			}
+		} catch {
+			// ignore
+		} finally {
+			loadingFav = false;
+		}
+	});
+
+	const isFavorited = $derived(favoritesStore.items.some((f) => f.path === page.url.pathname));
+	const currentTitle = $derived(page.data.meta?.title || '');
+
+	async function toggleFavorite() {
+		if (loadingFav) return;
+		const path = page.url.pathname;
+		const title = currentTitle;
+		if (!title) return;
+
+		try {
+			if (isFavorited) {
+				const res = await fetch('/api/favorites', {
+					method: 'DELETE',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ path })
+				});
+				if (res.ok) {
+					favoritesStore.items = favoritesStore.items.filter((f) => f.path !== path);
+				}
+			} else {
+				const res = await fetch('/api/favorites', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ path, title })
+				});
+				if (res.ok) {
+					const data = await res.json();
+					favoritesStore.items = [...favoritesStore.items, data.favorite];
+				}
+			}
+		} catch {
+			// ignore
+		}
+	}
+
 	async function showHelp() {
 		const pathname = page.url.pathname.replace(/\/+$/, '') || '/';
 		const fileName = resolveHelpFile(pathname);
@@ -141,7 +201,19 @@
 		</label>
 	</div>
 
-	<span class="mx-2 flex-1 truncate px-2 text-lg font-bold">{page.data.meta?.title || ''}</span>
+	{#if currentTitle && page.url.pathname !== '/'}
+		<button
+			class="btn btn-ghost btn-circle shadow-none"
+			title={isFavorited ? 'Hapus dari favorit' : 'Tambah ke favorit'}
+			onclick={toggleFavorite}
+			disabled={loadingFav}
+		>
+			<span class="text-xl">
+				<Icon name="star" class={isFavorited ? 'text-success fill-current' : ''} />
+			</span>
+		</button>
+	{/if}
+	<span class="mx-2 flex-1 truncate px-2 text-lg font-bold">{currentTitle}</span>
 	<div class="ml-auto flex-none">
 		<ul class="flex items-center px-1">
 			<!-- tasks modal for mobile -->

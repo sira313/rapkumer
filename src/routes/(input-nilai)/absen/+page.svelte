@@ -438,7 +438,9 @@
 
 	const isCurrentBulan = $derived.by(() => {
 		if (data.mode !== 'bulanan' && data.mode !== 'persentase_bulanan') return false;
-		return data.bulan === serverTime.now.getMonth() + 1 && data.tahun === serverTime.now.getFullYear();
+		return (
+			data.bulan === serverTime.now.getMonth() + 1 && data.tahun === serverTime.now.getFullYear()
+		);
 	});
 
 	function resetToCurrentBulan() {

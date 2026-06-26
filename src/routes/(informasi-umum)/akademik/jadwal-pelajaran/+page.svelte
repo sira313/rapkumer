@@ -138,9 +138,9 @@
 		return false;
 	}
 
-import { serverTime } from '$lib/server-time.svelte';
+	import { serverTime } from '$lib/server-time.svelte';
 
-const hariIni = $derived.by(() => {
+	const hariIni = $derived.by(() => {
 		const status = isHoliday(serverTime.now) ? 'Libur' : 'Hari Belajar';
 		const hariNama = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][
 			serverTime.now.getDay()

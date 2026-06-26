@@ -82,11 +82,11 @@ const currentMinutes = h * 60 + m;
 const schools = await db.execute('SELECT id FROM sekolah LIMIT 1');
 if (schools.rows.length === 0) {
 	console.error('Tidak ada data sekolah.');
-if (soundPromises.length > 0) {
-	await Promise.all(soundPromises);
-}
+	if (soundPromises.length > 0) {
+		await Promise.all(soundPromises);
+	}
 
-await db.close();
+	await db.close();
 	process.exit(1);
 }
 const sekolahId = Number(schools.rows[0].id);
@@ -252,7 +252,9 @@ function playSoundSequence(sekolahId, kode, today, jamKe, isInRange) {
 			if (isInRange) {
 				soundPromises.push(playSound(sekolahId, 'custom'));
 				soundPromises.push(
-					new Promise((resolve) => setTimeout(() => resolve(playSound(sekolahId, 'selesai_istirahat')), 1500))
+					new Promise((resolve) =>
+						setTimeout(() => resolve(playSound(sekolahId, 'selesai_istirahat')), 1500)
+					)
 				);
 			}
 			return;
@@ -360,9 +362,7 @@ for (let jamKe = 1; jamKe <= hariMaxJam; jamKe++) {
 	if (isInRange) anyTrigger = true;
 
 	const waktuStr = kode === 'PLG' ? waktu.start : `${waktu.start}-${waktu.end}`;
-	console.log(
-		`  jamKe=${jamKe}: ${waktuStr} | kode='${kode}' | ${soundLabel}${marker}`
-	);
+	console.log(`  jamKe=${jamKe}: ${waktuStr} | kode='${kode}' | ${soundLabel}${marker}`);
 
 	if (isInRange && playEnabled) {
 		playSoundSequence(sekolahId, kode, today, jamKe, true);

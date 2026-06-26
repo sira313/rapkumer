@@ -54,7 +54,11 @@ function execAsync(cmd: string, options?: { timeout?: number }): Promise<void> {
 	});
 }
 
-function execFileAsync(file: string, args: string[], options?: { timeout?: number }): Promise<void> {
+function execFileAsync(
+	file: string,
+	args: string[],
+	options?: { timeout?: number }
+): Promise<void> {
 	return new Promise((resolve) => {
 		execFile(file, args, { ...options, timeout: options?.timeout ?? 10_000 }, (err) => {
 			if (err && (err as NodeJS.ErrnoException).code !== 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER') {
@@ -211,7 +215,9 @@ async function checkSekolah(
 		),
 		columns: { kode: true }
 	});
-	const daftarKodeMapel = new Set(daftarMapelRows.map((r) => r.kode).filter((k): k is string => !!k));
+	const daftarKodeMapel = new Set(
+		daftarMapelRows.map((r) => r.kode).filter((k): k is string => !!k)
+	);
 
 	const jadwalMatrix: Record<string, Record<number, Record<number, string>>> = {};
 	for (const entry of jadwal) {

@@ -5,6 +5,7 @@
 	import ProgressCard from '$lib/components/dashboard/progress-card.svelte';
 	import QuickActionsCard from '$lib/components/dashboard/quick-actions-card.svelte';
 	import TimeCard from '$lib/components/dashboard/time-card.svelte';
+	import FavoriteMenusCard from '$lib/components/dashboard/favorite-menus-card.svelte';
 	import { computeNextEventMessage } from '$lib/utils/next-event-message';
 	import BellStatus from '$lib/components/jadwal-bell/bell-status.svelte';
 
@@ -244,18 +245,19 @@
 <BellStatus {bellActive} {hariIni} {nextEventMessage} class="alert alert-info alert-soft mb-4" />
 
 <!-- Kontainer Utama Grid -->
-<div class="grid w-full grid-cols-1 gap-5 md:grid-cols-2">
+<div class="grid w-full grid-cols-1 gap-4 md:grid-cols-2">
 	<!-- Kolom 1: Data Utama & Statistik -->
-	<div class="flex flex-col gap-5">
+	<div class="flex flex-col gap-4">
 		<SekolahOverviewCard {sekolah} />
+		<FavoriteMenusCard favorites={data.favorites ?? []} />
 		<RombelMuridStats rombel={statistikDashboard.rombel} murid={statistikDashboard.murid} />
 		<MapelEkstrakurikulerStats mapel={mapelStats} ekstrakurikuler={ekstrakurikulerStats} />
-		<TimeCard />
 	</div>
 
 	<!-- Kolom 2: Progress & Aksi -->
-	<div class="flex flex-col gap-6">
+	<div class="flex flex-col gap-4">
 		<ProgressCard progress={progressStats} />
+		<TimeCard />
 		<QuickActionsCard />
 	</div>
 </div>

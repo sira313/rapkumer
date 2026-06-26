@@ -208,4 +208,24 @@ export async function ensureCoreSchema() {
 	} catch {
 		// column already exists
 	}
+
+	// Create user_favorites table
+	try {
+		await db.$client.execute(`
+			CREATE TABLE IF NOT EXISTS user_favorites (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				user_id INTEGER NOT NULL REFERENCES auth_user(id) ON DELETE CASCADE,
+				path TEXT NOT NULL,
+				title TEXT NOT NULL,
+				created_at TEXT NOT NULL,
+				updated_at TEXT,
+				UNIQUE(user_id, path)
+			)
+		`);
+		await db.$client.execute(
+			`CREATE INDEX IF NOT EXISTS user_favorites_user_idx ON user_favorites(user_id)`
+		);
+	} catch {
+		// table already exists
+	}
 }

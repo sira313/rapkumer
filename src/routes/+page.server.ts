@@ -13,7 +13,8 @@ import {
 	tableJadwalPelajaran,
 	tableMataPelajaran,
 	tableMurid,
-	tablePresensiSettings
+	tablePresensiSettings,
+	tableUserFavorites
 } from '$lib/server/db/schema';
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 
@@ -333,8 +334,17 @@ export async function load(event) {
 		}
 	}
 
+	const userId = event.locals.user?.id;
+	const favorites = userId
+		? await db.query.tableUserFavorites.findMany({
+				where: eq(tableUserFavorites.userId, userId),
+				orderBy: (fav, { asc }) => [asc(fav.createdAt)]
+			})
+		: [];
+
 	return {
 		...parentData,
+		favorites,
 		statistikDashboard,
 		bellActive: bellRow?.isActive === 1,
 		hariSekolah,

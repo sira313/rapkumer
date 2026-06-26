@@ -1138,6 +1138,30 @@ export const tableBellSounds = sqliteTable(
 	(table) => [uniqueIndex('bell_sounds_sekolah_tipe_idx').on(table.sekolahId, table.tipe)]
 );
 
+export const tableUserFavorites = sqliteTable(
+	'user_favorites',
+	{
+		id: int().primaryKey({ autoIncrement: true }),
+		userId: int()
+			.references(() => tableAuthUser.id, { onDelete: 'cascade' })
+			.notNull(),
+		path: text().notNull(),
+		title: text().notNull(),
+		...audit
+	},
+	(table) => [
+		unique().on(table.userId, table.path),
+		index('user_favorites_user_idx').on(table.userId)
+	]
+);
+
+export const tableUserFavoritesRelations = relations(tableUserFavorites, ({ one }) => ({
+	user: one(tableAuthUser, {
+		fields: [tableUserFavorites.userId],
+		references: [tableAuthUser.id]
+	})
+}));
+
 export const tableJadwalPelajaran = sqliteTable(
 	'jadwal_pelajaran',
 	{

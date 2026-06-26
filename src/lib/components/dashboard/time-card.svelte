@@ -1,17 +1,21 @@
 <script lang="ts">
-import { serverTime } from '$lib/server-time.svelte';
+	import { serverTime } from '$lib/server-time.svelte';
 
-const timeString = $derived(
-	serverTime.now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false })
-);
-const dateString = $derived(
-	serverTime.now.toLocaleDateString('id-ID', {
-		weekday: 'long',
-		year: 'numeric',
-		month: 'long',
-		day: 'numeric'
-	})
-);
+	const timeString = $derived(
+		serverTime.now.toLocaleTimeString('id-ID', {
+			hour: '2-digit',
+			minute: '2-digit',
+			hour12: false
+		})
+	);
+	const dateString = $derived(
+		serverTime.now.toLocaleDateString('id-ID', {
+			weekday: 'long',
+			year: 'numeric',
+			month: 'long',
+			day: 'numeric'
+		})
+	);
 </script>
 
 <div class="stats stats-vertical lg:stats-horizontal rounded-box bg-base-100 w-full shadow-md">
