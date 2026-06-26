@@ -273,10 +273,10 @@
 </div>
 
 <div class="mt-4 flex flex-row justify-between gap-2">
-	<a class="btn btn-soft shadow-none" href="/murid">
+	<button type="button" class="btn btn-soft shadow-none pointer-events-auto" onclick={() => history.back()}>
 		<Icon name="close" />
 		Tutup
-	</a>
+	</button>
 
 	{#if canEdit}
 		<a
