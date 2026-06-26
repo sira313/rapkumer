@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { invalidate } from '$app/navigation';
-	import { hideModal, setLoading } from '$lib/components/global-modal.svelte';
+	import { showModal, hideModal, setLoading } from '$lib/components/global-modal.svelte';
 	import { toast } from '$lib/components/toast.svelte';
 	import Icon from '$lib/components/icon.svelte';
 
@@ -36,6 +36,21 @@
 		const input = e.currentTarget as HTMLInputElement;
 		const file = input.files?.[0];
 		if (file) {
+			if (file.size > 2 * 1024 * 1024) {
+				toast('Ukuran file maksimal 2MB', 'warning');
+				input.value = '';
+				return;
+			}
+			if (!file.name.toLowerCase().endsWith('.mp3') && file.type !== 'audio/mpeg') {
+				showModal({
+					title: 'Format Tidak Didukung',
+					body: 'Hanya file MP3 yang dapat diterima. Silakan convert file Anda ke format MP3 terlebih dahulu.',
+					onPositive: { label: 'OK', action: async ({ close }) => close() },
+					dismissible: false
+				});
+				input.value = '';
+				return;
+			}
 			soundFile = file;
 			soundFileName = file.name;
 			hapusSound = false;
@@ -154,7 +169,7 @@
 			<input
 				type="file"
 				class="file-input file-input-soft bg-base-200 file-input-sm w-full dark:border-none"
-				accept=".mp3,audio/*"
+				accept=".mp3,audio/mpeg"
 				onchange={handleFileSelect}
 				disabled={submitting}
 			/>

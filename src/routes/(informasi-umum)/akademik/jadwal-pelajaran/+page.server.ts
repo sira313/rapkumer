@@ -217,8 +217,8 @@ export const actions: Actions = {
 		if (soundFile && soundFile.size > 0) {
 			const maxSize = 2 * 1024 * 1024;
 			if (soundFile.size > maxSize) return fail(400, { fail: 'Ukuran file sound maksimal 2MB' });
-			if (!soundFile.type.startsWith('audio/')) {
-				return fail(400, { fail: 'Hanya file audio yang diperbolehkan' });
+			if (!soundFile.name.toLowerCase().endsWith('.mp3') && soundFile.type !== 'audio/mpeg') {
+				return fail(400, { fail: 'Hanya file MP3 yang dapat diterima' });
 			}
 			const buffer = Buffer.from(await soundFile.arrayBuffer());
 			const soundDir = path.resolve(process.env.sounds?.replace(/^file:/, '') || './data/sounds');
@@ -304,8 +304,8 @@ export const actions: Actions = {
 		if (soundFile && soundFile.size > 0) {
 			const maxSize = 2 * 1024 * 1024;
 			if (soundFile.size > maxSize) return fail(400, { fail: 'Ukuran file sound maksimal 2MB' });
-			if (!soundFile.type.startsWith('audio/')) {
-				return fail(400, { fail: 'Hanya file audio yang diperbolehkan' });
+			if (!soundFile.name.toLowerCase().endsWith('.mp3') && soundFile.type !== 'audio/mpeg') {
+				return fail(400, { fail: 'Hanya file MP3 yang dapat diterima' });
 			}
 			try {
 				fs.unlinkSync(path.join(soundDir, `${sekolahId}_custom_${kodeLama}.mp3`));

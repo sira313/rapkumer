@@ -73,8 +73,8 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	const file = formData.get('file') as File | null;
 	if (!file) error(400, 'File tidak ditemukan');
 
-	if (!file.name.endsWith('.mp3') && !file.type.startsWith('audio/')) {
-		error(400, 'Hanya file audio (MP3, WAV, OGG, dll) yang diperbolehkan');
+	if (!file.name.toLowerCase().endsWith('.mp3') && file.type !== 'audio/mpeg') {
+		error(400, 'Hanya file MP3 yang dapat diterima');
 	}
 
 	const maxSize = 2 * 1024 * 1024;

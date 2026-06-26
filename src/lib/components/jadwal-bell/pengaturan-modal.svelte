@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
-	import { hideModal, setLoading } from '$lib/components/global-modal.svelte';
+	import { showModal, hideModal, setLoading } from '$lib/components/global-modal.svelte';
 	import { toast } from '$lib/components/toast.svelte';
 	import Icon from '$lib/components/icon.svelte';
 	import { isValidTime } from '$lib/utils';
@@ -49,12 +49,21 @@
 	async function handleUploadSound(tipe: string) {
 		const input = document.createElement('input');
 		input.type = 'file';
-		input.accept = '.mp3,audio/*';
+		input.accept = '.mp3,audio/mpeg';
 		input.onchange = async () => {
 			const file = input.files?.[0];
 			if (!file) return;
 			if (file.size > 2 * 1024 * 1024) {
 				toast('Ukuran file maksimal 2MB', 'warning');
+				return;
+			}
+			if (!file.name.toLowerCase().endsWith('.mp3') && file.type !== 'audio/mpeg') {
+				showModal({
+					title: 'Format Tidak Didukung',
+					body: 'Hanya file MP3 yang dapat diterima. Silakan convert file Anda ke format MP3 terlebih dahulu.',
+					onPositive: { label: 'OK', action: async ({ close }) => close() },
+					dismissible: false
+				});
 				return;
 			}
 			uploadingTipe = tipe;
