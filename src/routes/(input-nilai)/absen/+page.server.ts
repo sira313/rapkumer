@@ -20,6 +20,7 @@ import { ensureKetidakhadiranRaporSchema } from '$lib/server/db/ensure-ketidakha
 import { ensurePresensiSettingsSchema } from '$lib/server/db/ensure-presensi-settings';
 import {
 	simWriteAbsensi,
+	simDeleteAbsensi,
 	simWriteKetidakhadiran,
 	simGetAbsensi,
 	simGetKetidakhadiran,
@@ -1633,21 +1634,42 @@ export async function load({ parent, locals, url, depends }) {
 							if (mapelKey !== undefined) {
 								if (mapelKey === null) {
 									status = 'H';
-									attendedPoints++;
-									masuk = 'H';
-									selesai = 'H';
-								} else if (mapelKey === 'sakit') {
-									status = 'S';
-									masuk = 'S';
-									selesai = 'S';
-								} else if (mapelKey === 'izin') {
-									status = 'I';
-									masuk = 'I';
-									selesai = 'I';
-								} else if (mapelKey === 'alfa') {
-									status = 'TK';
-									masuk = 'TK';
-									selesai = 'TK';
+									if (useHalfWeight) {
+										const count = absenPerMapel.get(`${murid.id}:${mpId}`);
+										if (count != null) {
+											attendedPoints += count * 0.5;
+											masuk = 'H';
+											if (count >= 2) selesai = 'H';
+										} else {
+											attendedPoints++;
+											masuk = 'H';
+											selesai = 'H';
+										}
+									} else {
+										attendedPoints++;
+										masuk = 'H';
+										selesai = 'H';
+									}
+								} else {
+									const khStatus = mapelKey === 'sakit' ? 'S' : mapelKey === 'izin' ? 'I' : 'TK';
+									if (useHalfWeight) {
+										// For dual-session: KH applies to current session only.
+										// Override with absensi count where attendance is recorded.
+										const count = absenPerMapel.get(`${murid.id}:${mpId}`);
+										if (count != null) {
+											attendedPoints += count * 0.5;
+											masuk = count >= 1 ? 'H' : khStatus;
+											selesai = count >= 2 ? 'H' : khStatus;
+										} else {
+											masuk = khStatus;
+											selesai = khStatus;
+										}
+										status = masuk === 'H' || selesai === 'H' ? 'H' : khStatus;
+									} else {
+										status = khStatus;
+										masuk = khStatus;
+										selesai = khStatus;
+									}
 								}
 							}
 						}
@@ -1878,15 +1900,20 @@ export const actions = {
 
 		const mataPelajaranIdRaw = formData.get('mataPelajaranId')?.toString();
 		const mataPelajaranId = mataPelajaranIdRaw ? Number(mataPelajaranIdRaw) : null;
+		const sessionType = formData.get('sessionType')?.toString() ?? null;
 		const simHari = formData.get('simHari')?.toString() ?? null;
 		const simJam = formData.get('simJam')?.toString() ?? null;
 
+		// Load presensi settings for tipePresensi
+		const allSettings = await db.query.tablePresensiSettings.findFirst({
+			columns: { jenisPresensi: true, jamMasuk: true, tipePresensi: true },
+			where: eq(tablePresensiSettings.sekolahId, sekolahId)
+		});
+		const tipePresensi = allSettings?.tipePresensi ?? 'awal_mapel';
+
 		// Guru mapel only: validate schedule match + own subject
 		if (locals.user?.type === 'user') {
-			const settings = await db.query.tablePresensiSettings.findFirst({
-				columns: { jenisPresensi: true, jamMasuk: true },
-				where: eq(tablePresensiSettings.sekolahId, sekolahId)
-			});
+			const settings = allSettings;
 			if (settings?.jenisPresensi === 'tiap_mapel' && settings.jamMasuk) {
 				const dayNames = ['minggu', 'senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu'];
 				const dayN = simHari ? simHari.toLowerCase() : dayNames[new Date().getDay()];
@@ -1993,29 +2020,78 @@ export const actions = {
 
 			if (mode === 'hadir_semua') {
 				if (simHari) {
-					for (const murid of semuaMurid) {
-						simWriteKetidakhadiran(
-							sekolahId,
-							kelasId,
-							tanggal,
-							murid.id,
-							null,
-							mataPelajaranId,
-							simHari,
-							simJam
-						);
-						simWriteAbsensi(
-							sekolahId,
-							kelasId,
-							tanggal,
-							murid.id,
-							mataPelajaranId,
-							simHari,
-							simJam
-						);
+					const isDualSessionSim =
+						tipePresensi === 'awal_akhir_mapel' && mataPelajaranId != null && sessionType;
+
+					if (isDualSessionSim) {
+						// Deterministic approach: delete existing sim entries and write exactly
+						// 1 (awal) or 2 (akhir) absensi per student. This avoids depending on
+						// reading the sim cache which may be unreliable across requests.
+						const semuaMuridIds = semuaMurid.map((m) => m.id);
+						simDeleteAbsensi(sekolahId, kelasId, tanggal, semuaMuridIds, mataPelajaranId, simHari, simJam);
+						const targetCount = sessionType === 'akhir' ? 2 : 1;
+						for (const murid of semuaMurid) {
+							for (let i = 0; i < targetCount; i++) {
+								simWriteAbsensi(
+									sekolahId,
+									kelasId,
+									tanggal,
+									murid.id,
+									mataPelajaranId,
+									simHari,
+									simJam
+								);
+							}
+						}
+					} else {
+						for (const murid of semuaMurid) {
+							simWriteKetidakhadiran(
+								sekolahId,
+								kelasId,
+								tanggal,
+								murid.id,
+								null,
+								mataPelajaranId,
+								simHari,
+								simJam
+							);
+							simWriteAbsensi(
+								sekolahId,
+								kelasId,
+								tanggal,
+								murid.id,
+								mataPelajaranId,
+								simHari,
+								simJam
+							);
+						}
 					}
 					return { message: 'Semua murid ditandai hadir (simulasi)' };
 				}
+
+				// For awal_akhir_mapel: pre-query existing absensi counts
+				let absensiCountMap: Map<number, number> | null = null;
+				const isDualSession =
+					tipePresensi === 'awal_akhir_mapel' && mataPelajaranId != null && sessionType;
+				if (isDualSession) {
+					const absensiRows = await db.query.tableAbsensi.findMany({
+						columns: { muridId: true },
+						where: and(
+							inArray(
+								tableAbsensi.muridId,
+								semuaMurid.map((m) => m.id)
+							),
+							eq(tableAbsensi.mataPelajaranId, mataPelajaranId),
+							sql`${tableAbsensi.waktu} >= ${todayStart.toISOString()}`,
+							sql`${tableAbsensi.waktu} <= ${todayEnd.toISOString()}`
+						)
+					});
+					absensiCountMap = new Map();
+					for (const r of absensiRows) {
+						absensiCountMap.set(r.muridId, (absensiCountMap.get(r.muridId) ?? 0) + 1);
+					}
+				}
+
 				for (const murid of semuaMurid) {
 					await db
 						.insert(tableKetidakhadiranHarian)
@@ -2029,21 +2105,40 @@ export const actions = {
 							set: { keterangan: null, mataPelajaranId, updatedAt: now }
 						});
 
-					const existingAbsensi = await db.query.tableAbsensi.findFirst({
-						columns: { id: true },
-						where: and(
-							eq(tableAbsensi.muridId, murid.id),
-							mataPelajaranId != null
-								? eq(tableAbsensi.mataPelajaranId, mataPelajaranId)
-								: sql`${tableAbsensi.mataPelajaranId} IS NULL`,
-							sql`${tableAbsensi.waktu} >= ${todayStart.toISOString()}`,
-							sql`${tableAbsensi.waktu} <= ${todayEnd.toISOString()}`
-						)
-					});
-					if (!existingAbsensi) {
-						await db
-							.insert(tableAbsensi)
-							.values({ muridId: murid.id, waktu: absensiWaktu, mataPelajaranId });
+					if (isDualSession) {
+						const currentCount = absensiCountMap!.get(murid.id) ?? 0;
+						if (sessionType === 'akhir') {
+							// akhir: tambah jika siswa belum memiliki 2 absensi (0 = missed awal, 1 = sudah awal)
+							if (currentCount < 2) {
+								await db
+									.insert(tableAbsensi)
+									.values({ muridId: murid.id, waktu: absensiWaktu, mataPelajaranId });
+							}
+						} else {
+							// awal: tambah jika belum ada absensi sama sekali
+							if (currentCount === 0) {
+								await db
+									.insert(tableAbsensi)
+									.values({ muridId: murid.id, waktu: absensiWaktu, mataPelajaranId });
+							}
+						}
+					} else {
+						const existingAbsensi = await db.query.tableAbsensi.findFirst({
+							columns: { id: true },
+							where: and(
+								eq(tableAbsensi.muridId, murid.id),
+								mataPelajaranId != null
+									? eq(tableAbsensi.mataPelajaranId, mataPelajaranId)
+									: sql`${tableAbsensi.mataPelajaranId} IS NULL`,
+								sql`${tableAbsensi.waktu} >= ${todayStart.toISOString()}`,
+								sql`${tableAbsensi.waktu} <= ${todayEnd.toISOString()}`
+							)
+						});
+						if (!existingAbsensi) {
+							await db
+								.insert(tableAbsensi)
+								.values({ muridId: murid.id, waktu: absensiWaktu, mataPelajaranId });
+						}
 					}
 				}
 
@@ -2072,6 +2167,9 @@ export const actions = {
 					}
 				}
 
+				const selectedIdsSet = new Set(entryMap.keys());
+				const nonSelectedMurid = semuaMurid.filter((m) => !selectedIdsSet.has(m.id));
+
 				if (simHari) {
 					for (const [muridId, keterangan] of entryMap) {
 						simWriteKetidakhadiran(
@@ -2084,6 +2182,57 @@ export const actions = {
 							simHari,
 							simJam
 						);
+					}
+
+					const isDualSessionSelSim =
+						tipePresensi === 'awal_akhir_mapel' && mataPelajaranId != null && sessionType;
+
+					if (isDualSessionSelSim) {
+						// Deterministic: delete all sim entries first, then write exact count for non-selected
+						const selIds = Array.from(selectedIdsSet);
+						const nonSelIds = nonSelectedMurid.map((m) => m.id);
+						if (selIds.length > 0) {
+							simDeleteAbsensi(sekolahId, kelasId, tanggal, selIds, mataPelajaranId, simHari, simJam);
+						}
+						if (nonSelIds.length > 0) {
+							simDeleteAbsensi(sekolahId, kelasId, tanggal, nonSelIds, mataPelajaranId, simHari, simJam);
+							const targetCount = sessionType === 'akhir' ? 2 : 1;
+							for (const murid of nonSelectedMurid) {
+								for (let i = 0; i < targetCount; i++) {
+									simWriteAbsensi(
+										sekolahId,
+										kelasId,
+										tanggal,
+										murid.id,
+										mataPelajaranId,
+										simHari,
+										simJam
+									);
+								}
+							}
+						}
+					} else {
+						for (const murid of nonSelectedMurid) {
+							simWriteKetidakhadiran(
+								sekolahId,
+								kelasId,
+								tanggal,
+								murid.id,
+								null,
+								mataPelajaranId,
+								simHari,
+								simJam
+							);
+							simWriteAbsensi(
+								sekolahId,
+								kelasId,
+								tanggal,
+								murid.id,
+								mataPelajaranId,
+								simHari,
+								simJam
+							);
+						}
 					}
 					return { message: 'Kehadiran berhasil diperbarui (simulasi)' };
 				}
@@ -2113,6 +2262,79 @@ export const actions = {
 							],
 							set: { keterangan, mataPelajaranId, updatedAt: now }
 						});
+				}
+
+				// Pre-query existing absensi counts for dual-session selected mode
+				const isDualSessionSelected =
+					tipePresensi === 'awal_akhir_mapel' && mataPelajaranId != null && sessionType;
+				let nonSelectedAbsensiCountMap: Map<number, number> | null = null;
+				if (isDualSessionSelected) {
+					const absensiRows = await db.query.tableAbsensi.findMany({
+						columns: { muridId: true },
+						where: and(
+							inArray(
+								tableAbsensi.muridId,
+								nonSelectedMurid.map((m) => m.id)
+							),
+							eq(tableAbsensi.mataPelajaranId, mataPelajaranId),
+							sql`${tableAbsensi.waktu} >= ${todayStart.toISOString()}`,
+							sql`${tableAbsensi.waktu} <= ${todayEnd.toISOString()}`
+						)
+					});
+					nonSelectedAbsensiCountMap = new Map();
+					for (const r of absensiRows) {
+						nonSelectedAbsensiCountMap.set(
+							r.muridId,
+							(nonSelectedAbsensiCountMap.get(r.muridId) ?? 0) + 1
+						);
+					}
+				}
+
+				// Mark non-selected students as present
+				for (const murid of nonSelectedMurid) {
+					await db
+						.insert(tableKetidakhadiranHarian)
+						.values({ muridId: murid.id, tanggal, keterangan: null, mataPelajaranId })
+						.onConflictDoUpdate({
+							target: [
+								tableKetidakhadiranHarian.muridId,
+								tableKetidakhadiranHarian.tanggal,
+								tableKetidakhadiranHarian.mataPelajaranId
+							],
+							set: { keterangan: null, mataPelajaranId, updatedAt: now }
+						});
+
+					if (isDualSessionSelected) {
+						const currentCount = nonSelectedAbsensiCountMap!.get(murid.id) ?? 0;
+						if (sessionType === 'akhir') {
+							if (currentCount < 2) {
+								await db
+									.insert(tableAbsensi)
+									.values({ muridId: murid.id, waktu: absensiWaktu, mataPelajaranId });
+							}
+						} else if (currentCount === 0) {
+							await db
+								.insert(tableAbsensi)
+								.values({ muridId: murid.id, waktu: absensiWaktu, mataPelajaranId });
+						}
+					} else {
+						const existingAbsensi = await db.query.tableAbsensi.findFirst({
+							columns: { id: true },
+							where: and(
+								eq(tableAbsensi.muridId, murid.id),
+								mataPelajaranId != null
+									? eq(tableAbsensi.mataPelajaranId, mataPelajaranId)
+									: sql`${tableAbsensi.mataPelajaranId} IS NULL`,
+								sql`${tableAbsensi.waktu} >= ${todayStart.toISOString()}`,
+								sql`${tableAbsensi.waktu} <= ${todayEnd.toISOString()}`
+							)
+						});
+						if (!existingAbsensi) {
+							await db
+								.insert(tableAbsensi)
+								.values({ muridId: murid.id, waktu: absensiWaktu, mataPelajaranId });
+						}
+					}
 				}
 
 				return { message: 'Kehadiran berhasil diperbarui' };

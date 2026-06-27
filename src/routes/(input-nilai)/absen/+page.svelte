@@ -651,7 +651,8 @@
 												? (currentMapel?.perkiraanJam ?? undefined)
 												: undefined,
 											simulasiHari: data.simulasiHari,
-											simulasiJam: data.simulasiJam
+											simulasiJam: data.simulasiJam,
+											tipePresensi: data.tipePresensi
 										},
 										dismissible: true
 									});

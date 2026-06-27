@@ -19,7 +19,8 @@
 		namaMataPelajaran,
 		perkiraanJam,
 		simulasiHari,
-		simulasiJam
+		simulasiJam,
+		tipePresensi = 'awal_mapel'
 	}: {
 		daftarMurid: MuridItem[];
 		kelasId?: number;
@@ -29,6 +30,7 @@
 		perkiraanJam?: string;
 		simulasiHari?: string | null;
 		simulasiJam?: string | null;
+		tipePresensi?: string;
 	} = $props();
 
 	let step = $state<'pilih-mode' | 'pilih-murid'>('pilih-mode');
@@ -36,6 +38,9 @@
 	let searchTerm = $state('');
 	let selectedIds = $state<number[]>([]);
 	let keteranganMap = $state<Record<number, string>>({});
+	let sessionType = $state<'awal' | 'akhir'>('awal');
+
+	const isAwalAkhir = $derived(tipePresensi === 'awal_akhir_mapel' && !!namaMataPelajaran);
 
 	$effect(() => {
 		if (step === 'pilih-murid') {
@@ -132,6 +137,7 @@
 			if (mataPelajaranId != null) fd.set('mataPelajaranId', String(mataPelajaranId));
 			if (simulasiHari) fd.set('simHari', simulasiHari);
 			if (simulasiJam) fd.set('simJam', simulasiJam);
+			if (isAwalAkhir) fd.set('sessionType', sessionType);
 			const res = await fetch('?/isiSekaligus', { method: 'POST', body: fd, redirect: 'error' });
 			if (!res.ok) {
 				const err = await res.json().catch(() => ({ fail: 'Gagal menyimpan' }));
@@ -161,6 +167,7 @@
 			if (mataPelajaranId != null) fd.set('mataPelajaranId', String(mataPelajaranId));
 			if (simulasiHari) fd.set('simHari', simulasiHari);
 			if (simulasiJam) fd.set('simJam', simulasiJam);
+			if (isAwalAkhir) fd.set('sessionType', sessionType);
 			fd.set('entries', JSON.stringify(entries));
 			const res = await fetch('?/isiSekaligus', { method: 'POST', body: fd, redirect: 'error' });
 			if (!res.ok) {
@@ -185,6 +192,15 @@
 
 {#if step === 'pilih-mode'}
 	<div class="flex flex-col gap-4">
+		{#if isAwalAkhir}
+			<select
+				class="select select-sm bg-base-200 dark:bg-base-300 w-full dark:border-none"
+				bind:value={sessionType}
+			>
+				<option value="awal">Awal Mapel</option>
+				<option value="akhir">Akhir Mapel</option>
+			</select>
+		{/if}
 		{#if namaMataPelajaran}
 			<p class="text-base-content text-lg font-medium">
 				Apakah hadir semua pada mata pelajaran {namaMataPelajaran}
