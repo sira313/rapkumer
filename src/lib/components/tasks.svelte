@@ -290,7 +290,7 @@
 					<div class="join">
 						<button
 							type="button"
-							class="btn btn-sm join-item shadow-none"
+							class="btn btn-sm join-item btn-soft {isAdding ? 'btn-error' : ''} shadow-none"
 							onclick={(e) => { e.stopPropagation(); toggleAddTask(); }}
 							title={isAdding ? 'Batalkan tambah tugas' : 'Tambah tugas'}
 							disabled={isProcessing || !canManageTasks}
@@ -330,7 +330,7 @@
 						</div>
 						<button
 							type="button"
-							class="btn btn-sm join-item shadow-none"
+							class="px-2 btn btn-sm join-item shadow-none"
 							onclick={() => sidebarOpen = !sidebarOpen}
 							title={sidebarOpen ? 'Tutup daftar tugas' : 'Buka daftar tugas'}
 						>

@@ -37,7 +37,7 @@
 		<div class="join">
 			<button
 				type="button"
-				class="btn btn-sm join-item shadow-none"
+				class="btn btn-sm join-item btn-soft {isAdding ? 'btn-error' : ''} shadow-none"
 				onclick={() => emit('toggleAdd')}
 				title={isAdding ? 'Batalkan tambah tugas' : 'Tambah tugas'}
 				disabled={isProcessing || !canManage}

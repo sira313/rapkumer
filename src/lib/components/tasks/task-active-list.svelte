@@ -53,40 +53,40 @@
 	<div class="flex-1 overflow-y-auto">
 		<table class="table w-full pl-2">
 			<tbody>
-				{#if isAdding}
-					<tr class="border-base-300 dark:border-base-200">
-						<td class="p-2" colspan="2">
-							<input
-								bind:this={newTaskInput}
-								value={newTaskTitle}
-								placeholder="Nama tugas"
-								class="input input-sm input-bordered w-full dark:bg-base-300 dark:border-none"
-								oninput={handleInput}
-								onkeydown={handleKeydown}
-								autocomplete="off"
-								aria-label="Nama tugas baru"
-							/>
-						</td>
-						<td class="p-2 text-right">
-							<button
-								type="button"
-								class="btn btn-primary shadow-none btn-sm"
-								onclick={() => emit('save')}
-								title="Simpan tugas"
-								disabled={isProcessing || !newTaskTitle.trim() || !canManage}
-								aria-disabled={isProcessing || !newTaskTitle.trim() || !canManage}
-							>
-								<Icon name="save" />
-							</button>
-						</td>
-					</tr>
-				{/if}
+{#if isAdding}
+ 					<tr class="border-base-300 dark:border-base-200">
+ 						<td class="p-2" colspan="3">
+ 							<div class="join w-full">
+ 								<input
+ 									bind:this={newTaskInput}
+ 									value={newTaskTitle}
+ 									placeholder="Nama tugas"
+ 									class="input input-sm join-item input-bordered flex-1 dark:bg-base-300 dark:border-none"
+ 									oninput={handleInput}
+ 									onkeydown={handleKeydown}
+ 									autocomplete="off"
+ 									aria-label="Nama tugas baru"
+ 								/>
+ 								<button
+ 									type="button"
+ 									class="btn btn-primary join-item shadow-none btn-sm"
+ 									onclick={() => emit('save')}
+ 									title="Simpan tugas"
+ 									disabled={isProcessing || !newTaskTitle.trim() || !canManage}
+ 									aria-disabled={isProcessing || !newTaskTitle.trim() || !canManage}
+ 								>
+ 									<Icon name="save" />
+ 								</button>
+ 							</div>
+ 						</td>
+ 					</tr>
+ 				{/if}
 				{#each tasks as task (task.id)}
 					<tr class="border-base-300 dark:border-base-200">
 						<th class="w-0 align-middle">
 							<input
 								type="checkbox"
-								class="checkbox"
+								class="checkbox checkbox-sm"
 								onchange={() => emit('complete', task.id)}
 								title="Tandai selesai"
 								disabled={isProcessing || !canManage}
