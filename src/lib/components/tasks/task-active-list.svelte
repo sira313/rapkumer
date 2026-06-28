@@ -60,7 +60,7 @@
 								bind:this={newTaskInput}
 								value={newTaskTitle}
 								placeholder="Nama tugas"
-								class="input input-sm input-bordered w-full"
+								class="input input-sm input-bordered w-full dark:bg-base-300 dark:border-none"
 								oninput={handleInput}
 								onkeydown={handleKeydown}
 								autocomplete="off"
@@ -70,10 +70,11 @@
 						<td class="p-2 text-right">
 							<button
 								type="button"
-								class="btn btn-primary btn-sm"
+								class="btn btn-primary shadow-none btn-sm"
 								onclick={() => emit('save')}
 								title="Simpan tugas"
 								disabled={isProcessing || !newTaskTitle.trim() || !canManage}
+								aria-disabled={isProcessing || !newTaskTitle.trim() || !canManage}
 							>
 								<Icon name="save" />
 							</button>
@@ -89,16 +90,18 @@
 								onchange={() => emit('complete', task.id)}
 								title="Tandai selesai"
 								disabled={isProcessing || !canManage}
+								aria-disabled={isProcessing || !canManage}
 							/>
 						</th>
 						<td class="p-2"><p class="flex-1">{task.title}</p></td>
 						<td class="p-2 text-right">
 							<button
 								type="button"
-								class="btn btn-circle btn-ghost"
+								class="btn btn-sm btn-circle btn-ghost"
 								title="Hapus tugas"
 								onclick={() => emit('remove', task.id)}
 								disabled={isProcessing || !canManage}
+								aria-disabled={isProcessing || !canManage}
 							>
 								<Icon name="del" class="text-error" />
 							</button>

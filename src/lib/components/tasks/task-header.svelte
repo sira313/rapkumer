@@ -29,7 +29,7 @@
 
 <div class="flex flex-col gap-1 p-4">
 	<div class="flex flex-row items-center">
-		<h2 class="text-lg font-bold">Daftar tugas</h2>
+		<h2 class="text-sm font-bold">Daftar tugas</h2>
 		{#if showInitialSpinner}
 			<span class="loading loading-spinner loading-xs text-primary ml-2" aria-hidden="true"></span>
 		{/if}
@@ -37,15 +37,16 @@
 		<div class="join">
 			<button
 				type="button"
-				class="btn join-item shadow-none"
+				class="btn btn-sm join-item shadow-none"
 				onclick={() => emit('toggleAdd')}
 				title={isAdding ? 'Batalkan tambah tugas' : 'Tambah tugas'}
 				disabled={isProcessing || !canManage}
+				aria-disabled={isProcessing || !canManage}
 			>
 				<Icon name={isAdding ? 'close' : 'plus'} />
 			</button>
 			<div class="dropdown dropdown-end">
-				<div tabindex="0" role="button" title="Tombol hapus" class="join-item btn shadow-none">
+				<div tabindex="0" role="button" title="Tombol hapus" class="join-item btn btn-sm shadow-none">
 					<Icon name="del" class="text-error" />
 					<Icon name="collapse-all" class="text-error" />
 				</div>
