@@ -273,7 +273,11 @@
 </div>
 
 <div class="mt-4 flex flex-row justify-between gap-2">
-	<button type="button" class="btn btn-soft shadow-none pointer-events-auto" onclick={() => history.back()}>
+	<button
+		type="button"
+		class="btn btn-soft pointer-events-auto shadow-none"
+		onclick={() => history.back()}
+	>
 		<Icon name="close" />
 		Tutup
 	</button>

@@ -36,6 +36,12 @@ export type PersentaseBulananRow = {
 	persentase: number;
 };
 
+export type PersentaseSemesterRow = {
+	no: number;
+	nama: string;
+	persentase: number;
+};
+
 export type PersentaseHarianSubject = {
 	kodeKegiatan: string;
 	label: string;
@@ -65,7 +71,13 @@ export type PageState = {
 	perPage: number;
 };
 
-export type Mode = 'harian' | 'persentase_harian' | 'bulanan' | 'persentase_bulanan' | 'rapor';
+export type Mode =
+	| 'harian'
+	| 'persentase_harian'
+	| 'bulanan'
+	| 'persentase_bulanan'
+	| 'persentase_semester'
+	| 'rapor';
 
 export type AbsenLoadData = {
 	meta: { title: string };
@@ -84,6 +96,7 @@ export type AbsenLoadData = {
 	bulananRows: BulananRow[];
 	raporRows: RaporRow[];
 	persentaseBulananRows: PersentaseBulananRow[];
+	persentaseSemesterRows: PersentaseSemesterRow[];
 	redDays: number[];
 	tanggalMulaiRapor: string;
 	tanggalAkhirRapor: string;

@@ -59,7 +59,10 @@
 			const rect = e.currentTarget.querySelector('.modal-box')?.getBoundingClientRect();
 			if (
 				rect &&
-				(e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom)
+				(e.clientX < rect.left ||
+					e.clientX > rect.right ||
+					e.clientY < rect.top ||
+					e.clientY > rect.bottom)
 			) {
 				e.currentTarget.close();
 			}

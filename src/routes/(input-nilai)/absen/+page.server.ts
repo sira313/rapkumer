@@ -4,6 +4,7 @@ import { isValidDate, todayDateString } from '$lib/server/absen/utils';
 import { checkPresensiReadiness } from '$lib/server/absen/presensi';
 import { loadBulanan } from '$lib/server/absen/load-bulanan';
 import { loadPersentaseBulanan } from '$lib/server/absen/load-persentase-bulanan';
+import { loadPersentaseSemester } from '$lib/server/absen/load-persentase-semester';
 import { loadRapor } from '$lib/server/absen/load-rapor';
 import { loadHarian } from '$lib/server/absen/load-harian';
 import {
@@ -77,7 +78,16 @@ export const load: PageServerLoad = async ({ parent, locals, url, depends }) => 
 
 	if (mode === 'bulanan') {
 		if (!sekolahId || !kelasAktif?.id) {
-			return defaultEmpty('bulanan', search, tanggal, simHari, simJam, presensiReady, presensiWarningMessage, presensiSettings?.jenisPresensi ?? 'wali_kelas_saja');
+			return defaultEmpty(
+				'bulanan',
+				search,
+				tanggal,
+				simHari,
+				simJam,
+				presensiReady,
+				presensiWarningMessage,
+				presensiSettings?.jenisPresensi ?? 'wali_kelas_saja'
+			);
 		}
 		const bulanParam = url.searchParams.get('bulan');
 		const tahunParam = url.searchParams.get('tahun');
@@ -85,20 +95,67 @@ export const load: PageServerLoad = async ({ parent, locals, url, depends }) => 
 		const bulan = bulanParam ? Number(bulanParam) : now.getMonth() + 1;
 		const tahun = tahunParam ? Number(tahunParam) : now.getFullYear();
 		if (!Number.isInteger(bulan) || bulan < 1 || bulan > 12) {
-			return defaultEmpty('bulanan', search, tanggal, simHari, simJam, presensiReady, presensiWarningMessage, presensiSettings?.jenisPresensi ?? 'wali_kelas_saja');
+			return defaultEmpty(
+				'bulanan',
+				search,
+				tanggal,
+				simHari,
+				simJam,
+				presensiReady,
+				presensiWarningMessage,
+				presensiSettings?.jenisPresensi ?? 'wali_kelas_saja'
+			);
 		}
 		if (!Number.isInteger(tahun) || tahun < 2000 || tahun > 2099) {
-			return defaultEmpty('bulanan', search, tanggal, simHari, simJam, presensiReady, presensiWarningMessage, presensiSettings?.jenisPresensi ?? 'wali_kelas_saja');
+			return defaultEmpty(
+				'bulanan',
+				search,
+				tanggal,
+				simHari,
+				simJam,
+				presensiReady,
+				presensiWarningMessage,
+				presensiSettings?.jenisPresensi ?? 'wali_kelas_saja'
+			);
 		}
 		if (!presensiSettings) {
-			return defaultEmpty('bulanan', search, tanggal, simHari, simJam, presensiReady, presensiWarningMessage, 'wali_kelas_saja');
+			return defaultEmpty(
+				'bulanan',
+				search,
+				tanggal,
+				simHari,
+				simJam,
+				presensiReady,
+				presensiWarningMessage,
+				'wali_kelas_saja'
+			);
 		}
-		return loadBulanan({ sekolahId, kelasId: kelasAktif.id, search, pageNumber, bulan, tahun, presensiSettings, simHari, simJam, url });
+		return loadBulanan({
+			sekolahId,
+			kelasId: kelasAktif.id,
+			search,
+			pageNumber,
+			bulan,
+			tahun,
+			presensiSettings,
+			simHari,
+			simJam,
+			url
+		});
 	}
 
 	if (mode === 'persentase_bulanan') {
 		if (!sekolahId || !kelasAktif?.id) {
-			return defaultEmpty('persentase_bulanan', search, tanggal, simHari, simJam, presensiReady, presensiWarningMessage, presensiSettings?.jenisPresensi ?? 'wali_kelas_saja');
+			return defaultEmpty(
+				'persentase_bulanan',
+				search,
+				tanggal,
+				simHari,
+				simJam,
+				presensiReady,
+				presensiWarningMessage,
+				presensiSettings?.jenisPresensi ?? 'wali_kelas_saja'
+			);
 		}
 		const bulanParam = url.searchParams.get('bulan');
 		const tahunParam = url.searchParams.get('tahun');
@@ -106,33 +163,155 @@ export const load: PageServerLoad = async ({ parent, locals, url, depends }) => 
 		const bulan = bulanParam ? Number(bulanParam) : now.getMonth() + 1;
 		const tahun = tahunParam ? Number(tahunParam) : now.getFullYear();
 		if (!Number.isInteger(bulan) || bulan < 1 || bulan > 12) {
-			return defaultEmpty('persentase_bulanan', search, tanggal, simHari, simJam, presensiReady, presensiWarningMessage, presensiSettings?.jenisPresensi ?? 'wali_kelas_saja');
+			return defaultEmpty(
+				'persentase_bulanan',
+				search,
+				tanggal,
+				simHari,
+				simJam,
+				presensiReady,
+				presensiWarningMessage,
+				presensiSettings?.jenisPresensi ?? 'wali_kelas_saja'
+			);
 		}
 		if (!Number.isInteger(tahun) || tahun < 2000 || tahun > 2099) {
-			return defaultEmpty('persentase_bulanan', search, tanggal, simHari, simJam, presensiReady, presensiWarningMessage, presensiSettings?.jenisPresensi ?? 'wali_kelas_saja');
+			return defaultEmpty(
+				'persentase_bulanan',
+				search,
+				tanggal,
+				simHari,
+				simJam,
+				presensiReady,
+				presensiWarningMessage,
+				presensiSettings?.jenisPresensi ?? 'wali_kelas_saja'
+			);
 		}
 		if (!presensiSettings) {
-			return defaultEmpty('persentase_bulanan', search, tanggal, simHari, simJam, presensiReady, presensiWarningMessage, 'wali_kelas_saja');
+			return defaultEmpty(
+				'persentase_bulanan',
+				search,
+				tanggal,
+				simHari,
+				simJam,
+				presensiReady,
+				presensiWarningMessage,
+				'wali_kelas_saja'
+			);
 		}
-		return loadPersentaseBulanan({ sekolahId, kelasId: kelasAktif.id, search, pageNumber, bulan, tahun, presensiSettings, simHari, simJam, url });
+		return loadPersentaseBulanan({
+			sekolahId,
+			kelasId: kelasAktif.id,
+			search,
+			pageNumber,
+			bulan,
+			tahun,
+			presensiSettings,
+			simHari,
+			simJam,
+			url
+		});
+	}
+
+	if (mode === 'persentase_semester') {
+		if (!sekolahId || !kelasAktif?.id) {
+			return defaultEmpty(
+				'persentase_semester',
+				search,
+				tanggal,
+				simHari,
+				simJam,
+				presensiReady,
+				presensiWarningMessage,
+				presensiSettings?.jenisPresensi ?? 'wali_kelas_saja'
+			);
+		}
+		if (!presensiSettings) {
+			return defaultEmpty(
+				'persentase_semester',
+				search,
+				tanggal,
+				simHari,
+				simJam,
+				presensiReady,
+				presensiWarningMessage,
+				'wali_kelas_saja'
+			);
+		}
+		return loadPersentaseSemester({
+			sekolahId,
+			kelasId: kelasAktif.id,
+			search,
+			pageNumber,
+			academicContext,
+			presensiSettings,
+			simHari,
+			simJam,
+			url
+		});
 	}
 
 	if (mode === 'rapor') {
 		if (!sekolahId || !kelasAktif?.id) {
-			return defaultEmpty('rapor', search, tanggal, simHari, simJam, presensiReady, presensiWarningMessage, presensiSettings?.jenisPresensi ?? 'wali_kelas_saja');
+			return defaultEmpty(
+				'rapor',
+				search,
+				tanggal,
+				simHari,
+				simJam,
+				presensiReady,
+				presensiWarningMessage,
+				presensiSettings?.jenisPresensi ?? 'wali_kelas_saja'
+			);
 		}
 		if (!presensiSettings) {
-			return defaultEmpty('rapor', search, tanggal, simHari, simJam, presensiReady, presensiWarningMessage, 'wali_kelas_saja');
+			return defaultEmpty(
+				'rapor',
+				search,
+				tanggal,
+				simHari,
+				simJam,
+				presensiReady,
+				presensiWarningMessage,
+				'wali_kelas_saja'
+			);
 		}
-		return loadRapor({ sekolahId, kelasId: kelasAktif.id, search, pageNumber, academicContext, presensiSettings, simHari, simJam, url });
+		return loadRapor({
+			sekolahId,
+			kelasId: kelasAktif.id,
+			search,
+			pageNumber,
+			academicContext,
+			presensiSettings,
+			simHari,
+			simJam,
+			url
+		});
 	}
 
 	// harian / persentase_harian
 	if (!sekolahId || !kelasAktif?.id) {
-		return defaultEmpty(mode as 'harian' | 'persentase_harian', search, tanggal, simHari, simJam, presensiReady, presensiWarningMessage, presensiSettings?.jenisPresensi ?? 'wali_kelas_saja');
+		return defaultEmpty(
+			mode as 'harian' | 'persentase_harian',
+			search,
+			tanggal,
+			simHari,
+			simJam,
+			presensiReady,
+			presensiWarningMessage,
+			presensiSettings?.jenisPresensi ?? 'wali_kelas_saja'
+		);
 	}
 	if (!presensiSettings) {
-		return defaultEmpty(mode as 'harian' | 'persentase_harian', search, tanggal, simHari, simJam, presensiReady, presensiWarningMessage, 'wali_kelas_saja');
+		return defaultEmpty(
+			mode as 'harian' | 'persentase_harian',
+			search,
+			tanggal,
+			simHari,
+			simJam,
+			presensiReady,
+			presensiWarningMessage,
+			'wali_kelas_saja'
+		);
 	}
 
 	return loadHarian({
@@ -150,10 +329,16 @@ export const load: PageServerLoad = async ({ parent, locals, url, depends }) => 
 		mode: mode as 'harian' | 'persentase_harian',
 		url
 	});
-}
+};
 
 function defaultEmpty(
-	mode: 'harian' | 'persentase_harian' | 'bulanan' | 'persentase_bulanan' | 'rapor',
+	mode:
+		| 'harian'
+		| 'persentase_harian'
+		| 'bulanan'
+		| 'persentase_bulanan'
+		| 'persentase_semester'
+		| 'rapor',
 	search: string | null,
 	tanggal: string,
 	simHari: string | null,
@@ -179,6 +364,7 @@ function defaultEmpty(
 		bulananRows: [],
 		raporRows: [],
 		persentaseBulananRows: [],
+		persentaseSemesterRows: [],
 		redDays: [],
 		tanggalMulaiRapor: '',
 		tanggalAkhirRapor: '',

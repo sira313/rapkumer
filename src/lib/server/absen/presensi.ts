@@ -1,5 +1,9 @@
 import db from '$lib/server/db';
-import { tablePresensiSettings, tableBellSettings, tableKegiatanCustom } from '$lib/server/db/schema';
+import {
+	tablePresensiSettings,
+	tableBellSettings,
+	tableKegiatanCustom
+} from '$lib/server/db/schema';
 import { and, eq } from 'drizzle-orm';
 import type { BellSettingsData, CustomKegiatanData } from '$lib/server/absen-utils';
 
@@ -53,10 +57,11 @@ export async function checkPresensiReadiness(
 		const activeTa = academicContext?.tahunAjaranList.find(
 			(ta: any) => ta.id === academicContext?.activeTahunAjaranId
 		);
-		const activeSem = activeTa?.semester.find((s: any) => s.id === academicContext?.activeSemesterId);
+		const activeSem = activeTa?.semester.find(
+			(s: any) => s.id === academicContext?.activeSemesterId
+		);
 		const tanggalMasuk = activeSem?.tanggalMasuk ?? null;
-		const activeSemesterLabel =
-			activeSem && activeTa ? `${activeSem.nama} (${activeTa.nama})` : '';
+		const activeSemesterLabel = activeSem && activeTa ? `${activeSem.nama} (${activeTa.nama})` : '';
 
 		const hasPresensiSettings = !!presensiSettings;
 		const hasTanggalMasuk = !!tanggalMasuk;
@@ -70,7 +75,13 @@ export async function checkPresensiReadiness(
 			presensiWarningMessage = `Tidak dapat melakukan presensi sebelum ${parts.join(' dan ')}`;
 		}
 
-		return { presensiReady, presensiWarningMessage, presensiSettings, bellSettings, kegiatanCustom };
+		return {
+			presensiReady,
+			presensiWarningMessage,
+			presensiSettings,
+			bellSettings,
+			kegiatanCustom
+		};
 	}
 
 	return {

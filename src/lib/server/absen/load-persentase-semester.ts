@@ -1,38 +1,33 @@
 import db from '$lib/server/db';
-import {
-	tableMurid,
-	tableKetidakhadiranHarian,
-	tableKetidakhadiranRapor,
-	tableAbsensi
-} from '$lib/server/db/schema';
+import { tableMurid, tableKetidakhadiranHarian, tableAbsensi } from '$lib/server/db/schema';
 import { asc, eq, inArray, and, sql } from 'drizzle-orm';
 import { isValidDate } from './utils';
 import { computePagination, PER_PAGE } from './pagination';
 import { buildRangeLiburDates, buildRangeRedDays } from './libur';
-import type { RaporRow, AbsenLoadData } from './types';
+import type { PersentaseSemesterRow, AbsenLoadData } from './types';
 import type { PresensiCheckResult } from './presensi';
 
-export async function loadRapor(params: {
+export async function loadPersentaseSemester(params: {
 	sekolahId: number;
 	kelasId: number;
 	search: string | null;
 	pageNumber: number;
-	academicContext: any;
 	presensiSettings: NonNullable<PresensiCheckResult['presensiSettings']>;
 	simHari: string | null;
 	simJam: string | null;
 	url: URL;
+	academicContext: any;
 }): Promise<AbsenLoadData> {
 	const {
 		sekolahId,
 		kelasId,
 		search,
 		pageNumber,
-		academicContext,
 		presensiSettings,
 		simHari,
 		simJam,
-		url
+		url,
+		academicContext
 	} = params;
 
 	const defaultData = {
@@ -44,15 +39,15 @@ export async function loadRapor(params: {
 		totalMurid: 0,
 		muridCount: 0,
 		tanggal: '',
-		mode: 'rapor' as const,
+		mode: 'persentase_semester' as const,
 		bulan: 0,
 		tahun: 0,
 		daysInMonth: 0,
 		totalHariBelajar: 0,
 		bulananRows: [],
-		raporRows: [] as RaporRow[],
+		raporRows: [],
 		persentaseBulananRows: [],
-		persentaseSemesterRows: [],
+		persentaseSemesterRows: [] as PersentaseSemesterRow[],
 		redDays: [],
 		tanggalMulaiRapor: '',
 		tanggalAkhirRapor: '',
@@ -73,14 +68,13 @@ export async function loadRapor(params: {
 	const activeSem = activeTa?.semester.find((s: any) => s.id === academicContext?.activeSemesterId);
 	const tanggalMulaiRapor = activeSem?.tanggalMasuk ?? null;
 	const tanggalAkhirRapor = activeSem?.tanggalBagiRaport ?? null;
-	const semesterId = academicContext?.activeSemesterId;
 
-	if (!tanggalMulaiRapor || !tanggalAkhirRapor || !semesterId) {
+	if (!tanggalMulaiRapor || !tanggalAkhirRapor) {
 		return {
 			...defaultData,
 			presensiReady: false,
 			presensiWarningMessage:
-				'Tidak dapat menampilkan rekap rapor. Atur tanggal masuk semester dan tanggal bagi rapor di halaman /akademik.'
+				'Tidak dapat menampilkan persentase semester. Atur tanggal masuk semester dan tanggal bagi rapor di halaman /akademik.'
 		};
 	}
 
@@ -113,22 +107,6 @@ export async function loadRapor(params: {
 	});
 
 	const muridIds = semuaMurid.map((m) => m.id);
-	if (muridIds.length === 0) {
-		return {
-			...defaultData,
-			page: {
-				search,
-				currentPage: pagination.currentPage,
-				totalPages: pagination.totalPages,
-				totalItems: pagination.total,
-				perPage: PER_PAGE
-			},
-			totalMurid: pagination.total,
-			muridCount: muridCount ?? 0,
-			tanggalMulaiRapor,
-			tanggalAkhirRapor
-		};
-	}
 
 	const hariSekolah = presensiSettings.hariSekolah ?? 6;
 	const rangeLiburDates = buildRangeLiburDates(
@@ -142,6 +120,7 @@ export async function loadRapor(params: {
 		tanggalAkhirRapor,
 		rangeLiburDates
 	);
+	const totalHariBelajar = allDates.length - redDaySet.size;
 
 	const allKetidakhadiran = await db.query.tableKetidakhadiranHarian.findMany({
 		columns: { muridId: true, tanggal: true, keterangan: true },
@@ -176,58 +155,21 @@ export async function loadRapor(params: {
 		absensiSet.add(`${a.muridId}:${a.waktu.slice(0, 10)}`);
 	}
 
-	const allOverrides = await db.query.tableKetidakhadiranRapor.findMany({
-		columns: { muridId: true, sakit: true, izin: true, alfa: true },
-		where: and(
-			inArray(tableKetidakhadiranRapor.muridId, muridIds),
-			eq(tableKetidakhadiranRapor.semesterId, semesterId)
-		)
-	});
-
-	const overrideMap = new Map<
-		number,
-		{ sakit: number | null; izin: number | null; alfa: number | null }
-	>();
-	for (const o of allOverrides) {
-		overrideMap.set(o.muridId, { sakit: o.sakit, izin: o.izin, alfa: o.alfa });
+	function isHadir(muridId: number, tgl: string): boolean {
+		const keterangan = khMap.get(`${muridId}:${tgl}`);
+		if (keterangan !== undefined) return keterangan === null;
+		if (absensiSet.has(`${muridId}:${tgl}`)) return true;
+		return false;
 	}
 
-	const raporRows: RaporRow[] = semuaMurid.map((murid, index) => {
-		let hadir = 0;
-		let sakit = 0;
-		let izin = 0;
-		let alfa = 0;
-
+	const persentaseSemesterRows: PersentaseSemesterRow[] = semuaMurid.map((murid, index) => {
+		let countHadir = 0;
 		for (const tgl of allDates) {
 			if (redDaySet.has(tgl)) continue;
-
-			const keterangan = khMap.get(`${murid.id}:${tgl}`);
-			if (keterangan !== undefined) {
-				if (keterangan === null) hadir++;
-				else if (keterangan === 'sakit') sakit++;
-				else if (keterangan === 'izin') izin++;
-				else if (keterangan === 'alfa') alfa++;
-				else alfa++;
-			} else if (absensiSet.has(`${murid.id}:${tgl}`)) {
-				hadir++;
-			} else {
-				alfa++;
-			}
+			if (isHadir(murid.id, tgl)) countHadir++;
 		}
-
-		const override = overrideMap.get(murid.id);
-		const overridden = !!override;
-
-		return {
-			id: murid.id,
-			no: index + 1,
-			nama: murid.nama,
-			hadir,
-			sakit: override?.sakit ?? sakit,
-			izin: override?.izin ?? izin,
-			alfa: override?.alfa ?? alfa,
-			overridden
-		};
+		const persentase = totalHariBelajar > 0 ? Math.round((countHadir / totalHariBelajar) * 100) : 0;
+		return { no: index + 1, nama: murid.nama, persentase };
 	});
 
 	return {
@@ -243,6 +185,7 @@ export async function loadRapor(params: {
 		muridCount: muridCount ?? 0,
 		tanggalMulaiRapor,
 		tanggalAkhirRapor,
-		raporRows
+		totalHariBelajar,
+		persentaseSemesterRows
 	};
 }

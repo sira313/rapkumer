@@ -15,7 +15,13 @@ import {
 } from '$lib/server/db/schema';
 import { and, eq, inArray, sql, asc } from 'drizzle-orm';
 import { fail } from '@sveltejs/kit';
-import { canUserEditAbsen, isTableMissingError, isValidDate, todayDateString, TABLE_MISSING_MESSAGE } from './utils';
+import {
+	canUserEditAbsen,
+	isTableMissingError,
+	isValidDate,
+	todayDateString,
+	TABLE_MISSING_MESSAGE
+} from './utils';
 import { computeJamKeFromTime } from '$lib/server/absen-utils';
 import {
 	simWriteKetidakhadiran,
@@ -24,7 +30,11 @@ import {
 	simClear
 } from '$lib/server/simulasi-cache';
 
-export async function handleUpdate({ request, locals, url }: {
+export async function handleUpdate({
+	request,
+	locals,
+	url
+}: {
 	request: Request;
 	locals: App.Locals;
 	url: URL;
@@ -78,7 +88,14 @@ export async function handleUpdate({ request, locals, url }: {
 			return fail(400, { fail: 'Kelas tidak ditemukan' });
 		}
 		simWriteKetidakhadiran(
-			sekolahId, kelasId, tanggal, muridId, keterangan, mataPelajaranId, simHari, simJam
+			sekolahId,
+			kelasId,
+			tanggal,
+			muridId,
+			keterangan,
+			mataPelajaranId,
+			simHari,
+			simJam
 		);
 		return { message: 'Ketidakhadiran berhasil diperbarui (simulasi)' };
 	}
@@ -105,7 +122,10 @@ export async function handleUpdate({ request, locals, url }: {
 	return { message: 'Ketidakhadiran berhasil diperbarui' };
 }
 
-export async function handleIsiSekaligus({ request, locals }: {
+export async function handleIsiSekaligus({
+	request,
+	locals
+}: {
 	request: Request;
 	locals: App.Locals;
 }) {
@@ -157,7 +177,12 @@ export async function handleIsiSekaligus({ request, locals }: {
 			const dayN = simHari ? simHari.toLowerCase() : dayNames[new Date().getDay()];
 			const [bellSettingsRaw, kegiatanCustom, jadwalHariIni] = await Promise.all([
 				db.query.tableBellSettings.findFirst({
-					columns: { jamMulai: true, jamPelajaranMenit: true, durasiIstirahat: true, durasiUpacara: true },
+					columns: {
+						jamMulai: true,
+						jamPelajaranMenit: true,
+						durasiIstirahat: true,
+						durasiUpacara: true
+					},
 					where: eq(tableBellSettings.sekolahId, sekolahId)
 				}),
 				db.query.tableKegiatanCustom.findMany({
@@ -175,7 +200,11 @@ export async function handleIsiSekaligus({ request, locals }: {
 				})
 			]);
 			const jamKe = computeJamKeFromTime(
-				simJam, jadwalHariIni, bellSettingsRaw ?? null, kegiatanCustom, settings.jamMasuk
+				simJam,
+				jadwalHariIni,
+				bellSettingsRaw ?? null,
+				kegiatanCustom,
+				settings.jamMasuk
 			);
 			const jadwal = jadwalHariIni.find((j) => j.jamKe === jamKe);
 			const tambahan = new Set(['IST', 'PLG']);
@@ -223,7 +252,9 @@ export async function handleIsiSekaligus({ request, locals }: {
 				const isAgama = mpRecord?.nama && agamaNameSet.has(mpRecord.nama);
 				const allowed = mpKode
 					? userKodeSet.has(mpKode)
-					: isAgama ? userKodeSet.has('PAPB') : false;
+					: isAgama
+						? userKodeSet.has('PAPB')
+						: false;
 				if (!allowed) {
 					return fail(403, {
 						fail: 'Anda tidak memiliki izin untuk melakukan presensi pada mata pelajaran ini'
@@ -251,29 +282,66 @@ export async function handleIsiSekaligus({ request, locals }: {
 
 				if (isDualSessionSim) {
 					const semuaMuridIds = semuaMurid.map((m) => m.id);
-					simDeleteAbsensi(sekolahId, kelasId, tanggal, semuaMuridIds, mataPelajaranId, simHari, simJam);
+					simDeleteAbsensi(
+						sekolahId,
+						kelasId,
+						tanggal,
+						semuaMuridIds,
+						mataPelajaranId,
+						simHari,
+						simJam
+					);
 					const targetCount = sessionType === 'akhir' ? 2 : 1;
 					for (const murid of semuaMurid) {
 						for (let i = 0; i < targetCount; i++) {
-							simWriteAbsensi(sekolahId, kelasId, tanggal, murid.id, mataPelajaranId, simHari, simJam);
+							simWriteAbsensi(
+								sekolahId,
+								kelasId,
+								tanggal,
+								murid.id,
+								mataPelajaranId,
+								simHari,
+								simJam
+							);
 						}
 					}
 				} else {
 					for (const murid of semuaMurid) {
-						simWriteKetidakhadiran(sekolahId, kelasId, tanggal, murid.id, null, mataPelajaranId, simHari, simJam);
-						simWriteAbsensi(sekolahId, kelasId, tanggal, murid.id, mataPelajaranId, simHari, simJam);
+						simWriteKetidakhadiran(
+							sekolahId,
+							kelasId,
+							tanggal,
+							murid.id,
+							null,
+							mataPelajaranId,
+							simHari,
+							simJam
+						);
+						simWriteAbsensi(
+							sekolahId,
+							kelasId,
+							tanggal,
+							murid.id,
+							mataPelajaranId,
+							simHari,
+							simJam
+						);
 					}
 				}
 				return { message: 'Semua murid ditandai hadir (simulasi)' };
 			}
 
 			let absensiCountMap: Map<number, number> | null = null;
-			const isDualSession = tipePresensi === 'awal_akhir_mapel' && mataPelajaranId != null && sessionType;
+			const isDualSession =
+				tipePresensi === 'awal_akhir_mapel' && mataPelajaranId != null && sessionType;
 			if (isDualSession) {
 				const absensiRows = await db.query.tableAbsensi.findMany({
 					columns: { muridId: true },
 					where: and(
-						inArray(tableAbsensi.muridId, semuaMurid.map((m) => m.id)),
+						inArray(
+							tableAbsensi.muridId,
+							semuaMurid.map((m) => m.id)
+						),
 						eq(tableAbsensi.mataPelajaranId, mataPelajaranId),
 						sql`${tableAbsensi.waktu} >= ${todayStart.toISOString()}`,
 						sql`${tableAbsensi.waktu} <= ${todayEnd.toISOString()}`
@@ -302,11 +370,15 @@ export async function handleIsiSekaligus({ request, locals }: {
 					const currentCount = absensiCountMap!.get(murid.id) ?? 0;
 					if (sessionType === 'akhir') {
 						if (currentCount < 2) {
-							await db.insert(tableAbsensi).values({ muridId: murid.id, waktu: absensiWaktu, mataPelajaranId });
+							await db
+								.insert(tableAbsensi)
+								.values({ muridId: murid.id, waktu: absensiWaktu, mataPelajaranId });
 						}
 					} else {
 						if (currentCount === 0) {
-							await db.insert(tableAbsensi).values({ muridId: murid.id, waktu: absensiWaktu, mataPelajaranId });
+							await db
+								.insert(tableAbsensi)
+								.values({ muridId: murid.id, waktu: absensiWaktu, mataPelajaranId });
 						}
 					}
 				} else {
@@ -322,7 +394,9 @@ export async function handleIsiSekaligus({ request, locals }: {
 						)
 					});
 					if (!existingAbsensi) {
-						await db.insert(tableAbsensi).values({ muridId: murid.id, waktu: absensiWaktu, mataPelajaranId });
+						await db
+							.insert(tableAbsensi)
+							.values({ muridId: murid.id, waktu: absensiWaktu, mataPelajaranId });
 					}
 				}
 			}
@@ -357,7 +431,16 @@ export async function handleIsiSekaligus({ request, locals }: {
 
 			if (simHari) {
 				for (const [muridId, keterangan] of entryMap) {
-					simWriteKetidakhadiran(sekolahId, kelasId, tanggal, muridId, keterangan, mataPelajaranId, simHari, simJam);
+					simWriteKetidakhadiran(
+						sekolahId,
+						kelasId,
+						tanggal,
+						muridId,
+						keterangan,
+						mataPelajaranId,
+						simHari,
+						simJam
+					);
 				}
 
 				const isDualSessionSelSim =
@@ -370,18 +453,51 @@ export async function handleIsiSekaligus({ request, locals }: {
 						simDeleteAbsensi(sekolahId, kelasId, tanggal, selIds, mataPelajaranId, simHari, simJam);
 					}
 					if (nonSelIds.length > 0) {
-						simDeleteAbsensi(sekolahId, kelasId, tanggal, nonSelIds, mataPelajaranId, simHari, simJam);
+						simDeleteAbsensi(
+							sekolahId,
+							kelasId,
+							tanggal,
+							nonSelIds,
+							mataPelajaranId,
+							simHari,
+							simJam
+						);
 						const targetCount = sessionType === 'akhir' ? 2 : 1;
 						for (const murid of nonSelectedMurid) {
 							for (let i = 0; i < targetCount; i++) {
-								simWriteAbsensi(sekolahId, kelasId, tanggal, murid.id, mataPelajaranId, simHari, simJam);
+								simWriteAbsensi(
+									sekolahId,
+									kelasId,
+									tanggal,
+									murid.id,
+									mataPelajaranId,
+									simHari,
+									simJam
+								);
 							}
 						}
 					}
 				} else {
 					for (const murid of nonSelectedMurid) {
-						simWriteKetidakhadiran(sekolahId, kelasId, tanggal, murid.id, null, mataPelajaranId, simHari, simJam);
-						simWriteAbsensi(sekolahId, kelasId, tanggal, murid.id, mataPelajaranId, simHari, simJam);
+						simWriteKetidakhadiran(
+							sekolahId,
+							kelasId,
+							tanggal,
+							murid.id,
+							null,
+							mataPelajaranId,
+							simHari,
+							simJam
+						);
+						simWriteAbsensi(
+							sekolahId,
+							kelasId,
+							tanggal,
+							murid.id,
+							mataPelajaranId,
+							simHari,
+							simJam
+						);
 					}
 				}
 				return { message: 'Kehadiran berhasil diperbarui (simulasi)' };
@@ -421,7 +537,10 @@ export async function handleIsiSekaligus({ request, locals }: {
 				const absensiRows = await db.query.tableAbsensi.findMany({
 					columns: { muridId: true },
 					where: and(
-						inArray(tableAbsensi.muridId, nonSelectedMurid.map((m) => m.id)),
+						inArray(
+							tableAbsensi.muridId,
+							nonSelectedMurid.map((m) => m.id)
+						),
 						eq(tableAbsensi.mataPelajaranId, mataPelajaranId),
 						sql`${tableAbsensi.waktu} >= ${todayStart.toISOString()}`,
 						sql`${tableAbsensi.waktu} <= ${todayEnd.toISOString()}`
@@ -429,7 +548,10 @@ export async function handleIsiSekaligus({ request, locals }: {
 				});
 				nonSelectedAbsensiCountMap = new Map();
 				for (const r of absensiRows) {
-					nonSelectedAbsensiCountMap.set(r.muridId, (nonSelectedAbsensiCountMap.get(r.muridId) ?? 0) + 1);
+					nonSelectedAbsensiCountMap.set(
+						r.muridId,
+						(nonSelectedAbsensiCountMap.get(r.muridId) ?? 0) + 1
+					);
 				}
 			}
 
@@ -450,10 +572,14 @@ export async function handleIsiSekaligus({ request, locals }: {
 					const currentCount = nonSelectedAbsensiCountMap!.get(murid.id) ?? 0;
 					if (sessionType === 'akhir') {
 						if (currentCount < 2) {
-							await db.insert(tableAbsensi).values({ muridId: murid.id, waktu: absensiWaktu, mataPelajaranId });
+							await db
+								.insert(tableAbsensi)
+								.values({ muridId: murid.id, waktu: absensiWaktu, mataPelajaranId });
 						}
 					} else if (currentCount === 0) {
-						await db.insert(tableAbsensi).values({ muridId: murid.id, waktu: absensiWaktu, mataPelajaranId });
+						await db
+							.insert(tableAbsensi)
+							.values({ muridId: murid.id, waktu: absensiWaktu, mataPelajaranId });
 					}
 				} else {
 					const existingAbsensi = await db.query.tableAbsensi.findFirst({
@@ -468,7 +594,9 @@ export async function handleIsiSekaligus({ request, locals }: {
 						)
 					});
 					if (!existingAbsensi) {
-						await db.insert(tableAbsensi).values({ muridId: murid.id, waktu: absensiWaktu, mataPelajaranId });
+						await db
+							.insert(tableAbsensi)
+							.values({ muridId: murid.id, waktu: absensiWaktu, mataPelajaranId });
 					}
 				}
 			}
@@ -483,7 +611,11 @@ export async function handleIsiSekaligus({ request, locals }: {
 	}
 }
 
-export async function handleDeletePresensi({ request, locals, url }: {
+export async function handleDeletePresensi({
+	request,
+	locals,
+	url
+}: {
 	request: Request;
 	locals: App.Locals;
 	url: URL;
@@ -560,7 +692,10 @@ export async function handleDeletePresensi({ request, locals, url }: {
 	return { message: 'Semua data presensi berhasil dihapus' };
 }
 
-export async function handleUpdateRapor({ request, locals }: {
+export async function handleUpdateRapor({
+	request,
+	locals
+}: {
 	request: Request;
 	locals: App.Locals;
 }) {
@@ -640,7 +775,10 @@ export async function handleUpdateRapor({ request, locals }: {
 	return { message: 'Data kehadiran rapor berhasil diperbarui' };
 }
 
-export async function handleResetRapor({ request, locals }: {
+export async function handleResetRapor({
+	request,
+	locals
+}: {
 	request: Request;
 	locals: App.Locals;
 }) {

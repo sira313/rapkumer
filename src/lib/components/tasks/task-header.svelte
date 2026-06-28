@@ -46,7 +46,12 @@
 				<Icon name={isAdding ? 'close' : 'plus'} />
 			</button>
 			<div class="dropdown dropdown-end">
-				<div tabindex="0" role="button" title="Tombol hapus" class="join-item btn btn-sm shadow-none">
+				<div
+					tabindex="0"
+					role="button"
+					title="Tombol hapus"
+					class="join-item btn btn-sm shadow-none"
+				>
 					<Icon name="del" class="text-error" />
 					<Icon name="collapse-all" class="text-error" />
 				</div>

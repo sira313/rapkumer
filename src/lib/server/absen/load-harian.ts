@@ -10,11 +10,12 @@ import {
 import { asc, eq, inArray, and, sql } from 'drizzle-orm';
 import { isTableMissingError, todayDateString } from './utils';
 import { computePagination, PER_PAGE } from './pagination';
-import { computeJamKeFromTime, type BellSettingsData, type CustomKegiatanData } from '$lib/server/absen-utils';
 import {
-	simGetKetidakhadiran,
-	simGetAbsensi
-} from '$lib/server/simulasi-cache';
+	computeJamKeFromTime,
+	type BellSettingsData,
+	type CustomKegiatanData
+} from '$lib/server/absen-utils';
+import { simGetKetidakhadiran, simGetAbsensi } from '$lib/server/simulasi-cache';
 import type {
 	KehadiranRow,
 	PersentaseHarianRow,
@@ -242,10 +243,7 @@ async function computePersentaseHarian(params: {
 		const jadwalEntries = jadwalHariIni.filter((j) => j.jamKe === currentJamKe);
 		for (const jadwalEntry of jadwalEntries) {
 			const mpInfo = kodeToMpMap.get(jadwalEntry.kodeKegiatan);
-			if (
-				mpInfo &&
-				(!userKodeSet || userKodeSet.has(jadwalEntry.kodeKegiatan.toUpperCase()))
-			) {
+			if (mpInfo && (!userKodeSet || userKodeSet.has(jadwalEntry.kodeKegiatan.toUpperCase()))) {
 				const jamMulai = bellSettings?.jamMulai ?? presensiSettings.jamMasuk;
 				const jamPelajaranMenit = bellSettings?.jamPelajaranMenit ?? 45;
 				const durasiIstirahat = bellSettings?.durasiIstirahat ?? 30;
@@ -393,8 +391,7 @@ async function computePersentaseHarian(params: {
 			sessionStatuses[kode] = { masuk, selesai };
 		}
 
-		const persentase =
-			totalSubjects > 0 ? Math.round((attendedPoints / totalSubjects) * 100) : 0;
+		const persentase = totalSubjects > 0 ? Math.round((attendedPoints / totalSubjects) * 100) : 0;
 
 		return {
 			no: index + 1,
@@ -649,6 +646,7 @@ export async function loadHarian(params: {
 		bulananRows: [],
 		raporRows: [],
 		persentaseBulananRows: [],
+		persentaseSemesterRows: [],
 		redDays: [],
 		tanggalMulaiRapor: '',
 		tanggalAkhirRapor: '',

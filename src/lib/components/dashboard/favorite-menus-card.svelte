@@ -53,7 +53,7 @@
 			</p>
 		{:else}
 			<div class="max-h-48 overflow-y-auto">
-				<ul class="divide-base-300 divide-y">
+				<ul class="divide-base-200 divide-y">
 					{#each favoritesStore.items as fav (fav.id)}
 						<li class="flex items-center gap-2 py-2">
 							<Icon name="star" class="text-success shrink-0" />

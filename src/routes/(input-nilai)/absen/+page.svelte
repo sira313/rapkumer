@@ -12,6 +12,7 @@
 	import TableRapor from '$lib/components/absen/table-rapor.svelte';
 	import TablePersentaseHarian from '$lib/components/absen/table-persentase-harian.svelte';
 	import TablePersentaseBulanan from '$lib/components/absen/table-persentase-bulanan.svelte';
+	import TablePersentaseSemester from '$lib/components/absen/table-persentase-semester.svelte';
 	import AbsenPagination from '$lib/components/absen/absen-pagination.svelte';
 	import { toast } from '$lib/components/toast.svelte';
 	import { onDestroy } from 'svelte';
@@ -72,7 +73,13 @@
 		totalMurid: number;
 		muridCount: number;
 		tanggal: string;
-		mode: 'harian' | 'bulanan' | 'rapor' | 'persentase_harian' | 'persentase_bulanan';
+		mode:
+			| 'harian'
+			| 'bulanan'
+			| 'rapor'
+			| 'persentase_harian'
+			| 'persentase_bulanan'
+			| 'persentase_semester';
 		bulan: number;
 		tahun: number;
 		daysInMonth: number;
@@ -87,6 +94,11 @@
 		}>;
 		raporRows: RaporRow[];
 		redDays: number[];
+		persentaseSemesterRows: Array<{
+			no: number;
+			nama: string;
+			persentase: number;
+		}>;
 		totalHariBelajar: number;
 		persentaseBulananRows: Array<{
 			no: number;
@@ -309,7 +321,7 @@
 	});
 
 	let selectedMode = $state<
-		'harian' | 'bulanan' | 'rapor' | 'persentase_harian' | 'persentase_bulanan'
+		'harian' | 'bulanan' | 'rapor' | 'persentase_harian' | 'persentase_bulanan' | 'persentase_semester'
 	>(data.mode);
 	let selectedBulan = $state(
 		data.mode === 'bulanan' || data.mode === 'persentase_bulanan'
@@ -369,6 +381,11 @@
 				params.set('bulan', String(selectedBulan));
 				params.set('tahun', String(selectedTahun));
 				params.delete('tanggal');
+			} else if (selectedMode === 'persentase_semester') {
+				params.set('mode', 'persentase_semester');
+				params.delete('bulan');
+				params.delete('tahun');
+				params.delete('tanggal');
 			} else if (selectedMode === 'rapor') {
 				params.set('mode', 'rapor');
 				params.delete('bulan');
@@ -407,8 +424,8 @@
 					params.delete('q');
 				}
 			});
-		} else if (data.mode === 'rapor') {
-			// No date navigation for rapor mode
+		} else if (data.mode === 'rapor' || data.mode === 'persentase_semester') {
+			// No date navigation for rapor/persentase_semester mode
 			return;
 		} else if (data.mode === 'persentase_harian') {
 			void applyNavigation((params) => {
@@ -567,6 +584,16 @@
 				{:else if data.mode === 'persentase_bulanan'}
 					Persentase Kehadiran bulan -
 					<span class="text-primary">{bulanList[data.bulan - 1]} {data.tahun}</span>
+				{:else if data.mode === 'persentase_semester'}
+					Persentase Kehadiran Semester
+					{#if data.tanggalMulaiRapor && data.tanggalAkhirRapor}
+						-
+						<span class="text-primary"
+							>{formatTanggal(data.tanggalMulaiRapor)} - {formatTanggal(
+								data.tanggalAkhirRapor
+							)}</span
+						>
+					{/if}
 				{:else if data.mode === 'rapor'}
 					Rekap Kehadiran Rapor
 					{#if data.tanggalMulaiRapor && data.tanggalAkhirRapor}
@@ -592,7 +619,7 @@
 				<p class="text-base-content/80 block text-sm">{kelasAktifLabel}</p>
 			{/if}
 		</div>
-		{#if data.mode === 'rapor' || data.mode === 'persentase_bulanan'}{:else}
+		{#if data.mode === 'rapor' || data.mode === 'persentase_bulanan' || data.mode === 'persentase_semester'}{:else}
 			{@const currentMapel = data.jadwalSaatIni}
 			<div class="flex max-sm:w-full">
 				<button
@@ -710,6 +737,14 @@
 							? `${formatTanggal(data.tanggalMulaiRapor)} - ${formatTanggal(data.tanggalAkhirRapor)}`
 							: 'Rentang tanggal tidak tersedia'}
 					</span>
+				{:else if data.mode === 'persentase_semester'}
+					<span
+						class="input bg-base-200 dark:bg-base-300 flex w-full items-center rounded-r-none text-sm dark:border-none"
+					>
+						{data.tanggalMulaiRapor && data.tanggalAkhirRapor
+							? `${formatTanggal(data.tanggalMulaiRapor)} - ${formatTanggal(data.tanggalAkhirRapor)}`
+							: 'Rentang tanggal tidak tersedia'}
+					</span>
 				{:else if data.mode === 'persentase_harian'}
 					<input
 						type="date"
@@ -729,7 +764,7 @@
 					aria-label="Lihat presensi"
 					title="Lihat presensi"
 					onclick={viewDate}
-					disabled={data.mode === 'rapor'}
+					disabled={data.mode === 'rapor' || data.mode === 'persentase_semester'}
 				>
 					<Icon name="eye" />
 				</button>
@@ -747,7 +782,7 @@
 						: resetToToday}
 					disabled={data.mode === 'bulanan' || data.mode === 'persentase_bulanan'
 						? isCurrentBulan
-						: data.mode === 'rapor'
+						: data.mode === 'rapor' || data.mode === 'persentase_semester'
 							? true
 							: isToday}
 				>
@@ -765,15 +800,18 @@
 								? 'Tidak dapat menghapus dalam mode persentase bulanan'
 								: data.mode === 'rapor'
 									? 'Tidak dapat menghapus dalam mode rapor'
-									: data.mode === 'persentase_harian'
-										? 'Tidak dapat menghapus dalam mode persentase harian'
-										: !canEdit
-											? 'Anda tidak memiliki izin untuk menghapus presensi'
-											: 'Hapus data presensi tanggal ini'}
+									: data.mode === 'persentase_semester'
+										? 'Tidak dapat menghapus dalam mode persentase semester'
+										: data.mode === 'persentase_harian'
+											? 'Tidak dapat menghapus dalam mode persentase harian'
+											: !canEdit
+												? 'Anda tidak memiliki izin untuk menghapus presensi'
+												: 'Hapus data presensi tanggal ini'}
 					onclick={openDeleteConfirm}
 					disabled={data.mode === 'bulanan' ||
 						data.mode === 'persentase_bulanan' ||
 						data.mode === 'rapor' ||
+						data.mode === 'persentase_semester' ||
 						data.mode === 'persentase_harian' ||
 						!canEdit ||
 						isGuruMapelMode}
@@ -867,7 +905,8 @@
 						| 'bulanan'
 						| 'rapor'
 						| 'persentase_harian'
-						| 'persentase_bulanan';
+						| 'persentase_bulanan'
+						| 'persentase_semester';
 					handleModeChange();
 				}}
 			>
@@ -877,6 +916,7 @@
 					<option value="persentase_harian">Persentase Harian</option>
 				{/if}
 				<option value="persentase_bulanan">Persentase Bulanan</option>
+				<option value="persentase_semester">Persentase Semester</option>
 				<option value="rapor">Rapor</option>
 			</select>
 		</div>
@@ -903,6 +943,18 @@
 			<span>{data.presensiWarningMessage}</span>
 		</div>
 	{:else if data.mode === 'rapor' && (!data.tanggalMulaiRapor || !data.tanggalAkhirRapor)}
+		<div class="alert alert-soft alert-warning mt-6">
+			<Icon name="alert" />
+			<span
+				>Tanggal masuk semester atau tanggal bagi rapor belum diatur. Atur di halaman /akademik.</span
+			>
+		</div>
+	{:else if data.mode === 'persentase_semester' && !data.presensiReady && data.presensiWarningMessage}
+		<div class="alert alert-soft alert-warning mt-6">
+			<Icon name="alert" />
+			<span>{data.presensiWarningMessage}</span>
+		</div>
+	{:else if data.mode === 'persentase_semester' && (!data.tanggalMulaiRapor || !data.tanggalAkhirRapor)}
 		<div class="alert alert-soft alert-warning mt-6">
 			<Icon name="alert" />
 			<span
@@ -947,6 +999,14 @@
 			rows={data.persentaseHarianRows}
 			tipePresensi={data.tipePresensi}
 		/>
+	{:else if data.mode === 'persentase_semester'}
+		<TablePersentaseSemester
+			rows={data.persentaseSemesterRows}
+			tanggalMulai={data.tanggalMulaiRapor}
+			tanggalAkhir={data.tanggalAkhirRapor}
+			totalHariBelajar={data.totalHariBelajar}
+		/>
+		<AbsenPagination {pages} {currentPage} onPageClick={handlePageClick} />
 	{:else}
 		<TableHarian
 			rows={data.daftarMurid}

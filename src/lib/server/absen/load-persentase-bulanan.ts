@@ -19,7 +19,18 @@ export async function loadPersentaseBulanan(params: {
 	simJam: string | null;
 	url: URL;
 }): Promise<AbsenLoadData> {
-	const { sekolahId, kelasId, search, pageNumber, bulan, tahun, presensiSettings, simHari, simJam, url } = params;
+	const {
+		sekolahId,
+		kelasId,
+		search,
+		pageNumber,
+		bulan,
+		tahun,
+		presensiSettings,
+		simHari,
+		simJam,
+		url
+	} = params;
 
 	const baseFilter = and(eq(tableMurid.sekolahId, sekolahId), eq(tableMurid.kelasId, kelasId));
 	const searchFilter = search
@@ -98,8 +109,7 @@ export async function loadPersentaseBulanan(params: {
 			if (redDays.includes(d)) continue;
 			if (isHadir(murid.id, d)) countHadir++;
 		}
-		const persentase =
-			totalHariBelajar > 0 ? Math.round((countHadir / totalHariBelajar) * 100) : 0;
+		const persentase = totalHariBelajar > 0 ? Math.round((countHadir / totalHariBelajar) * 100) : 0;
 		return { no: index + 1, nama: murid.nama, persentase };
 	});
 
@@ -126,6 +136,7 @@ export async function loadPersentaseBulanan(params: {
 		bulananRows: [],
 		raporRows: [],
 		persentaseBulananRows,
+		persentaseSemesterRows: [],
 		redDays,
 		tanggalMulaiRapor: '',
 		tanggalAkhirRapor: '',

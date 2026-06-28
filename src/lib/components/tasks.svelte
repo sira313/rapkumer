@@ -291,7 +291,10 @@
 						<button
 							type="button"
 							class="btn btn-sm join-item btn-soft {isAdding ? 'btn-error' : ''} shadow-none"
-							onclick={(e) => { e.stopPropagation(); toggleAddTask(); }}
+							onclick={(e) => {
+								e.stopPropagation();
+								toggleAddTask();
+							}}
 							title={isAdding ? 'Batalkan tambah tugas' : 'Tambah tugas'}
 							disabled={isProcessing || !canManageTasks}
 							aria-disabled={isProcessing || !canManageTasks}
@@ -299,7 +302,12 @@
 							<Icon name={isAdding ? 'close' : 'plus'} />
 						</button>
 						<div class="dropdown dropdown-end">
-							<div tabindex="0" role="button" title="Tombol hapus" class="join-item btn btn-sm shadow-none">
+							<div
+								tabindex="0"
+								role="button"
+								title="Tombol hapus"
+								class="join-item btn btn-sm shadow-none"
+							>
 								<Icon name="del" class="text-error" />
 								<Icon name="collapse-all" class="text-error" />
 							</div>
@@ -310,7 +318,10 @@
 									<button
 										type="button"
 										class="btn btn-ghost btn-sm justify-start"
-										onclick={(e) => { e.stopPropagation(); clearCompleted(); }}
+										onclick={(e) => {
+											e.stopPropagation();
+											clearCompleted();
+										}}
 										disabled={!hasCompletedTasks || isProcessing || !canManageTasks}
 									>
 										Hapus tugas selesai
@@ -320,7 +331,10 @@
 									<button
 										type="button"
 										class="btn btn-ghost btn-sm text-error justify-start"
-										onclick={(e) => { e.stopPropagation(); clearAll(); }}
+										onclick={(e) => {
+											e.stopPropagation();
+											clearAll();
+										}}
 										disabled={!hasAnyTasks || isProcessing || !canManageTasks}
 									>
 										Hapus semua tugas
@@ -330,8 +344,8 @@
 						</div>
 						<button
 							type="button"
-							class="px-2 btn btn-sm join-item shadow-none"
-							onclick={() => sidebarOpen = !sidebarOpen}
+							class="btn btn-sm join-item px-2 shadow-none"
+							onclick={() => (sidebarOpen = !sidebarOpen)}
 							title={sidebarOpen ? 'Tutup daftar tugas' : 'Buka daftar tugas'}
 						>
 							<Icon name={sidebarOpen ? 'up' : 'down'} />

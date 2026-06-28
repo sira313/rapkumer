@@ -14,7 +14,8 @@ import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 
 export const load: LayoutServerLoad = async ({ url, locals, cookies }) => {
 	const meta: PageMeta = {
-		title: url.pathname === '/' ? 'Rapkumer - Administrasi Guru Terpadu' : findTitleByPath(url.pathname),
+		title:
+			url.pathname === '/' ? 'Rapkumer - Administrasi Guru Terpadu' : findTitleByPath(url.pathname),
 		description: ''
 	};
 
@@ -299,4 +300,4 @@ export const load: LayoutServerLoad = async ({ url, locals, cookies }) => {
 		activeSemesterTipe: academicContext?.activeSemesterTipe ?? null,
 		academicContext
 	};
-}
+};

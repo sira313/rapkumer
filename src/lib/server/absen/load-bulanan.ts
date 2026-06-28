@@ -19,7 +19,18 @@ export async function loadBulanan(params: {
 	simJam: string | null;
 	url: URL;
 }): Promise<AbsenLoadData> {
-	const { sekolahId, kelasId, search, pageNumber, bulan, tahun, presensiSettings, simHari, simJam, url } = params;
+	const {
+		sekolahId,
+		kelasId,
+		search,
+		pageNumber,
+		bulan,
+		tahun,
+		presensiSettings,
+		simHari,
+		simJam,
+		url
+	} = params;
 
 	const baseFilter = and(eq(tableMurid.sekolahId, sekolahId), eq(tableMurid.kelasId, kelasId));
 	const searchFilter = search
@@ -149,6 +160,7 @@ export async function loadBulanan(params: {
 		bulananRows,
 		raporRows: [],
 		persentaseBulananRows: [],
+		persentaseSemesterRows: [],
 		redDays,
 		tanggalMulaiRapor: '',
 		tanggalAkhirRapor: '',
