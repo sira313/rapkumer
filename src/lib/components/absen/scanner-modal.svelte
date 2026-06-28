@@ -47,7 +47,7 @@
 			status = 'Arahkan QR code ke kamera';
 			scanLoop();
 		} catch {
-			status = 'Gagal mengakses kamera. Periksa izin kamera.';
+			status = 'Gagal mengakses kamera. Periksa izin kamera atau atur agar menggunakan https.';
 		}
 	}
 
