@@ -4,7 +4,15 @@
 		namaBulan,
 		totalHariBelajar
 	}: {
-		rows: Array<{ no: number; nama: string; persentase: number }>;
+		rows: Array<{
+			no: number;
+			nama: string;
+			persentase: number;
+			hadir: number;
+			sakit: number;
+			izin: number;
+			alfa: number;
+		}>;
 		namaBulan: string;
 		totalHariBelajar: number;
 	} = $props();
@@ -17,7 +25,11 @@
 		<thead>
 			<tr class="bg-base-200 dark:bg-base-300 text-base-content text-left font-bold">
 				<th class="text-center" style="width: 50px; min-width: 40px;">No</th>
-				<th style="min-width: 160px;">Nama</th>
+				<th class="w-full" style="min-width: 160px;">Nama</th>
+				<th class="text-right" style="width: 50px; min-width: 40px;">H</th>
+				<th class="text-right" style="width: 50px; min-width: 40px;">S</th>
+				<th class="text-right" style="width: 50px; min-width: 40px;">I</th>
+				<th class="text-right" style="width: 50px; min-width: 40px;">A</th>
 				<th class="text-right" style="min-width: 180px;">
 					Persentase bulan {namaBulan}
 					{#if totalHariBelajar > 0}
@@ -33,6 +45,10 @@
 				<tr>
 					<td class="text-center">{row.no}</td>
 					<td>{row.nama}</td>
+					<td class="text-right">{row.hadir || ''}</td>
+					<td class="text-right">{row.sakit || ''}</td>
+					<td class="text-right">{row.izin || ''}</td>
+					<td class="text-right">{row.alfa || ''}</td>
 					<td class="text-right">
 						{#if row.persentase >= 80}
 							<span class="text-success font-bold">{row.persentase}%</span>

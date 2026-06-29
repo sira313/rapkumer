@@ -34,12 +34,20 @@ export type PersentaseBulananRow = {
 	no: number;
 	nama: string;
 	persentase: number;
+	hadir: number;
+	sakit: number;
+	izin: number;
+	alfa: number;
 };
 
 export type PersentaseSemesterRow = {
 	no: number;
 	nama: string;
 	persentase: number;
+	hadir: number;
+	sakit: number;
+	izin: number;
+	alfa: number;
 };
 
 export type PersentaseHarianSubject = {

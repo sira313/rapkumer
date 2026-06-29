@@ -98,12 +98,20 @@
 			no: number;
 			nama: string;
 			persentase: number;
+			hadir: number;
+			sakit: number;
+			izin: number;
+			alfa: number;
 		}>;
 		totalHariBelajar: number;
 		persentaseBulananRows: Array<{
 			no: number;
 			nama: string;
 			persentase: number;
+			hadir: number;
+			sakit: number;
+			izin: number;
+			alfa: number;
 		}>;
 		tanggalMulaiRapor: string;
 		tanggalAkhirRapor: string;

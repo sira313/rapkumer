@@ -95,22 +95,28 @@ export async function loadPersentaseBulanan(params: {
 		absensiSet.add(`${a.muridId}:${a.waktu.slice(0, 10)}`);
 	}
 
-	function isHadir(muridId: number, day: number): boolean {
-		const tgl = dateStr(tahun, bulan, day);
-		const keterangan = khMap.get(`${muridId}:${tgl}`);
-		if (keterangan !== undefined) return keterangan === null;
-		if (absensiSet.has(`${muridId}:${tgl}`)) return true;
-		return false;
-	}
-
 	const persentaseBulananRows: PersentaseBulananRow[] = semuaMurid.map((murid, index) => {
 		let countHadir = 0;
+		let sakit = 0;
+		let izin = 0;
+		let alfa = 0;
 		for (let d = 1; d <= daysInMonth; d++) {
 			if (redDays.includes(d)) continue;
-			if (isHadir(murid.id, d)) countHadir++;
+			const tgl = dateStr(tahun, bulan, d);
+			const keterangan = khMap.get(`${murid.id}:${tgl}`);
+			if (keterangan !== undefined) {
+				if (keterangan === null) countHadir++;
+				else if (keterangan === 'sakit') sakit++;
+				else if (keterangan === 'izin') izin++;
+				else alfa++;
+			} else if (absensiSet.has(`${murid.id}:${tgl}`)) {
+				countHadir++;
+			} else {
+				alfa++;
+			}
 		}
 		const persentase = totalHariBelajar > 0 ? Math.round((countHadir / totalHariBelajar) * 100) : 0;
-		return { no: index + 1, nama: murid.nama, persentase };
+		return { no: index + 1, nama: murid.nama, persentase, hadir: countHadir, sakit, izin, alfa };
 	});
 
 	return {
