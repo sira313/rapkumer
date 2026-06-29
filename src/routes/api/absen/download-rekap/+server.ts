@@ -7,9 +7,11 @@ import {
 	tableAbsensi,
 	tablePresensiSettings,
 	tableSekolah,
+	tableSemester,
 	tableTahunAjaran
 } from '$lib/server/db/schema';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { buildRangeLiburDates, buildRangeRedDays } from '$lib/server/absen/libur';
 import ExcelJS from 'exceljs';
 import { error } from '@sveltejs/kit';
 
@@ -266,7 +268,7 @@ export async function POST({ cookies, locals, request }) {
 	const totalCols = 3 + daysInMonth + 4;
 
 	const workbook = new ExcelJS.Workbook();
-	const ws = workbook.addWorksheet('Rekap Kehadiran');
+	const ws = workbook.addWorksheet('Bulanan');
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const worksheet = ws as any;
@@ -551,7 +553,7 @@ export async function POST({ cookies, locals, request }) {
 
 	const waliKelasLabel = worksheet.getCell(dataRowIdx, midCol + 1);
 	waliKelasLabel.value = 'Wali Kelas';
-	waliKelasLabel.font = { size: 10, italic: true };
+	waliKelasLabel.font = { size: 10 };
 	waliKelasLabel.alignment = centerAlign;
 	worksheet.mergeCells(dataRowIdx, midCol + 1, dataRowIdx, totalCols);
 
@@ -607,6 +609,301 @@ export async function POST({ cookies, locals, request }) {
 	worksheet.pageSetup.fitToPage = true;
 	worksheet.pageSetup.fitToWidth = 1;
 	worksheet.pageSetup.paperSize = 9;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 	function addPersentaseSheet(wb: any, name: string, sub1: string, sub2: string, data: any[]) {
+ 		const sr = sekolahRecord!;
+ 		const kk = kelasRecord;
+ 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 		const s = wb.addWorksheet(name) as any;
+		const cols = 7;
+		[1, 2, 3, 4, 5, 6, 7].forEach((c) => {
+			const w: Record<number, number> = { 1: 5, 2: 40, 3: 8, 4: 8, 5: 8, 6: 8, 7: 14 };
+			s.getColumn(c).width = w[c] ?? 8;
+		});
+
+		const mid = Math.floor(cols / 2);
+		let r = 1;
+
+		const titleCell = s.getCell(r, 1);
+		titleCell.value = 'REKAP PERSENTASE KEHADIRAN';
+		titleCell.font = { bold: true, size: 14 };
+		titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+		s.mergeCells(r, 1, r, cols);
+		r++;
+
+		const schoolCell = s.getCell(r, 1);
+		schoolCell.value = sr.nama.toUpperCase();
+		schoolCell.font = { bold: true, size: 12 };
+		schoolCell.alignment = { horizontal: 'center', vertical: 'middle' };
+		s.mergeCells(r, 1, r, cols);
+		r++;
+
+		const taCell = s.getCell(r, 1);
+		taCell.value = `TAHUN AJARAN ${tahunAjaranNama}`;
+		taCell.font = { bold: true, size: 11 };
+		taCell.alignment = { horizontal: 'center', vertical: 'middle' };
+		s.mergeCells(r, 1, r, cols);
+		r++;
+
+		r++;
+
+		const sub1Cell = s.getCell(r, 1);
+		sub1Cell.value = sub1;
+		sub1Cell.font = { bold: true, size: 11 };
+		sub1Cell.alignment = { horizontal: 'center', vertical: 'middle' };
+		s.mergeCells(r, 1, r, cols);
+		r++;
+
+		const sub2Cell = s.getCell(r, 1);
+		sub2Cell.value = sub2;
+		sub2Cell.font = { size: 10, italic: true };
+		sub2Cell.alignment = { horizontal: 'center', vertical: 'middle' };
+		s.mergeCells(r, 1, r, cols);
+		r++;
+
+		r++;
+
+		const thin = { style: 'thin' as const, color: { argb: 'FF000000' } };
+		const bd = { top: thin, left: thin, bottom: thin, right: thin };
+		const cx = { horizontal: 'center' as const, vertical: 'middle' as const };
+		const lf = { horizontal: 'left' as const, vertical: 'middle' as const };
+
+		const headers = ['NO', 'NAMA SISWA', 'H', 'S', 'I', 'A', 'PERSENTASE'];
+		for (let c = 1; c <= cols; c++) {
+			const cell = s.getCell(r, c);
+			cell.value = headers[c - 1];
+			cell.font = { bold: true, size: 10 };
+			cell.alignment = cx;
+			cell.border = bd;
+		}
+		r++;
+
+		for (const row of data) {
+			const rr = s.getRow(r);
+			rr.height = 18;
+
+			const cNo = s.getCell(r, 1);
+			cNo.value = row.no;
+			cNo.alignment = cx;
+			cNo.border = bd;
+			cNo.font = { size: 9 };
+
+			const cNm = s.getCell(r, 2);
+			cNm.value = row.nama;
+			cNm.alignment = lf;
+			cNm.border = bd;
+			cNm.font = { size: 9 };
+
+			[s.getCell(r, 3), s.getCell(r, 4), s.getCell(r, 5), s.getCell(r, 6)].forEach((cell, i) => {
+				const vals = [row.hadir, row.sakit, row.izin, row.alfa];
+				cell.value = vals[i] || '';
+				cell.alignment = cx;
+				cell.border = bd;
+				cell.font = { size: 9 };
+			});
+
+			const cP = s.getCell(r, 7);
+			cP.value = `${row.persentase}%`;
+			cP.alignment = cx;
+			cP.border = bd;
+			cP.font = { size: 9, bold: true };
+
+			r++;
+		}
+
+		r++;
+
+		const mengetahuiCell = s.getCell(r, 1);
+		mengetahuiCell.value = 'Mengetahui,';
+		mengetahuiCell.font = { size: 10, italic: true };
+		mengetahuiCell.alignment = cx;
+		s.mergeCells(r, 1, r, mid);
+
+		r++;
+
+		const kepalaLabel = sr.statusKepalaSekolah === 'plt' ? 'Plt. Kepala' : 'Kepala';
+		const kepalaTitleCell = s.getCell(r, 1);
+		kepalaTitleCell.value = kepalaLabel;
+		kepalaTitleCell.font = { size: 10 };
+		kepalaTitleCell.alignment = cx;
+		s.mergeCells(r, 1, r, mid);
+
+		r++;
+
+		const sekolahNamaCell = s.getCell(r, 1);
+		sekolahNamaCell.value = sr.nama;
+		sekolahNamaCell.font = { size: 10, bold: true };
+		sekolahNamaCell.alignment = cx;
+		s.mergeCells(r, 1, r, mid);
+
+		const waliLabel = s.getCell(r, mid + 1);
+		waliLabel.value = 'Wali Kelas';
+		waliLabel.font = { size: 10 };
+		waliLabel.alignment = cx;
+		s.mergeCells(r, mid + 1, r, cols);
+
+		r++;
+
+		r += 4;
+
+		const knNama = sr.kepalaSekolah?.nama ?? '';
+		const knNip = sr.kepalaSekolah?.nip ?? '';
+		const wkNama = kk?.waliKelas?.nama ?? '';
+		const wkNip = kk?.waliKelas?.nip ?? '';
+
+		const knCell = s.getCell(r, 1);
+		knCell.value = knNama;
+		knCell.font = { size: 10, bold: true, underline: true };
+		knCell.alignment = cx;
+		s.mergeCells(r, 1, r, mid);
+
+		const wnCell = s.getCell(r, mid + 1);
+		wnCell.value = wkNama;
+		wnCell.font = { size: 10, bold: true, underline: true };
+		wnCell.alignment = cx;
+		s.mergeCells(r, mid + 1, r, cols);
+
+		r++;
+
+		const knipCell = s.getCell(r, 1);
+		knipCell.value = knNip;
+		knipCell.font = { size: 10 };
+		knipCell.alignment = cx;
+		s.mergeCells(r, 1, r, mid);
+
+		const wnipCell = s.getCell(r, mid + 1);
+		wnipCell.value = wkNip;
+		wnipCell.font = { size: 10 };
+		wnipCell.alignment = cx;
+		s.mergeCells(r, mid + 1, r, cols);
+
+		s.pageSetup.orientation = 'landscape';
+		s.pageSetup.fitToPage = true;
+		s.pageSetup.fitToWidth = 1;
+		s.pageSetup.paperSize = 9;
+	}
+
+	let totalHariBelajarBulanan = 0;
+	for (let d = 1; d <= daysInMonth; d++) {
+		if (!isRedDay(d)) totalHariBelajarBulanan++;
+	}
+
+	const persentaseBulananData = semuaMurid.map((murid, index) => {
+		let hadir = 0,
+			sakit = 0,
+			izin = 0,
+			alfa = 0;
+		for (let d = 1; d <= daysInMonth; d++) {
+			if (isRedDay(d)) continue;
+			const { status } = getStatus(murid.id, d);
+			if (status === 'H') hadir++;
+			else if (status === 'S') sakit++;
+			else if (status === 'I') izin++;
+			else if (status === 'TK') alfa++;
+		}
+		const persentase =
+			totalHariBelajarBulanan > 0 ? Math.round((hadir / totalHariBelajarBulanan) * 100) : 0;
+		return { no: index + 1, nama: murid.nama, hadir, sakit, izin, alfa, persentase };
+	});
+
+	addPersentaseSheet(
+		workbook,
+		'Persentase Bulanan',
+		`PERSENTASE BULAN ${BULAN_NAMES[bulan - 1].toUpperCase()} ${tahun}`,
+		`(${totalHariBelajarBulanan} hari belajar)`,
+		persentaseBulananData
+	);
+
+	// ---- Persentase Semester sheet ----
+	const semesterRecord = kelasRecord?.semesterId
+		? await db.query.tableSemester.findFirst({
+				where: eq(tableSemester.id, kelasRecord.semesterId),
+				columns: { tanggalMasuk: true, tanggalBagiRaport: true }
+			})
+		: null;
+
+	const tanggalMulaiSem = semesterRecord?.tanggalMasuk;
+	const tanggalAkhirSem = semesterRecord?.tanggalBagiRaport;
+
+	if (tanggalMulaiSem && tanggalAkhirSem && presensiSettings) {
+		const rangeLiburDates = buildRangeLiburDates(
+			presensiSettings,
+			tanggalMulaiSem,
+			tanggalAkhirSem
+		);
+		const { allDates, redDaySet } = buildRangeRedDays(
+			hariSekolah,
+			tanggalMulaiSem,
+			tanggalAkhirSem,
+			rangeLiburDates
+		);
+		const totalHariSem = allDates.length - redDaySet.size;
+
+		const semKetidakhadiran = await db.query.tableKetidakhadiranHarian.findMany({
+			columns: { muridId: true, tanggal: true, keterangan: true },
+			where: and(
+				inArray(tableKetidakhadiranHarian.muridId, muridIds),
+				sql`${tableKetidakhadiranHarian.tanggal} >= ${tanggalMulaiSem}`,
+				sql`${tableKetidakhadiranHarian.tanggal} <= ${tanggalAkhirSem}`,
+				sql`${tableKetidakhadiranHarian.mataPelajaranId} IS NULL`
+			)
+		});
+
+		const semKhMap = new Map<string, string | null>();
+		for (const kh of semKetidakhadiran) {
+			semKhMap.set(`${kh.muridId}:${kh.tanggal}`, kh.keterangan);
+		}
+
+		const rangeStartISO = `${tanggalMulaiSem}T00:00:00.000Z`;
+		const rangeEndISO = `${tanggalAkhirSem}T23:59:59.999Z`;
+
+		const semAbsensi = await db.query.tableAbsensi.findMany({
+			columns: { muridId: true, waktu: true },
+			where: and(
+				inArray(tableAbsensi.muridId, muridIds),
+				sql`${tableAbsensi.waktu} >= ${rangeStartISO}`,
+				sql`${tableAbsensi.waktu} <= ${rangeEndISO}`,
+				sql`${tableAbsensi.mataPelajaranId} IS NULL`
+			)
+		});
+
+		const semAbsensiSet = new Set<string>();
+		for (const a of semAbsensi) {
+			semAbsensiSet.add(`${a.muridId}:${a.waktu.slice(0, 10)}`);
+		}
+
+		const persentaseSemesterData = semuaMurid.map((murid, index) => {
+			let hadir = 0,
+				sakit = 0,
+				izin = 0,
+				alfa = 0;
+			for (const tgl of allDates) {
+				if (redDaySet.has(tgl)) continue;
+				const keterangan = semKhMap.get(`${murid.id}:${tgl}`);
+				if (keterangan !== undefined) {
+					if (keterangan === null) hadir++;
+					else if (keterangan === 'sakit') sakit++;
+					else if (keterangan === 'izin') izin++;
+					else alfa++;
+				} else if (semAbsensiSet.has(`${murid.id}:${tgl}`)) {
+					hadir++;
+				} else {
+					alfa++;
+				}
+			}
+			const persentase = totalHariSem > 0 ? Math.round((hadir / totalHariSem) * 100) : 0;
+			return { no: index + 1, nama: murid.nama, hadir, sakit, izin, alfa, persentase };
+		});
+
+		addPersentaseSheet(
+			workbook,
+			'Persentase Semester',
+			'PERSENTASE SEMESTER',
+			`(${tanggalMulaiSem} s.d. ${tanggalAkhirSem}, ${totalHariSem} hari belajar)`,
+			persentaseSemesterData
+		);
+	}
 
 	const buffer = (await workbook.xlsx.writeBuffer()) as Buffer;
 
