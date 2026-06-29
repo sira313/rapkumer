@@ -86,6 +86,7 @@
 		'/cetak'
 	];
 
+	let kodeKegiatanOpen = $state(true);
 	const isReadonlyPage = $derived(
 		readonlyRoutes.some((r) => page.url.pathname === r || page.url.pathname.startsWith(r + '/'))
 	);
@@ -211,24 +212,43 @@
 						<div class="sticky top-4 self-start">
 							<Task variant="sidebar" />
 							{#if isJadwalPage && page.data.daftarKodeMapel}
-								<section
-									class="card bg-base-100 hidden max-w-70 min-w-70 rounded-lg border border-none p-4 shadow-md xl:block"
-								>
-									<h3 class="mb-3 text-sm font-bold">Kode Kegiatan</h3>
-									<KodeKegiatan
-										kodeMapel={page.data.daftarKodeMapel as string[]}
-										kodeTambahan={['UPB', 'IST', 'PLG']}
-										kodeKokurikuler={(page.data.daftarKodeKokurikuler as string[]) ?? []}
-										kegiatanCustom={(page.data.kegiatanCustom as Array<{
-											kode: string;
-											nama: string;
-											durasi: number | null;
-										}>) ?? []}
-										canManage={jadwalCanManage && $jadwalIsEditing}
-										onHapusKegiatan={handleHapusKegiatan}
-										onEditKegiatan={openEditKegiatan}
-									/>
-								</section>
+								<div class="hidden xl:block">
+									<div class="card bg-base-100 rounded-box mb-4 max-w-70 min-w-70 shadow-md">
+										<div class="p-4">
+											<div class="flex flex-row items-center gap-2">
+												<h2 class="text-sm font-bold">Kode Kegiatan</h2>
+												<div class="flex-1"></div>
+												<div class="join">
+													<button
+														type="button"
+														class="btn btn-sm join-item px-2 shadow-none"
+														onclick={() => (kodeKegiatanOpen = !kodeKegiatanOpen)}
+														title={kodeKegiatanOpen ? 'Tutup daftar kode' : 'Buka daftar kode'}
+													>
+														<Icon name={kodeKegiatanOpen ? 'up' : 'down'} />
+													</button>
+												</div>
+											</div>
+										</div>
+										{#if kodeKegiatanOpen}
+											<div class="p-4 pt-0">
+												<KodeKegiatan
+													kodeMapel={page.data.daftarKodeMapel as string[]}
+													kodeTambahan={['UPB', 'IST', 'PLG']}
+													kodeKokurikuler={(page.data.daftarKodeKokurikuler as string[]) ?? []}
+													kegiatanCustom={(page.data.kegiatanCustom as Array<{
+														kode: string;
+														nama: string;
+														durasi: number | null;
+													}>) ?? []}
+													canManage={jadwalCanManage && $jadwalIsEditing}
+													onHapusKegiatan={handleHapusKegiatan}
+													onEditKegiatan={openEditKegiatan}
+												/>
+											</div>
+										{/if}
+									</div>
+								</div>
 							{/if}
 						</div>
 					</div>

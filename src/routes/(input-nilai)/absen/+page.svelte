@@ -321,7 +321,12 @@
 	});
 
 	let selectedMode = $state<
-		'harian' | 'bulanan' | 'rapor' | 'persentase_harian' | 'persentase_bulanan' | 'persentase_semester'
+		| 'harian'
+		| 'bulanan'
+		| 'rapor'
+		| 'persentase_harian'
+		| 'persentase_bulanan'
+		| 'persentase_semester'
 	>(data.mode);
 	let selectedBulan = $state(
 		data.mode === 'bulanan' || data.mode === 'persentase_bulanan'
