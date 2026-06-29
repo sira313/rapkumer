@@ -7,6 +7,7 @@
 	import Menu from '$lib/components/menu.svelte';
 	import Navbar from '$lib/components/navbar.svelte';
 	import Task from '$lib/components/tasks.svelte';
+	import FavoriteMenusSidebar from '$lib/components/dashboard/favorite-menus-sidebar.svelte';
 	import KodeKegiatan from '$lib/components/jadwal-bell/kode-kegiatan.svelte';
 	import TambahKegiatanModal from '$lib/components/jadwal-bell/tambah-kegiatan-modal.svelte';
 	import Toast, { toast } from '$lib/components/toast.svelte';
@@ -211,6 +212,7 @@
 						</div>
 						<div class="sticky top-4 self-start">
 							<Task variant="sidebar" />
+							<FavoriteMenusSidebar />
 							{#if isJadwalPage && page.data.daftarKodeMapel}
 								<div class="hidden xl:block">
 									<div class="card bg-base-100 rounded-box mb-4 max-w-70 min-w-70 shadow-md">
