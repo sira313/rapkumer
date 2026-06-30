@@ -99,6 +99,11 @@
 			jenisPresensiValue !== 'tiap_mapel'
 		)
 			return 'Tipe presensi Awal/Awal & Akhir Mapel hanya tersedia untuk jenis presensi Tiap Mapel';
+		if (
+			['masuk_pulang', 'masuk_saja'].includes(tipePresensiValue) &&
+			jenisPresensiValue !== 'wali_kelas_saja'
+		)
+			return 'Tipe presensi Masuk Pulang/Masuk Saja hanya tersedia untuk jenis presensi Wali Kelas Saja';
 		if (!['wali_kelas_saja', 'tiap_mapel'].includes(jenisPresensiValue))
 			return 'Pilih jenis presensi';
 		return null;
@@ -137,6 +142,16 @@
 		) {
 			toast(
 				'Tipe presensi Awal/Awal & Akhir Mapel hanya tersedia untuk jenis presensi Tiap Mapel',
+				'warning'
+			);
+			return false;
+		}
+		if (
+			['masuk_pulang', 'masuk_saja'].includes(tipePresensiValue) &&
+			jenisPresensiValue !== 'wali_kelas_saja'
+		) {
+			toast(
+				'Tipe presensi Masuk Pulang/Masuk Saja hanya tersedia untuk jenis presensi Wali Kelas Saja',
 				'warning'
 			);
 			return false;
@@ -252,8 +267,12 @@
 				class="select bg-base-200 dark:bg-base-300 w-full truncate dark:border-none"
 				bind:value={tipePresensiValue}
 			>
-				<option value="masuk_pulang">Masuk Pulang</option>
-				<option value="masuk_saja">Masuk Saja</option>
+				<option value="masuk_pulang" disabled={jenisPresensiValue === 'tiap_mapel'}>
+					Masuk Pulang
+				</option>
+				<option value="masuk_saja" disabled={jenisPresensiValue === 'tiap_mapel'}>
+					Masuk Saja
+				</option>
 				<option value="awal_mapel" disabled={jenisPresensiValue !== 'tiap_mapel'}>
 					Awal Mapel
 				</option>
