@@ -8,6 +8,7 @@ export interface SimKetidakhadiranEntry {
 	muridId: number;
 	tanggal: string;
 	keterangan: string | null;
+	keteranganPulang: string | null;
 	mataPelajaranId: number | null;
 	updatedAt: string;
 }
@@ -89,7 +90,8 @@ export function simWriteKetidakhadiran(
 	keterangan: string | null,
 	mataPelajaranId: number | null,
 	simHari?: string | null,
-	simJam?: string | null
+	simJam?: string | null,
+	keteranganPulang?: string | null
 ) {
 	const entry = getOrCreate(sekolahId, kelasId, tanggal, simHari, simJam);
 	const key = absKey(muridId, mataPelajaranId);
@@ -97,6 +99,7 @@ export function simWriteKetidakhadiran(
 		muridId,
 		tanggal,
 		keterangan,
+		keteranganPulang: keteranganPulang ?? null,
 		mataPelajaranId,
 		updatedAt: new Date().toISOString()
 	});

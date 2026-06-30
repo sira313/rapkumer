@@ -9,6 +9,7 @@ export async function ensureKetidakhadiranHarianSchema() {
       "tanggal" text NOT NULL,
       "mata_pelajaran_id" integer,
       "keterangan" text,
+      "keterangan_pulang" text,
       "created_at" text NOT NULL,
       "updated_at" text,
       CONSTRAINT "ketidakhadiran_harian_murid_id_murid_id_fk" FOREIGN KEY ("murid_id") REFERENCES "murid" ("id") ON UPDATE NO ACTION ON DELETE CASCADE,
@@ -41,6 +42,15 @@ export async function ensureKetidakhadiranHarianSchema() {
 	try {
 		await db.$client.execute(
 			`ALTER TABLE "ketidakhadiran_harian" ADD COLUMN "mata_pelajaran_id" integer REFERENCES "mata_pelajaran"("id") ON DELETE SET NULL`
+		);
+	} catch {
+		// column already exists
+	}
+
+	// add keterangan_pulang column if not exists
+	try {
+		await db.$client.execute(
+			`ALTER TABLE "ketidakhadiran_harian" ADD COLUMN "keterangan_pulang" text`
 		);
 	} catch {
 		// column already exists

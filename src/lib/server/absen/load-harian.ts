@@ -473,6 +473,7 @@ export async function loadHarian(params: {
 						tanggal: true,
 						mataPelajaranId: true,
 						keterangan: true,
+						keteranganPulang: true,
 						createdAt: true,
 						updatedAt: true
 					},
@@ -523,6 +524,7 @@ export async function loadHarian(params: {
 			nama: murid.nama,
 			hadir: murid.absensi.length > 0 && !kh?.keterangan,
 			keterangan: kh?.keterangan ?? null,
+			keteranganPulang: kh?.keteranganPulang ?? null,
 			updatedAt: kh?.updatedAt ?? kh?.createdAt ?? null
 		};
 	});
@@ -530,11 +532,18 @@ export async function loadHarian(params: {
 	if (simHari && simJam) {
 		const cacheKetidakhadiran = simGetKetidakhadiran(sekolahId, kelasId, tanggal, simHari, simJam);
 		const cacheAbsensi = simGetAbsensi(sekolahId, kelasId, tanggal, simHari, simJam);
-		const cacheKhGlobal = new Map<number, { keterangan: string | null; updatedAt: string }>();
+		const cacheKhGlobal = new Map<
+			number,
+			{ keterangan: string | null; keteranganPulang: string | null; updatedAt: string }
+		>();
 		const cacheAbsenGlobal = new Set<number>();
 		for (const kh of cacheKetidakhadiran) {
 			if (kh.mataPelajaranId == null) {
-				cacheKhGlobal.set(kh.muridId, { keterangan: kh.keterangan, updatedAt: kh.updatedAt });
+				cacheKhGlobal.set(kh.muridId, {
+					keterangan: kh.keterangan,
+					keteranganPulang: kh.keteranganPulang,
+					updatedAt: kh.updatedAt
+				});
 			}
 		}
 		for (const a of cacheAbsensi) {
@@ -546,11 +555,13 @@ export async function loadHarian(params: {
 			const ckh = cacheKhGlobal.get(row.id);
 			if (ckh) {
 				row.keterangan = ckh.keterangan;
+				row.keteranganPulang = ckh.keteranganPulang;
 				row.hadir = ckh.keterangan === null && cacheAbsenGlobal.has(row.id);
 				row.updatedAt = ckh.updatedAt;
 			} else if (cacheAbsenGlobal.has(row.id)) {
 				row.hadir = true;
 				row.keterangan = null;
+				row.keteranganPulang = null;
 			}
 		}
 	}

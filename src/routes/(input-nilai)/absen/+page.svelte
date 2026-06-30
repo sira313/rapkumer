@@ -44,6 +44,7 @@
 		nama: string;
 		hadir: boolean;
 		keterangan: string | null;
+		keteranganPulang: string | null;
 		updatedAt: string | null;
 	};
 
@@ -161,8 +162,9 @@
 	let searchTimer: ReturnType<typeof setTimeout> | undefined;
 
 	let editingRowId = $state<number | null>(null);
-	let editingValues = $state<{ keterangan: string }>({
-		keterangan: ''
+	let editingValues = $state<{ keterangan: string; keteranganPulang: string }>({
+		keterangan: '',
+		keteranganPulang: ''
 	});
 	let editingSubmitting = $state(false);
 
@@ -184,7 +186,7 @@
 
 	$effect(() => {
 		if (editingRowId == null) {
-			editingValues = { keterangan: '' };
+			editingValues = { keterangan: '', keteranganPulang: '' };
 		}
 	});
 
@@ -275,7 +277,8 @@
 	function startEdit(row: KehadiranRow) {
 		editingRowId = row.id;
 		editingValues = {
-			keterangan: row.keterangan ?? ''
+			keterangan: row.keterangan ?? '',
+			keteranganPulang: row.keteranganPulang ?? ''
 		};
 	}
 
@@ -690,7 +693,8 @@
 												: undefined,
 											simulasiHari: data.simulasiHari,
 											simulasiJam: data.simulasiJam,
-											tipePresensi: data.tipePresensi
+											tipePresensi: data.tipePresensi,
+											jenisPresensi: data.jenisPresensi
 										},
 										dismissible: true
 									});
@@ -1034,6 +1038,8 @@
 			onEditValueChange={(v) => (editingValues = v)}
 			onUpdateSuccess={handleUpdateSuccess}
 			onSubmitStateChange={(v) => (editingSubmitting = v)}
+			jenisPresensi={data.jenisPresensi}
+			tipePresensi={data.tipePresensi}
 		/>
 		<AbsenPagination {pages} {currentPage} onPageClick={handlePageClick} />
 	{/if}

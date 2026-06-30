@@ -610,12 +610,12 @@ export async function POST({ cookies, locals, request }) {
 	worksheet.pageSetup.fitToWidth = 1;
 	worksheet.pageSetup.paperSize = 9;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
- 	function addPersentaseSheet(wb: any, name: string, sub1: string, sub2: string, data: any[]) {
- 		const sr = sekolahRecord!;
- 		const kk = kelasRecord;
- 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
- 		const s = wb.addWorksheet(name) as any;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	function addPersentaseSheet(wb: any, name: string, sub1: string, sub2: string, data: any[]) {
+		const sr = sekolahRecord!;
+		const kk = kelasRecord;
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const s = wb.addWorksheet(name) as any;
 		const cols = 7;
 		[1, 2, 3, 4, 5, 6, 7].forEach((c) => {
 			const w: Record<number, number> = { 1: 5, 2: 40, 3: 8, 4: 8, 5: 8, 6: 8, 7: 14 };

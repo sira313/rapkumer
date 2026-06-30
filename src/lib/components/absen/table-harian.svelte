@@ -9,6 +9,7 @@
 		nama: string;
 		hadir: boolean;
 		keterangan: string | null;
+		keteranganPulang: string | null;
 		updatedAt: string | null;
 	};
 
@@ -32,7 +33,9 @@
 		onCancelEdit,
 		onEditValueChange,
 		onUpdateSuccess,
-		onSubmitStateChange
+		onSubmitStateChange,
+		jenisPresensi = 'wali_kelas_saja',
+		tipePresensi = 'masuk_pulang'
 	}: {
 		rows: KehadiranRow[];
 		search: string | null;
@@ -41,25 +44,44 @@
 		tanggal: string;
 		kelasId: number | null;
 		editingRowId: number | null;
-		editingValues: { keterangan: string };
+		editingValues: { keterangan: string; keteranganPulang: string };
 		editingSubmitting: boolean;
 		onStartEdit: (row: KehadiranRow) => void;
 		onCancelEdit: () => void;
-		onEditValueChange: (value: { keterangan: string }) => void;
+		onEditValueChange: (value: { keterangan: string; keteranganPulang: string }) => void;
 		onUpdateSuccess: () => void;
 		onSubmitStateChange: (v: boolean) => void;
+		jenisPresensi?: string;
+		tipePresensi?: string;
 	} = $props();
 
 	let editingSaveDisabled = $derived(editingRowId == null || editingSubmitting);
 
+	const isWaliKelasMasukSaja = $derived(
+		jenisPresensi === 'wali_kelas_saja' && tipePresensi === 'masuk_saja'
+	);
+	const isWaliKelasMasukPulang = $derived(
+		jenisPresensi === 'wali_kelas_saja' && tipePresensi === 'masuk_pulang'
+	);
+
 	function displayKeterangan(value: string | null | undefined) {
-		if (value == null) return '-';
+		if (value == null) return 'Hadir';
 		const labels: Record<string, string> = {
 			sakit: 'Sakit',
 			izin: 'Izin',
 			alfa: 'Alfa'
 		};
 		return labels[value] ?? value;
+	}
+
+	function keteranganColor(value: string | null | undefined) {
+		if (value == null) return 'badge-success';
+		const colors: Record<string, string> = {
+			sakit: 'badge-warning',
+			izin: 'badge-info',
+			alfa: 'badge-error'
+		};
+		return colors[value] ?? '';
 	}
 </script>
 
@@ -71,8 +93,15 @@
 			<tr class="bg-base-200 dark:bg-base-300 text-base-content text-left font-bold">
 				<th style="width: 50px; min-width: 40px;">No</th>
 				<th class="w-full" style="min-width: 160px;">Nama</th>
-				<th class="text-center" style="min-width: 100px;">Hadir</th>
-				<th class="text-center" style="min-width: 120px;">Keterangan</th>
+				{#if isWaliKelasMasukPulang}
+					<th class="text-center" style="min-width: 100px;">Masuk</th>
+					<th class="text-center" style="min-width: 100px;">Pulang</th>
+				{:else if isWaliKelasMasukSaja}
+					<th class="text-center" style="min-width: 100px;">Hadir</th>
+				{:else}
+					<th class="text-center" style="min-width: 100px;">Hadir</th>
+					<th class="text-center" style="min-width: 120px;">Keterangan</th>
+				{/if}
 				<th class="text-center" style="min-width: 120px;">Aksi</th>
 			</tr>
 		</thead>
@@ -83,34 +112,111 @@
 				<tr class={isEditing ? 'bg-base-200/40' : undefined}>
 					<td>{murid.no}</td>
 					<td>{@html searchQueryMarker(search, murid.nama)}</td>
-					<td class="text-center">
-						<span
-							class="badge badge-sm whitespace-nowrap {murid.hadir
-								? 'badge-success'
-								: 'badge-soft badge-error'}"
-						>
-							{murid.hadir ? 'Hadir' : 'Tidak hadir'}
-						</span>
-					</td>
-					<td class="overflow-hidden text-center">
-						{#if isEditing}
-							<select
-								class="select select-sm bg-base-200 dark:bg-base-300 w-full truncate text-center dark:border-none"
-								value={editingValues.keterangan}
-								onchange={(event) =>
-									onEditValueChange({
-										keterangan: (event.currentTarget as HTMLSelectElement).value
-									})}
+
+					{#if isWaliKelasMasukPulang}
+						<td class="text-center">
+							{#if isEditing}
+								<select
+									class="select select-sm bg-base-200 dark:bg-base-300 w-full truncate text-center dark:border-none"
+									value={editingValues.keterangan}
+									onchange={(event) =>
+										onEditValueChange({
+											...editingValues,
+											keterangan: (event.currentTarget as HTMLSelectElement).value
+										})}
+								>
+									<option value="">Hadir</option>
+									<option value="sakit">Sakit</option>
+									<option value="izin">Izin</option>
+									<option value="alfa">Alfa</option>
+								</select>
+							{:else}
+								<span class="badge badge-sm whitespace-nowrap {keteranganColor(murid.keterangan)}">
+									{displayKeterangan(murid.keterangan)}
+								</span>
+							{/if}
+						</td>
+						<td class="text-center">
+							{#if isEditing}
+								<select
+									class="select select-sm bg-base-200 dark:bg-base-300 w-full truncate text-center dark:border-none"
+									value={editingValues.keteranganPulang}
+									onchange={(event) =>
+										onEditValueChange({
+											...editingValues,
+											keteranganPulang: (event.currentTarget as HTMLSelectElement).value
+										})}
+								>
+									<option value="">Hadir</option>
+									<option value="sakit">Sakit</option>
+									<option value="izin">Izin</option>
+									<option value="alfa">Alfa</option>
+								</select>
+							{:else}
+								<span
+									class="badge badge-sm whitespace-nowrap {keteranganColor(murid.keteranganPulang)}"
+								>
+									{displayKeterangan(murid.keteranganPulang)}
+								</span>
+							{/if}
+						</td>
+					{:else if isWaliKelasMasukSaja}
+						<td class="text-center">
+							{#if isEditing}
+								<select
+									class="select select-sm bg-base-200 dark:bg-base-300 w-full truncate text-center dark:border-none"
+									value={editingValues.keterangan}
+									onchange={(event) =>
+										onEditValueChange({
+											...editingValues,
+											keterangan: (event.currentTarget as HTMLSelectElement).value
+										})}
+								>
+									<option value="">Hadir</option>
+									<option value="sakit">Sakit</option>
+									<option value="izin">Izin</option>
+									<option value="alfa">Alfa</option>
+								</select>
+							{:else}
+								<span class="badge badge-sm whitespace-nowrap {keteranganColor(murid.keterangan)}">
+									{displayKeterangan(murid.keterangan)}
+								</span>
+							{/if}
+						</td>
+					{:else}
+						<td class="text-center">
+							<span
+								class="badge badge-sm whitespace-nowrap {murid.hadir
+									? 'badge-success'
+									: 'badge-soft badge-error'}"
 							>
-								<option value="">-</option>
-								<option value="sakit">Sakit</option>
-								<option value="izin">Izin</option>
-								<option value="alfa">Alfa</option>
-							</select>
-						{:else}
-							{displayKeterangan(murid.keterangan)}
-						{/if}
-					</td>
+								{murid.hadir ? 'Hadir' : 'Tidak hadir'}
+							</span>
+						</td>
+						<td class="overflow-hidden text-center">
+							{#if isEditing}
+								<select
+									class="select select-sm bg-base-200 dark:bg-base-300 w-full truncate text-center dark:border-none"
+									value={editingValues.keterangan}
+									onchange={(event) =>
+										onEditValueChange({
+											...editingValues,
+											keterangan: (event.currentTarget as HTMLSelectElement).value
+										})}
+								>
+									<option value="">-</option>
+									<option value="sakit">Sakit</option>
+									<option value="izin">Izin</option>
+									<option value="alfa">Alfa</option>
+								</select>
+							{:else if murid.keterangan}
+								{displayKeterangan(murid.keterangan)}
+							{:else}
+								-
+							{/if}
+						</td>
+					{/if}
+
 					<td>
 						<div class="flex items-center justify-center gap-2">
 							{#if isEditing}
@@ -129,6 +235,11 @@
 											data-submitting={submitting ? '1' : '0'}
 										/>
 										<input type="hidden" name="keterangan" value={editingValues.keterangan} />
+										<input
+											type="hidden"
+											name="keteranganPulang"
+											value={editingValues.keteranganPulang}
+										/>
 										<input type="hidden" name="tanggal" value={tanggal} />
 										<input type="hidden" name="kelasId" value={kelasId ?? ''} />
 									{/snippet}

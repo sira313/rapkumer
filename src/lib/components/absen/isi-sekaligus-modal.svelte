@@ -20,7 +20,8 @@
 		perkiraanJam,
 		simulasiHari,
 		simulasiJam,
-		tipePresensi = 'awal_mapel'
+		tipePresensi = 'awal_mapel',
+		jenisPresensi = 'wali_kelas_saja'
 	}: {
 		daftarMurid: MuridItem[];
 		kelasId?: number;
@@ -31,6 +32,7 @@
 		simulasiHari?: string | null;
 		simulasiJam?: string | null;
 		tipePresensi?: string;
+		jenisPresensi?: string;
 	} = $props();
 
 	let step = $state<'pilih-mode' | 'pilih-murid'>('pilih-mode');
@@ -39,8 +41,13 @@
 	let selectedIds = $state<number[]>([]);
 	let keteranganMap = $state<Record<number, string>>({});
 	let sessionType = $state<'awal' | 'akhir'>('awal');
+	let presensiType = $state('masuk');
 
 	const isAwalAkhir = $derived(tipePresensi === 'awal_akhir_mapel' && !!namaMataPelajaran);
+
+	const isWaliKelasMasukPulang = $derived(
+		jenisPresensi === 'wali_kelas_saja' && tipePresensi === 'masuk_pulang'
+	);
 
 	$effect(() => {
 		if (step === 'pilih-murid') {
@@ -138,6 +145,7 @@
 			if (simulasiHari) fd.set('simHari', simulasiHari);
 			if (simulasiJam) fd.set('simJam', simulasiJam);
 			if (isAwalAkhir) fd.set('sessionType', sessionType);
+			if (isWaliKelasMasukPulang) fd.set('presensiType', presensiType);
 			const res = await fetch('?/isiSekaligus', { method: 'POST', body: fd, redirect: 'error' });
 			if (!res.ok) {
 				const err = await res.json().catch(() => ({ fail: 'Gagal menyimpan' }));
@@ -168,6 +176,7 @@
 			if (simulasiHari) fd.set('simHari', simulasiHari);
 			if (simulasiJam) fd.set('simJam', simulasiJam);
 			if (isAwalAkhir) fd.set('sessionType', sessionType);
+			if (isWaliKelasMasukPulang) fd.set('presensiType', presensiType);
 			fd.set('entries', JSON.stringify(entries));
 			const res = await fetch('?/isiSekaligus', { method: 'POST', body: fd, redirect: 'error' });
 			if (!res.ok) {
@@ -199,6 +208,15 @@
 			>
 				<option value="awal">Awal Mapel</option>
 				<option value="akhir">Akhir Mapel</option>
+			</select>
+		{/if}
+		{#if isWaliKelasMasukPulang}
+			<select
+				class="select select-sm bg-base-200 dark:bg-base-300 w-full dark:border-none"
+				bind:value={presensiType}
+			>
+				<option value="masuk">Presensi Masuk</option>
+				<option value="pulang">Presensi Pulang</option>
 			</select>
 		{/if}
 		{#if namaMataPelajaran}

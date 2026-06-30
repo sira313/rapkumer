@@ -27,6 +27,7 @@ export type KehadiranRow = {
 	nama: string;
 	hadir: boolean;
 	keterangan: string | null;
+	keteranganPulang: string | null;
 	updatedAt: string | null;
 };
 

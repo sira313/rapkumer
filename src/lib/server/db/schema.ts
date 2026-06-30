@@ -1036,6 +1036,7 @@ export const tableKetidakhadiranHarian = sqliteTable(
 		tanggal: text().notNull(),
 		mataPelajaranId: int().references(() => tableMataPelajaran.id, { onDelete: 'set null' }),
 		keterangan: text(),
+		keteranganPulang: text(),
 		...audit
 	},
 	(table) => [

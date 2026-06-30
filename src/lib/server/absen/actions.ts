@@ -27,6 +27,7 @@ import {
 	simWriteKetidakhadiran,
 	simWriteAbsensi,
 	simDeleteAbsensi,
+	simGetKetidakhadiran,
 	simClear
 } from '$lib/server/simulasi-cache';
 
@@ -64,6 +65,10 @@ export async function handleUpdate({
 
 	const keteranganRaw = formData.get('keterangan')?.toString().trim() ?? '';
 	const keterangan = ['sakit', 'izin', 'alfa'].includes(keteranganRaw) ? keteranganRaw : null;
+	const keteranganPulangRaw = formData.get('keteranganPulang')?.toString().trim() ?? '';
+	const keteranganPulang = ['sakit', 'izin', 'alfa'].includes(keteranganPulangRaw)
+		? keteranganPulangRaw
+		: null;
 
 	const mataPelajaranIdRaw = formData.get('mataPelajaranId')?.toString();
 	const mataPelajaranId = mataPelajaranIdRaw ? Number(mataPelajaranIdRaw) : null;
@@ -95,7 +100,8 @@ export async function handleUpdate({
 			keterangan,
 			mataPelajaranId,
 			simHari,
-			simJam
+			simJam,
+			keteranganPulang
 		);
 		return { message: 'Ketidakhadiran berhasil diperbarui (simulasi)' };
 	}
@@ -118,14 +124,19 @@ export async function handleUpdate({
 			}
 			await tx
 				.insert(tableKetidakhadiranHarian)
-				.values({ muridId, tanggal, keterangan, mataPelajaranId })
+				.values({ muridId, tanggal, keterangan, keteranganPulang, mataPelajaranId })
 				.onConflictDoUpdate({
 					target: [
 						tableKetidakhadiranHarian.muridId,
 						tableKetidakhadiranHarian.tanggal,
 						tableKetidakhadiranHarian.mataPelajaranId
 					],
-					set: { keterangan, mataPelajaranId, updatedAt: new Date().toISOString() }
+					set: {
+						keterangan,
+						keteranganPulang,
+						mataPelajaranId,
+						updatedAt: new Date().toISOString()
+					}
 				});
 		});
 	} catch (error) {
@@ -178,6 +189,7 @@ export async function handleIsiSekaligus({
 	const sessionType = formData.get('sessionType')?.toString() ?? null;
 	const simHari = formData.get('simHari')?.toString() ?? null;
 	const simJam = formData.get('simJam')?.toString() ?? null;
+	const presensiType = formData.get('presensiType')?.toString() ?? 'masuk';
 
 	const allSettings = await db.query.tablePresensiSettings.findFirst({
 		columns: { jenisPresensi: true, jamMasuk: true, tipePresensi: true },
@@ -322,16 +334,28 @@ export async function handleIsiSekaligus({
 						}
 					}
 				} else {
+					const existingMasukMapSim = new Map<number, string | null>();
+					if (presensiType === 'pulang') {
+						const existingSim = simGetKetidakhadiran(sekolahId, kelasId, tanggal, simHari, simJam);
+						for (const e of existingSim) {
+							if (e.muridId != null) {
+								existingMasukMapSim.set(e.muridId, e.keterangan);
+							}
+						}
+					}
 					for (const murid of semuaMurid) {
+						const isPulang = presensiType === 'pulang';
+						const masukKet = isPulang ? (existingMasukMapSim.get(murid.id) ?? null) : null;
 						simWriteKetidakhadiran(
 							sekolahId,
 							kelasId,
 							tanggal,
 							murid.id,
-							null,
+							masukKet,
 							mataPelajaranId,
 							simHari,
-							simJam
+							simJam,
+							isPulang ? masukKet : null
 						);
 						simWriteAbsensi(
 							sekolahId,
@@ -369,6 +393,27 @@ export async function handleIsiSekaligus({
 				}
 			}
 
+			// Fetch existing records before delete if we need them for pulang auto-copy
+			let existingMasukMap = new Map<number, string | null>();
+			if (presensiType === 'pulang') {
+				const existingRecs = await db.query.tableKetidakhadiranHarian.findMany({
+					columns: { muridId: true, keterangan: true },
+					where: and(
+						inArray(
+							tableKetidakhadiranHarian.muridId,
+							semuaMurid.map((m) => m.id)
+						),
+						eq(tableKetidakhadiranHarian.tanggal, tanggal),
+						mataPelajaranId != null
+							? eq(tableKetidakhadiranHarian.mataPelajaranId, mataPelajaranId)
+							: sql`${tableKetidakhadiranHarian.mataPelajaranId} IS NULL`
+					)
+				});
+				for (const r of existingRecs) {
+					existingMasukMap.set(r.muridId, r.keterangan);
+				}
+			}
+
 			// SQLite treats NULLs as distinct in UNIQUE indexes, so onConflictDoUpdate
 			// never fires when mataPelajaranId is NULL — always inserts a new row instead
 			// of updating. Delete old rows first so each insert lands fresh.
@@ -386,16 +431,33 @@ export async function handleIsiSekaligus({
 			}
 
 			for (const murid of semuaMurid) {
+				const values: typeof tableKetidakhadiranHarian.$inferInsert = {
+					muridId: murid.id,
+					tanggal,
+					mataPelajaranId
+				};
+
+				if (presensiType === 'pulang') {
+					const masukKet = existingMasukMap.get(murid.id) ?? null;
+					values.keterangan = masukKet;
+					values.keteranganPulang = masukKet;
+				} else {
+					values.keterangan = null;
+				}
+
 				await db
 					.insert(tableKetidakhadiranHarian)
-					.values({ muridId: murid.id, tanggal, keterangan: null, mataPelajaranId })
+					.values(values)
 					.onConflictDoUpdate({
 						target: [
 							tableKetidakhadiranHarian.muridId,
 							tableKetidakhadiranHarian.tanggal,
 							tableKetidakhadiranHarian.mataPelajaranId
 						],
-						set: { keterangan: null, mataPelajaranId, updatedAt: now }
+						set: {
+							...values,
+							updatedAt: now
+						}
 					});
 
 				if (isDualSession) {
@@ -463,15 +525,17 @@ export async function handleIsiSekaligus({
 
 			if (simHari) {
 				for (const [muridId, keterangan] of entryMap) {
+					const isPulang = presensiType === 'pulang';
 					simWriteKetidakhadiran(
 						sekolahId,
 						kelasId,
 						tanggal,
 						muridId,
-						keterangan,
+						isPulang ? null : keterangan,
 						mataPelajaranId,
 						simHari,
-						simJam
+						simJam,
+						isPulang ? keterangan : null
 					);
 				}
 
@@ -535,6 +599,27 @@ export async function handleIsiSekaligus({
 				return { message: 'Kehadiran berhasil diperbarui (simulasi)' };
 			}
 
+			// Fetch existing records before delete if we need them for pulang auto-copy
+			let existingMasukMap = new Map<number, string | null>();
+			if (presensiType === 'pulang') {
+				const existingRecs = await db.query.tableKetidakhadiranHarian.findMany({
+					columns: { muridId: true, keterangan: true },
+					where: and(
+						inArray(
+							tableKetidakhadiranHarian.muridId,
+							semuaMurid.map((m) => m.id)
+						),
+						eq(tableKetidakhadiranHarian.tanggal, tanggal),
+						mataPelajaranId != null
+							? eq(tableKetidakhadiranHarian.mataPelajaranId, mataPelajaranId)
+							: sql`${tableKetidakhadiranHarian.mataPelajaranId} IS NULL`
+					)
+				});
+				for (const r of existingRecs) {
+					existingMasukMap.set(r.muridId, r.keterangan);
+				}
+			}
+
 			const selectedIds = Array.from(entryMap.keys());
 			if (selectedIds.length > 0) {
 				const deleteAbsensiConditions: any[] = [
@@ -565,16 +650,28 @@ export async function handleIsiSekaligus({
 			}
 
 			for (const [muridId, keterangan] of entryMap) {
+				const isPulang = presensiType === 'pulang';
 				await db
 					.insert(tableKetidakhadiranHarian)
-					.values({ muridId, tanggal, keterangan, mataPelajaranId })
+					.values({
+						muridId,
+						tanggal,
+						keterangan: isPulang ? (existingMasukMap.get(muridId) ?? null) : keterangan,
+						keteranganPulang: isPulang ? keterangan : undefined,
+						mataPelajaranId
+					})
 					.onConflictDoUpdate({
 						target: [
 							tableKetidakhadiranHarian.muridId,
 							tableKetidakhadiranHarian.tanggal,
 							tableKetidakhadiranHarian.mataPelajaranId
 						],
-						set: { keterangan, mataPelajaranId, updatedAt: now }
+						set: {
+							keterangan: isPulang ? (existingMasukMap.get(muridId) ?? null) : keterangan,
+							keteranganPulang: isPulang ? keterangan : undefined,
+							mataPelajaranId,
+							updatedAt: now
+						}
 					});
 			}
 
@@ -604,16 +701,37 @@ export async function handleIsiSekaligus({
 			}
 
 			for (const murid of nonSelectedMurid) {
+				const isPulang = presensiType === 'pulang';
+				let nsKeterangan: string | null | undefined = null;
+				let nsKeteranganPulang: string | null | undefined = undefined;
+
+				if (isPulang) {
+					const masukKet = existingMasukMap.get(murid.id) ?? null;
+					nsKeterangan = masukKet;
+					nsKeteranganPulang = masukKet;
+				}
+
 				await db
 					.insert(tableKetidakhadiranHarian)
-					.values({ muridId: murid.id, tanggal, keterangan: null, mataPelajaranId })
+					.values({
+						muridId: murid.id,
+						tanggal,
+						keterangan: nsKeterangan,
+						keteranganPulang: nsKeteranganPulang,
+						mataPelajaranId
+					})
 					.onConflictDoUpdate({
 						target: [
 							tableKetidakhadiranHarian.muridId,
 							tableKetidakhadiranHarian.tanggal,
 							tableKetidakhadiranHarian.mataPelajaranId
 						],
-						set: { keterangan: null, mataPelajaranId, updatedAt: now }
+						set: {
+							keterangan: nsKeterangan,
+							keteranganPulang: nsKeteranganPulang,
+							mataPelajaranId,
+							updatedAt: now
+						}
 					});
 
 				if (isDualSessionSelected) {
