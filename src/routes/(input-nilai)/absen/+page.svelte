@@ -3,7 +3,6 @@
 	import { page } from '$app/state';
 	import Icon from '$lib/components/icon.svelte';
 	import { showModal } from '$lib/components/global-modal.svelte';
-	import ScannerModal from '$lib/components/absen/scanner-modal.svelte';
 	import IsiSekaligusModal from '$lib/components/absen/isi-sekaligus-modal.svelte';
 	import DownloadRekapModal from '$lib/components/absen/download-rekap-modal.svelte';
 	import HapusPresensiModal from '$lib/components/absen/hapus-presensi-modal.svelte';
@@ -531,30 +530,6 @@
 
 	const jadwalBelumDimulai = $derived(isGuruMapelMode && !data.jadwalSaatIni);
 
-	function openScanner(mapelId?: number | null) {
-		if (!data.presensiReady) {
-			presensiNotReady();
-			return;
-		}
-		if (jadwalBelumDimulai) {
-			toast({ message: 'Jam pelajaran bapak/ibu belum dimulai', type: 'warning' });
-			return;
-		}
-		showModal({
-			title: 'Scan QR Kehadiran',
-			body: ScannerModal,
-			bodyProps: {
-				onscan: () => invalidate('app:absen'),
-				mataPelajaranId: mapelId ?? null,
-				kelasId: kelasAktif?.id ?? null,
-				simulasiHari: data.simulasiHari,
-				simulasiJam: data.simulasiJam,
-				simulasiTanggal: data.tanggal
-			},
-			dismissible: false
-		});
-	}
-
 	function formatTanggal(dateStr: string) {
 		const d = new Date(dateStr + 'T00:00:00');
 		const hari = hariList[d.getDay()];
@@ -633,16 +608,49 @@
 				<p class="text-base-content/80 block text-sm">{kelasAktifLabel}</p>
 			{/if}
 		</div>
-		{#if data.mode === 'rapor' || data.mode === 'persentase_bulanan' || data.mode === 'persentase_semester'}{:else}
+		{#if data.mode === 'rapor' || data.mode === 'persentase_bulanan' || data.mode === 'persentase_semester' || data.mode === 'bulanan'}{:else}
 			{@const currentMapel = data.jadwalSaatIni}
 			<div class="flex max-sm:w-full">
 				<button
 					type="button"
 					class="btn btn-primary btn-soft flex-1 rounded-r-none shadow-none max-sm:flex-1"
-					onclick={() => openScanner(currentMapel?.mataPelajaranId)}
+					disabled={!canEdit && page.data.user?.type !== 'user'}
+					title={!canEdit && page.data.user?.type !== 'user'
+						? 'Anda tidak memiliki izin untuk mengisi sekaligus'
+						: ''}
+					onclick={() => {
+						if (!data.presensiReady) {
+							presensiNotReady();
+							return;
+						}
+						if (jadwalBelumDimulai) {
+							toast({ message: 'Jam pelajaran bapak/ibu belum dimulai', type: 'warning' });
+							return;
+						}
+						const useMapelData =
+							page.data.user?.type === 'user' || data.mode === 'persentase_harian';
+						showModal({
+							title: 'Isi Kehadiran Sekaligus',
+							body: IsiSekaligusModal,
+							bodyProps: {
+								daftarMurid: data.semuaMurid,
+								kelasId: kelasAktif?.id ?? undefined,
+								tanggal: data.tanggal,
+								mataPelajaranId: useMapelData ? (currentMapel?.mataPelajaranId ?? null) : null,
+								namaMataPelajaran: useMapelData
+									? (currentMapel?.namaMataPelajaran ?? undefined)
+									: undefined,
+								perkiraanJam: useMapelData ? (currentMapel?.perkiraanJam ?? undefined) : undefined,
+								simulasiHari: data.simulasiHari,
+								simulasiJam: data.simulasiJam,
+								tipePresensi: data.tipePresensi,
+								jenisPresensi: data.jenisPresensi
+							},
+							dismissible: true
+						});
+					}}
 				>
-					<Icon name="grid" />
-					Scan QR
+					<Icon name="copy" /> Isi Sekaligus
 				</button>
 				<div class="dropdown dropdown-end max-sm:flex-none">
 					<button
@@ -656,53 +664,6 @@
 						tabindex="-1"
 						class="dropdown-content menu bg-base-100 border-base-300 z-50 mt-2 w-49 rounded-md border p-2 shadow-lg"
 					>
-						<li>
-							<button
-								type="button"
-								class="w-full text-left"
-								disabled={!canEdit && page.data.user?.type !== 'user'}
-								title={!canEdit && page.data.user?.type !== 'user'
-									? 'Anda tidak memiliki izin untuk mengisi sekaligus'
-									: ''}
-								onclick={() => {
-									if (!data.presensiReady) {
-										presensiNotReady();
-										return;
-									}
-									if (jadwalBelumDimulai) {
-										toast({ message: 'Jam pelajaran bapak/ibu belum dimulai', type: 'warning' });
-										return;
-									}
-									const useMapelData =
-										page.data.user?.type === 'user' || data.mode === 'persentase_harian';
-									showModal({
-										title: 'Isi Kehadiran Sekaligus',
-										body: IsiSekaligusModal,
-										bodyProps: {
-											daftarMurid: data.semuaMurid,
-											kelasId: kelasAktif?.id ?? undefined,
-											tanggal: data.tanggal,
-											mataPelajaranId: useMapelData
-												? (currentMapel?.mataPelajaranId ?? null)
-												: null,
-											namaMataPelajaran: useMapelData
-												? (currentMapel?.namaMataPelajaran ?? undefined)
-												: undefined,
-											perkiraanJam: useMapelData
-												? (currentMapel?.perkiraanJam ?? undefined)
-												: undefined,
-											simulasiHari: data.simulasiHari,
-											simulasiJam: data.simulasiJam,
-											tipePresensi: data.tipePresensi,
-											jenisPresensi: data.jenisPresensi
-										},
-										dismissible: true
-									});
-								}}
-							>
-								<Icon name="copy" /> Isi Sekaligus
-							</button>
-						</li>
 						<li>
 							<button
 								type="button"

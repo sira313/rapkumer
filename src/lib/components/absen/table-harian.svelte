@@ -75,11 +75,11 @@
 	}
 
 	function keteranganColor(value: string | null | undefined) {
-		if (value == null) return 'badge-success';
+		if (value == null) return 'badge-soft badge-success';
 		const colors: Record<string, string> = {
-			sakit: 'badge-warning',
-			izin: 'badge-info',
-			alfa: 'badge-error'
+			sakit: 'badge-soft badge-warning',
+			izin: 'badge-soft badge-info',
+			alfa: 'badge-soft badge-error'
 		};
 		return colors[value] ?? '';
 	}
@@ -187,7 +187,7 @@
 						<td class="text-center">
 							<span
 								class="badge badge-sm whitespace-nowrap {murid.hadir
-									? 'badge-success'
+									? 'badge-soft badge-success'
 									: 'badge-soft badge-error'}"
 							>
 								{murid.hadir ? 'Hadir' : 'Tidak hadir'}
