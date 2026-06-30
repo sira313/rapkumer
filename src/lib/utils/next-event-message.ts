@@ -108,7 +108,21 @@ export function computeNextEventMessage(params: NextEventParams): string {
 		if (nearest.kode === 'UPB') return `${diffMin} menit lagi selesai upacara`;
 		if (nearest.kode === 'PLG') return `${diffMin} menit lagi pulang`;
 		const custom = kegiatanCustom.find((k) => k.kode === nearest.kode);
-		if (custom) return `${diffMin} menit lagi selesai ${custom.nama}`;
+		if (custom) {
+			const nextKode = getFirstKode(todayHari, nearest.jamKe + 1);
+			if (nextKode === 'IST') return `${diffMin} menit lagi Istirahat`;
+			if (nextKode === 'UPB') return `${diffMin} menit lagi upacara`;
+			if (nextKode === 'PLG') return `${diffMin} menit lagi pulang`;
+			const nextCustom = kegiatanCustom.find((k) => k.kode === nextKode);
+			if (nextCustom) return `${diffMin} menit lagi ${nextCustom.nama}`;
+			if (nextKode && daftarKodeMapel.includes(nextKode)) {
+				if (isFirstSubjectPeriod(todayHari, nearest.jamKe + 1)) {
+					return `${diffMin} menit lagi masuk`;
+				}
+				return `${diffMin} menit lagi pergantian jam`;
+			}
+			return `${diffMin} menit lagi selesai ${custom.nama}`;
+		}
 		return '';
 	}
 
