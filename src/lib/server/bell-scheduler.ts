@@ -344,7 +344,7 @@ async function checkSekolah(
 			trig.add(key);
 		}
 
-		if (currentMinutes >= endMinutes && !perg.has(key)) {
+		if (currentMinutes >= endMinutes && currentMinutes - endMinutes < 2 && !perg.has(key)) {
 			perg.add(key);
 			if (jamKe === hariMaxJam) {
 				playSoundOnServer(sekolahId, 'pulang');
