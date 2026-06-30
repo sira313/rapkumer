@@ -42,6 +42,7 @@ export const load: PageServerLoad = async ({ parent, locals, url, depends }) => 
 				})
 			: null;
 	const tahunAjaranId = kelasRecordTa?.tahunAjaranId ?? null;
+	const kelasSemesterId = kelasRecordTa?.semesterId ?? null;
 
 	const { presensiReady, presensiWarningMessage, presensiSettings, bellSettings, kegiatanCustom } =
 		await checkPresensiReadiness(sekolahId, kelasAktif?.id ?? null, tahunAjaranId, academicContext);
@@ -237,6 +238,18 @@ export const load: PageServerLoad = async ({ parent, locals, url, depends }) => 
 				'wali_kelas_saja'
 			);
 		}
+		if (!tahunAjaranId || !kelasSemesterId) {
+			return defaultEmpty(
+				'persentase_semester',
+				search,
+				tanggal,
+				simHari,
+				simJam,
+				false,
+				'Kelas belum memiliki tahun ajaran atau semester. Atur di halaman /akademik.',
+				presensiSettings.jenisPresensi ?? 'wali_kelas_saja'
+			);
+		}
 		return loadPersentaseSemester({
 			sekolahId,
 			kelasId: kelasAktif.id,
@@ -246,7 +259,9 @@ export const load: PageServerLoad = async ({ parent, locals, url, depends }) => 
 			presensiSettings,
 			simHari,
 			simJam,
-			url
+			url,
+			tahunAjaranId,
+			semesterId: kelasSemesterId
 		});
 	}
 
@@ -275,6 +290,18 @@ export const load: PageServerLoad = async ({ parent, locals, url, depends }) => 
 				'wali_kelas_saja'
 			);
 		}
+		if (!tahunAjaranId || !kelasSemesterId) {
+			return defaultEmpty(
+				'rapor',
+				search,
+				tanggal,
+				simHari,
+				simJam,
+				false,
+				'Kelas belum memiliki tahun ajaran atau semester. Atur di halaman /akademik.',
+				presensiSettings.jenisPresensi ?? 'wali_kelas_saja'
+			);
+		}
 		return loadRapor({
 			sekolahId,
 			kelasId: kelasAktif.id,
@@ -284,7 +311,9 @@ export const load: PageServerLoad = async ({ parent, locals, url, depends }) => 
 			presensiSettings,
 			simHari,
 			simJam,
-			url
+			url,
+			tahunAjaranId,
+			semesterId: kelasSemesterId
 		});
 	}
 

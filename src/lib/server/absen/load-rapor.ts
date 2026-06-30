@@ -3,7 +3,8 @@ import {
 	tableMurid,
 	tableKetidakhadiranHarian,
 	tableKetidakhadiranRapor,
-	tableAbsensi
+	tableAbsensi,
+	tableSemester
 } from '$lib/server/db/schema';
 import { asc, eq, inArray, and, sql } from 'drizzle-orm';
 import { isValidDate } from './utils';
@@ -22,6 +23,8 @@ export async function loadRapor(params: {
 	simHari: string | null;
 	simJam: string | null;
 	url: URL;
+	tahunAjaranId: number;
+	semesterId: number;
 }): Promise<AbsenLoadData> {
 	const {
 		sekolahId,
@@ -32,7 +35,9 @@ export async function loadRapor(params: {
 		presensiSettings,
 		simHari,
 		simJam,
-		url
+		url,
+		tahunAjaranId,
+		semesterId: kelasSemesterId
 	} = params;
 
 	const defaultData = {
@@ -68,12 +73,25 @@ export async function loadRapor(params: {
 	};
 
 	const activeTa = academicContext?.tahunAjaranList.find(
-		(ta: any) => ta.id === academicContext?.activeTahunAjaranId
+		(ta: any) => ta.id === tahunAjaranId
 	);
-	const activeSem = activeTa?.semester.find((s: any) => s.id === academicContext?.activeSemesterId);
-	const tanggalMulaiRapor = activeSem?.tanggalMasuk ?? null;
-	const tanggalAkhirRapor = activeSem?.tanggalBagiRaport ?? null;
-	const semesterId = academicContext?.activeSemesterId;
+	const activeSem = activeTa?.semester.find((s: any) => s.id === kelasSemesterId);
+	let tanggalMulaiRapor = activeSem?.tanggalMasuk ?? activeSem?.tanggalMulai ?? null;
+	let tanggalAkhirRapor = activeSem?.tanggalBagiRaport ?? activeSem?.tanggalSelesai ?? null;
+	const semesterId = kelasSemesterId;
+
+	if (!tanggalMulaiRapor || !tanggalAkhirRapor) {
+		const semesterDb = semesterId
+			? await db.query.tableSemester.findFirst({
+					where: eq(tableSemester.id, semesterId),
+					columns: { tanggalMasuk: true, tanggalBagiRaport: true, tanggalMulai: true, tanggalSelesai: true }
+				})
+			: null;
+		if (semesterDb) {
+			tanggalMulaiRapor = semesterDb.tanggalMasuk ?? semesterDb.tanggalMulai ?? null;
+			tanggalAkhirRapor = semesterDb.tanggalBagiRaport ?? semesterDb.tanggalSelesai ?? null;
+		}
+	}
 
 	if (!tanggalMulaiRapor || !tanggalAkhirRapor || !semesterId) {
 		return {
@@ -128,6 +146,42 @@ export async function loadRapor(params: {
 			tanggalMulaiRapor,
 			tanggalAkhirRapor
 		};
+	}
+
+	// Auto-extend: if actual data exists outside configured range, expand to cover it
+	if (muridIds.length > 0) {
+		const [khRange, absensiRange] = await Promise.all([
+			db
+				.select({
+					minTgl: sql<string>`COALESCE(MIN(${tableKetidakhadiranHarian.tanggal}), '9999-12-31')`,
+					maxTgl: sql<string>`COALESCE(MAX(${tableKetidakhadiranHarian.tanggal}), '0000-01-01')`
+				})
+				.from(tableKetidakhadiranHarian)
+				.where(and(
+					inArray(tableKetidakhadiranHarian.muridId, muridIds),
+					sql`${tableKetidakhadiranHarian.mataPelajaranId} IS NULL`
+				)),
+			db
+				.select({
+					minTgl: sql<string>`COALESCE(MIN(SUBSTR(${tableAbsensi.waktu}, 1, 10)), '9999-12-31')`,
+					maxTgl: sql<string>`COALESCE(MAX(SUBSTR(${tableAbsensi.waktu}, 1, 10)), '0000-01-01')`
+				})
+				.from(tableAbsensi)
+				.where(and(
+					inArray(tableAbsensi.muridId, muridIds),
+					sql`${tableAbsensi.mataPelajaranId} IS NULL`
+				))
+		]);
+		const khMin = khRange[0]?.minTgl;
+		const khMax = khRange[0]?.maxTgl;
+		const absMin = absensiRange[0]?.minTgl;
+		const absMax = absensiRange[0]?.maxTgl;
+		const dataMin = [khMin, absMin].reduce((a, b) => (a < b ? a : b));
+		const dataMax = [khMax, absMax].reduce((a, b) => (a > b ? a : b));
+		if (dataMin && dataMax && dataMin !== '9999-12-31' && dataMax !== '0000-01-01') {
+			if (dataMin < tanggalMulaiRapor) tanggalMulaiRapor = dataMin;
+			if (dataMax > tanggalAkhirRapor) tanggalAkhirRapor = dataMax;
+		}
 	}
 
 	const hariSekolah = presensiSettings.hariSekolah ?? 6;
