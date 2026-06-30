@@ -63,6 +63,11 @@
 	const isWaliKelasMasukPulang = $derived(
 		jenisPresensi === 'wali_kelas_saja' && tipePresensi === 'masuk_pulang'
 	);
+	const isSingleColumnMode = $derived(
+		isWaliKelasMasukSaja ||
+			(jenisPresensi === 'tiap_mapel' &&
+				(tipePresensi === 'awal_mapel' || tipePresensi === 'awal_akhir_mapel'))
+	);
 
 	function displayKeterangan(value: string | null | undefined) {
 		if (value == null) return 'Hadir';
@@ -96,7 +101,7 @@
 				{#if isWaliKelasMasukPulang}
 					<th class="text-center" style="min-width: 100px;">Masuk</th>
 					<th class="text-center" style="min-width: 100px;">Pulang</th>
-				{:else if isWaliKelasMasukSaja}
+				{:else if isSingleColumnMode}
 					<th class="text-center" style="min-width: 100px;">Hadir</th>
 				{:else}
 					<th class="text-center" style="min-width: 100px;">Hadir</th>
@@ -160,8 +165,8 @@
 								</span>
 							{/if}
 						</td>
-					{:else if isWaliKelasMasukSaja}
-						<td class="text-center">
+				{:else if isSingleColumnMode}
+					<td class="text-center">
 							{#if isEditing}
 								<select
 									class="select select-sm bg-base-200 dark:bg-base-300 w-full truncate text-center dark:border-none"
