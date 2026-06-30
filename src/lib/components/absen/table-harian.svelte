@@ -28,7 +28,6 @@
 		editingRowId,
 		editingValues,
 		editingSubmitting,
-		editingSaveDisabled,
 		onStartEdit,
 		onCancelEdit,
 		onEditValueChange,
@@ -44,13 +43,14 @@
 		editingRowId: number | null;
 		editingValues: { keterangan: string };
 		editingSubmitting: boolean;
-		editingSaveDisabled: boolean;
 		onStartEdit: (row: KehadiranRow) => void;
 		onCancelEdit: () => void;
 		onEditValueChange: (value: { keterangan: string }) => void;
 		onUpdateSuccess: () => void;
 		onSubmitStateChange: (v: boolean) => void;
 	} = $props();
+
+	let editingSaveDisabled = $derived(editingRowId == null || editingSubmitting);
 
 	function displayKeterangan(value: string | null | undefined) {
 		if (value == null) return '-';

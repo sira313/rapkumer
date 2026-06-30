@@ -283,8 +283,6 @@
 		editingRowId = null;
 	}
 
-	const editingSaveDisabled = $derived.by(() => editingRowId == null || editingSubmitting);
-
 	async function handleUpdateSuccess() {
 		editingRowId = null;
 		await invalidate('app:absen');
@@ -1031,7 +1029,6 @@
 			{editingRowId}
 			{editingValues}
 			{editingSubmitting}
-			editingSaveDisabled
 			onStartEdit={startEdit}
 			onCancelEdit={cancelEdit}
 			onEditValueChange={(v) => (editingValues = v)}

@@ -101,17 +101,33 @@ export async function handleUpdate({
 	}
 
 	try {
-		await db
-			.insert(tableKetidakhadiranHarian)
-			.values({ muridId, tanggal, keterangan, mataPelajaranId })
-			.onConflictDoUpdate({
-				target: [
-					tableKetidakhadiranHarian.muridId,
-					tableKetidakhadiranHarian.tanggal,
-					tableKetidakhadiranHarian.mataPelajaranId
-				],
-				set: { keterangan, mataPelajaranId, updatedAt: new Date().toISOString() }
-			});
+		await db.transaction(async (tx) => {
+			// SQLite treats NULLs as distinct in UNIQUE indexes, so onConflictDoUpdate
+			// never fires when mataPelajaranId is NULL — always inserts a new row instead
+			// of updating. Delete first to guarantee a single row per (murid, tanggal, NULL).
+			if (mataPelajaranId == null) {
+				await tx
+					.delete(tableKetidakhadiranHarian)
+					.where(
+						and(
+							eq(tableKetidakhadiranHarian.muridId, muridId),
+							eq(tableKetidakhadiranHarian.tanggal, tanggal),
+							sql`${tableKetidakhadiranHarian.mataPelajaranId} IS NULL`
+						)
+					);
+			}
+			await tx
+				.insert(tableKetidakhadiranHarian)
+				.values({ muridId, tanggal, keterangan, mataPelajaranId })
+				.onConflictDoUpdate({
+					target: [
+						tableKetidakhadiranHarian.muridId,
+						tableKetidakhadiranHarian.tanggal,
+						tableKetidakhadiranHarian.mataPelajaranId
+					],
+					set: { keterangan, mataPelajaranId, updatedAt: new Date().toISOString() }
+				});
+		});
 	} catch (error) {
 		if (isTableMissingError(error)) {
 			return fail(500, { fail: TABLE_MISSING_MESSAGE });
@@ -353,6 +369,22 @@ export async function handleIsiSekaligus({
 				}
 			}
 
+			// SQLite treats NULLs as distinct in UNIQUE indexes, so onConflictDoUpdate
+			// never fires when mataPelajaranId is NULL — always inserts a new row instead
+			// of updating. Delete old rows first so each insert lands fresh.
+			if (mataPelajaranId == null) {
+				const allMuridIds = semuaMurid.map((m) => m.id);
+				await db
+					.delete(tableKetidakhadiranHarian)
+					.where(
+						and(
+							inArray(tableKetidakhadiranHarian.muridId, allMuridIds),
+							eq(tableKetidakhadiranHarian.tanggal, tanggal),
+							sql`${tableKetidakhadiranHarian.mataPelajaranId} IS NULL`
+						)
+					);
+			}
+
 			for (const murid of semuaMurid) {
 				await db
 					.insert(tableKetidakhadiranHarian)
@@ -514,6 +546,22 @@ export async function handleIsiSekaligus({
 					deleteAbsensiConditions.push(eq(tableAbsensi.mataPelajaranId, mataPelajaranId));
 				}
 				await db.delete(tableAbsensi).where(and(...deleteAbsensiConditions));
+			}
+
+			// SQLite treats NULLs as distinct in UNIQUE indexes, so onConflictDoUpdate
+			// never fires when mataPelajaranId is NULL — always inserts a new row instead
+			// of updating. Delete old rows first so each insert lands fresh.
+			if (mataPelajaranId == null) {
+				const allMuridIds = semuaMurid.map((m) => m.id);
+				await db
+					.delete(tableKetidakhadiranHarian)
+					.where(
+						and(
+							inArray(tableKetidakhadiranHarian.muridId, allMuridIds),
+							eq(tableKetidakhadiranHarian.tanggal, tanggal),
+							sql`${tableKetidakhadiranHarian.mataPelajaranId} IS NULL`
+						)
+					);
 			}
 
 			for (const [muridId, keterangan] of entryMap) {
