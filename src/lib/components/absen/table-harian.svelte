@@ -186,10 +186,12 @@
 									<option value="izin">Izin</option>
 									<option value="alfa">TK</option>
 								</select>
-							{:else}
+							{:else if murid.updatedAt != null || murid.hadir}
 								<span class="badge badge-sm whitespace-nowrap {keteranganColor(murid.keterangan)}">
 									{displayKeterangan(murid.keterangan)}
 								</span>
+							{:else}
+								<span class="text-base-content/40">-</span>
 							{/if}
 						</td>
 					{:else}
