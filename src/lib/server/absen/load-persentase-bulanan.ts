@@ -32,6 +32,11 @@ export async function loadPersentaseBulanan(params: {
 		url
 	} = params;
 
+	const jenisPresensi = presensiSettings.jenisPresensi ?? 'wali_kelas_saja';
+	const tipePresensi = presensiSettings.tipePresensi ?? '';
+	const isWaliKelasMasukPulang =
+		jenisPresensi === 'wali_kelas_saja' && tipePresensi === 'masuk_pulang';
+
 	const baseFilter = and(eq(tableMurid.sekolahId, sekolahId), eq(tableMurid.kelasId, kelasId));
 	const searchFilter = search
 		? and(baseFilter, sql`${tableMurid.nama} LIKE ${'%' + search + '%'} COLLATE NOCASE`)
@@ -63,7 +68,7 @@ export async function loadPersentaseBulanan(params: {
 	const totalHariBelajar = daysInMonth - redDays.length;
 
 	const allKetidakhadiran = await db.query.tableKetidakhadiranHarian.findMany({
-		columns: { muridId: true, tanggal: true, keterangan: true },
+		columns: { muridId: true, tanggal: true, keterangan: true, keteranganPulang: true },
 		where: and(
 			inArray(tableKetidakhadiranHarian.muridId, muridIds),
 			sql`${tableKetidakhadiranHarian.tanggal} >= ${monthStart}`,
@@ -73,8 +78,10 @@ export async function loadPersentaseBulanan(params: {
 	});
 
 	const khMap = new Map<string, string | null>();
+	const khPulangMap = new Map<string, string | null>();
 	for (const kh of allKetidakhadiran) {
 		khMap.set(`${kh.muridId}:${kh.tanggal}`, kh.keterangan);
+		khPulangMap.set(`${kh.muridId}:${kh.tanggal}`, kh.keteranganPulang);
 	}
 
 	const monthStartISO = `${monthStart}T00:00:00.000Z`;
@@ -100,6 +107,25 @@ export async function loadPersentaseBulanan(params: {
 		let sakit = 0;
 		let izin = 0;
 		let alfa = 0;
+		if (isWaliKelasMasukPulang) {
+			for (let d = 1; d <= daysInMonth; d++) {
+				if (redDays.includes(d)) continue;
+				const tgl = dateStr(tahun, bulan, d);
+				const masukKet = khMap.get(`${murid.id}:${tgl}`);
+				const pulangKet = khPulangMap.get(`${murid.id}:${tgl}`);
+				const countSession = (ket: string | null | undefined) => {
+					if (ket === null) countHadir++;
+					else if (ket === 'sakit') sakit++;
+					else if (ket === 'izin') izin++;
+					else alfa++;
+				};
+				countSession(masukKet);
+				countSession(pulangKet);
+			}
+			const totalSessions = totalHariBelajar * 2;
+			const persentase = totalSessions > 0 ? Math.round((countHadir / totalSessions) * 100) : 0;
+			return { no: index + 1, nama: murid.nama, persentase, hadir: countHadir, sakit, izin, alfa };
+		}
 		for (let d = 1; d <= daysInMonth; d++) {
 			if (redDays.includes(d)) continue;
 			const tgl = dateStr(tahun, bulan, d);
@@ -148,8 +174,8 @@ export async function loadPersentaseBulanan(params: {
 		tanggalAkhirRapor: '',
 		presensiReady: true,
 		presensiWarningMessage: '',
-		jenisPresensi: presensiSettings.jenisPresensi ?? 'wali_kelas_saja',
-		tipePresensi: '',
+		jenisPresensi,
+		tipePresensi,
 		persentaseHarianSubjects: [],
 		persentaseHarianRows: [],
 		jadwalSaatIni: null,

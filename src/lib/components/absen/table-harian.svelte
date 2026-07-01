@@ -74,7 +74,7 @@
 		const labels: Record<string, string> = {
 			sakit: 'Sakit',
 			izin: 'Izin',
-			alfa: 'Alfa'
+			alfa: 'TK'
 		};
 		return labels[value] ?? value;
 	}
@@ -133,12 +133,14 @@
 									<option value="">Hadir</option>
 									<option value="sakit">Sakit</option>
 									<option value="izin">Izin</option>
-									<option value="alfa">Alfa</option>
+									<option value="alfa">TK</option>
 								</select>
-							{:else}
+							{:else if murid.updatedAt != null || murid.hadir}
 								<span class="badge badge-sm whitespace-nowrap {keteranganColor(murid.keterangan)}">
 									{displayKeterangan(murid.keterangan)}
 								</span>
+							{:else}
+								<span class="text-base-content/40">-</span>
 							{/if}
 						</td>
 						<td class="text-center">
@@ -155,18 +157,20 @@
 									<option value="">Hadir</option>
 									<option value="sakit">Sakit</option>
 									<option value="izin">Izin</option>
-									<option value="alfa">Alfa</option>
+									<option value="alfa">TK</option>
 								</select>
-							{:else}
+							{:else if murid.updatedAt != null || murid.hadir}
 								<span
 									class="badge badge-sm whitespace-nowrap {keteranganColor(murid.keteranganPulang)}"
 								>
 									{displayKeterangan(murid.keteranganPulang)}
 								</span>
+							{:else}
+								<span class="text-base-content/40">-</span>
 							{/if}
 						</td>
-				{:else if isSingleColumnMode}
-					<td class="text-center">
+					{:else if isSingleColumnMode}
+						<td class="text-center">
 							{#if isEditing}
 								<select
 									class="select select-sm bg-base-200 dark:bg-base-300 w-full truncate text-center dark:border-none"
@@ -180,7 +184,7 @@
 									<option value="">Hadir</option>
 									<option value="sakit">Sakit</option>
 									<option value="izin">Izin</option>
-									<option value="alfa">Alfa</option>
+									<option value="alfa">TK</option>
 								</select>
 							{:else}
 								<span class="badge badge-sm whitespace-nowrap {keteranganColor(murid.keterangan)}">
@@ -212,7 +216,7 @@
 									<option value="">-</option>
 									<option value="sakit">Sakit</option>
 									<option value="izin">Izin</option>
-									<option value="alfa">Alfa</option>
+									<option value="alfa">TK</option>
 								</select>
 							{:else if murid.keterangan}
 								{displayKeterangan(murid.keterangan)}

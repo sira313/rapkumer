@@ -87,7 +87,8 @@ export const load: PageServerLoad = async ({ parent, locals, url, depends }) => 
 				simJam,
 				presensiReady,
 				presensiWarningMessage,
-				presensiSettings?.jenisPresensi ?? 'wali_kelas_saja'
+				presensiSettings?.jenisPresensi ?? 'wali_kelas_saja',
+				presensiSettings?.tipePresensi
 			);
 		}
 		const bulanParam = url.searchParams.get('bulan');
@@ -104,7 +105,8 @@ export const load: PageServerLoad = async ({ parent, locals, url, depends }) => 
 				simJam,
 				presensiReady,
 				presensiWarningMessage,
-				presensiSettings?.jenisPresensi ?? 'wali_kelas_saja'
+				presensiSettings?.jenisPresensi ?? 'wali_kelas_saja',
+				presensiSettings?.tipePresensi
 			);
 		}
 		if (!Number.isInteger(tahun) || tahun < 2000 || tahun > 2099) {
@@ -116,7 +118,8 @@ export const load: PageServerLoad = async ({ parent, locals, url, depends }) => 
 				simJam,
 				presensiReady,
 				presensiWarningMessage,
-				presensiSettings?.jenisPresensi ?? 'wali_kelas_saja'
+				presensiSettings?.jenisPresensi ?? 'wali_kelas_saja',
+				presensiSettings?.tipePresensi
 			);
 		}
 		if (!presensiSettings) {
@@ -155,7 +158,8 @@ export const load: PageServerLoad = async ({ parent, locals, url, depends }) => 
 				simJam,
 				presensiReady,
 				presensiWarningMessage,
-				presensiSettings?.jenisPresensi ?? 'wali_kelas_saja'
+				presensiSettings?.jenisPresensi ?? 'wali_kelas_saja',
+				presensiSettings?.tipePresensi
 			);
 		}
 		const bulanParam = url.searchParams.get('bulan');
@@ -172,7 +176,8 @@ export const load: PageServerLoad = async ({ parent, locals, url, depends }) => 
 				simJam,
 				presensiReady,
 				presensiWarningMessage,
-				presensiSettings?.jenisPresensi ?? 'wali_kelas_saja'
+				presensiSettings?.jenisPresensi ?? 'wali_kelas_saja',
+				presensiSettings?.tipePresensi
 			);
 		}
 		if (!Number.isInteger(tahun) || tahun < 2000 || tahun > 2099) {
@@ -184,7 +189,8 @@ export const load: PageServerLoad = async ({ parent, locals, url, depends }) => 
 				simJam,
 				presensiReady,
 				presensiWarningMessage,
-				presensiSettings?.jenisPresensi ?? 'wali_kelas_saja'
+				presensiSettings?.jenisPresensi ?? 'wali_kelas_saja',
+				presensiSettings?.tipePresensi
 			);
 		}
 		if (!presensiSettings) {
@@ -223,7 +229,8 @@ export const load: PageServerLoad = async ({ parent, locals, url, depends }) => 
 				simJam,
 				presensiReady,
 				presensiWarningMessage,
-				presensiSettings?.jenisPresensi ?? 'wali_kelas_saja'
+				presensiSettings?.jenisPresensi ?? 'wali_kelas_saja',
+				presensiSettings?.tipePresensi
 			);
 		}
 		if (!presensiSettings) {
@@ -247,7 +254,8 @@ export const load: PageServerLoad = async ({ parent, locals, url, depends }) => 
 				simJam,
 				false,
 				'Kelas belum memiliki tahun ajaran atau semester. Atur di halaman /akademik.',
-				presensiSettings.jenisPresensi ?? 'wali_kelas_saja'
+				presensiSettings.jenisPresensi ?? 'wali_kelas_saja',
+				presensiSettings.tipePresensi
 			);
 		}
 		return loadPersentaseSemester({
@@ -275,7 +283,8 @@ export const load: PageServerLoad = async ({ parent, locals, url, depends }) => 
 				simJam,
 				presensiReady,
 				presensiWarningMessage,
-				presensiSettings?.jenisPresensi ?? 'wali_kelas_saja'
+				presensiSettings?.jenisPresensi ?? 'wali_kelas_saja',
+				presensiSettings?.tipePresensi
 			);
 		}
 		if (!presensiSettings) {
@@ -299,7 +308,8 @@ export const load: PageServerLoad = async ({ parent, locals, url, depends }) => 
 				simJam,
 				false,
 				'Kelas belum memiliki tahun ajaran atau semester. Atur di halaman /akademik.',
-				presensiSettings.jenisPresensi ?? 'wali_kelas_saja'
+				presensiSettings.jenisPresensi ?? 'wali_kelas_saja',
+				presensiSettings.tipePresensi
 			);
 		}
 		return loadRapor({
@@ -327,7 +337,8 @@ export const load: PageServerLoad = async ({ parent, locals, url, depends }) => 
 			simJam,
 			presensiReady,
 			presensiWarningMessage,
-			presensiSettings?.jenisPresensi ?? 'wali_kelas_saja'
+			presensiSettings?.jenisPresensi ?? 'wali_kelas_saja',
+			presensiSettings?.tipePresensi
 		);
 	}
 	if (!presensiSettings) {
@@ -374,7 +385,8 @@ function defaultEmpty(
 	simJam: string | null,
 	presensiReady: boolean,
 	presensiWarningMessage: string,
-	jenisPresensi: string
+	jenisPresensi: string,
+	tipePresensi?: string
 ) {
 	return {
 		meta: { title: 'Kehadiran Murid' },
@@ -400,7 +412,7 @@ function defaultEmpty(
 		presensiReady,
 		presensiWarningMessage,
 		jenisPresensi,
-		tipePresensi: '',
+		tipePresensi: tipePresensi ?? '',
 		persentaseHarianSubjects: [],
 		persentaseHarianRows: [],
 		jadwalSaatIni: null,

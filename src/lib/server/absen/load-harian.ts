@@ -7,7 +7,7 @@ import {
 	tableMataPelajaran,
 	tableJadwalPelajaran
 } from '$lib/server/db/schema';
-import { asc, eq, inArray, and, sql } from 'drizzle-orm';
+import { asc, desc, eq, inArray, and, sql } from 'drizzle-orm';
 import { isTableMissingError, todayDateString } from './utils';
 import { computePagination, PER_PAGE } from './pagination';
 import {
@@ -517,7 +517,8 @@ export async function loadHarian(params: {
 	}
 
 	const rows: KehadiranRow[] = queryRecords.map((murid, index) => {
-		const kh = murid.ketidakhadiranHarian?.[0] ?? null;
+		const khArray = murid.ketidakhadiranHarian;
+		const kh = khArray?.length ? khArray[khArray.length - 1] : null;
 		return {
 			id: murid.id,
 			no: pagination.offset + index + 1,
@@ -574,6 +575,7 @@ export async function loadHarian(params: {
 				with: {
 					ketidakhadiranHarian: {
 						columns: { keterangan: true },
+						orderBy: [desc(tableKetidakhadiranHarian.createdAt)],
 						where: and(
 							eq(tableKetidakhadiranHarian.tanggal, tanggal),
 							sql`${tableKetidakhadiranHarian.mataPelajaranId} IS NULL`
@@ -584,11 +586,10 @@ export async function loadHarian(params: {
 				where: baseFilter,
 				orderBy: asc(tableMurid.nama)
 			});
-			semuaMurid = semuaMuridRecords.map((m) => ({
-				id: m.id,
-				nama: m.nama,
-				keterangan: m.ketidakhadiranHarian?.[0]?.keterangan ?? null
-			}));
+			semuaMurid = semuaMuridRecords.map((m) => {
+				const kh = m.ketidakhadiranHarian?.[0] ?? null;
+				return { id: m.id, nama: m.nama, keterangan: kh?.keterangan ?? null };
+			});
 		} catch {
 			tableReady = false;
 		}

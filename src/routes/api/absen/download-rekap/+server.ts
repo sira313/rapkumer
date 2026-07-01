@@ -819,12 +819,18 @@ export async function POST({ cookies, locals, request }) {
 	const semesterRecord = kelasRecord?.semesterId
 		? await db.query.tableSemester.findFirst({
 				where: eq(tableSemester.id, kelasRecord.semesterId),
-				columns: { tanggalMasuk: true, tanggalBagiRaport: true, tanggalMulai: true, tanggalSelesai: true }
+				columns: {
+					tanggalMasuk: true,
+					tanggalBagiRaport: true,
+					tanggalMulai: true,
+					tanggalSelesai: true
+				}
 			})
 		: null;
 
 	const tanggalMulaiSem = semesterRecord?.tanggalMasuk ?? semesterRecord?.tanggalMulai ?? null;
-	const tanggalAkhirSem = semesterRecord?.tanggalBagiRaport ?? semesterRecord?.tanggalSelesai ?? null;
+	const tanggalAkhirSem =
+		semesterRecord?.tanggalBagiRaport ?? semesterRecord?.tanggalSelesai ?? null;
 
 	if (tanggalMulaiSem && tanggalAkhirSem && presensiSettings) {
 		const rangeLiburDates = buildRangeLiburDates(

@@ -282,7 +282,7 @@
 									>
 										<option value="sakit">Sakit</option>
 										<option value="izin">Izin</option>
-										<option value="alfa">Alfa</option>
+										<option value="alfa">TK</option>
 									</select>
 								{/if}
 							</td>

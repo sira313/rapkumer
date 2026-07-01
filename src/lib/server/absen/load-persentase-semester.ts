@@ -1,5 +1,10 @@
 import db from '$lib/server/db';
-import { tableMurid, tableKetidakhadiranHarian, tableAbsensi, tableSemester } from '$lib/server/db/schema';
+import {
+	tableMurid,
+	tableKetidakhadiranHarian,
+	tableAbsensi,
+	tableSemester
+} from '$lib/server/db/schema';
 import { asc, eq, inArray, and, sql } from 'drizzle-orm';
 import { isValidDate } from './utils';
 import { computePagination, PER_PAGE } from './pagination';
@@ -34,6 +39,11 @@ export async function loadPersentaseSemester(params: {
 		semesterId
 	} = params;
 
+	const jenisPresensi = presensiSettings.jenisPresensi ?? 'wali_kelas_saja';
+	const tipePresensi = presensiSettings.tipePresensi ?? '';
+	const isWaliKelasMasukPulang =
+		jenisPresensi === 'wali_kelas_saja' && tipePresensi === 'masuk_pulang';
+
 	const defaultData = {
 		meta: { title: 'Kehadiran Murid' } as const,
 		tableReady: true,
@@ -57,8 +67,8 @@ export async function loadPersentaseSemester(params: {
 		tanggalAkhirRapor: '',
 		presensiReady: true,
 		presensiWarningMessage: '',
-		jenisPresensi: presensiSettings.jenisPresensi ?? 'wali_kelas_saja',
-		tipePresensi: '',
+		jenisPresensi,
+		tipePresensi,
 		persentaseHarianSubjects: [],
 		persentaseHarianRows: [],
 		jadwalSaatIni: null,
@@ -66,9 +76,7 @@ export async function loadPersentaseSemester(params: {
 		simulasiJam: simJam
 	};
 
-	const activeTa = academicContext?.tahunAjaranList.find(
-		(ta: any) => ta.id === tahunAjaranId
-	);
+	const activeTa = academicContext?.tahunAjaranList.find((ta: any) => ta.id === tahunAjaranId);
 	const activeSem = activeTa?.semester.find((s: any) => s.id === semesterId);
 	let tanggalMulaiRapor = activeSem?.tanggalMasuk ?? activeSem?.tanggalMulai ?? null;
 	let tanggalAkhirRapor = activeSem?.tanggalBagiRaport ?? activeSem?.tanggalSelesai ?? null;
@@ -77,7 +85,12 @@ export async function loadPersentaseSemester(params: {
 		const semesterDb = semesterId
 			? await db.query.tableSemester.findFirst({
 					where: eq(tableSemester.id, semesterId),
-					columns: { tanggalMasuk: true, tanggalBagiRaport: true, tanggalMulai: true, tanggalSelesai: true }
+					columns: {
+						tanggalMasuk: true,
+						tanggalBagiRaport: true,
+						tanggalMulai: true,
+						tanggalSelesai: true
+					}
 				})
 			: null;
 		if (semesterDb) {
@@ -134,20 +147,21 @@ export async function loadPersentaseSemester(params: {
 					maxTgl: sql<string>`COALESCE(MAX(${tableKetidakhadiranHarian.tanggal}), '0000-01-01')`
 				})
 				.from(tableKetidakhadiranHarian)
-				.where(and(
-					inArray(tableKetidakhadiranHarian.muridId, muridIds),
-					sql`${tableKetidakhadiranHarian.mataPelajaranId} IS NULL`
-				)),
+				.where(
+					and(
+						inArray(tableKetidakhadiranHarian.muridId, muridIds),
+						sql`${tableKetidakhadiranHarian.mataPelajaranId} IS NULL`
+					)
+				),
 			db
 				.select({
 					minTgl: sql<string>`COALESCE(MIN(SUBSTR(${tableAbsensi.waktu}, 1, 10)), '9999-12-31')`,
 					maxTgl: sql<string>`COALESCE(MAX(SUBSTR(${tableAbsensi.waktu}, 1, 10)), '0000-01-01')`
 				})
 				.from(tableAbsensi)
-				.where(and(
-					inArray(tableAbsensi.muridId, muridIds),
-					sql`${tableAbsensi.mataPelajaranId} IS NULL`
-				))
+				.where(
+					and(inArray(tableAbsensi.muridId, muridIds), sql`${tableAbsensi.mataPelajaranId} IS NULL`)
+				)
 		]);
 		const khMin = khRange[0]?.minTgl;
 		const khMax = khRange[0]?.maxTgl;
@@ -176,7 +190,7 @@ export async function loadPersentaseSemester(params: {
 	const totalHariBelajar = allDates.length - redDaySet.size;
 
 	const allKetidakhadiran = await db.query.tableKetidakhadiranHarian.findMany({
-		columns: { muridId: true, tanggal: true, keterangan: true },
+		columns: { muridId: true, tanggal: true, keterangan: true, keteranganPulang: true },
 		where: and(
 			inArray(tableKetidakhadiranHarian.muridId, muridIds),
 			sql`${tableKetidakhadiranHarian.tanggal} >= ${tanggalMulaiRapor}`,
@@ -186,8 +200,10 @@ export async function loadPersentaseSemester(params: {
 	});
 
 	const khMap = new Map<string, string | null>();
+	const khPulangMap = new Map<string, string | null>();
 	for (const kh of allKetidakhadiran) {
 		khMap.set(`${kh.muridId}:${kh.tanggal}`, kh.keterangan);
+		khPulangMap.set(`${kh.muridId}:${kh.tanggal}`, kh.keteranganPulang);
 	}
 
 	const rangeStartISO = `${tanggalMulaiRapor}T00:00:00.000Z`;
@@ -213,6 +229,24 @@ export async function loadPersentaseSemester(params: {
 		let sakit = 0;
 		let izin = 0;
 		let alfa = 0;
+		if (isWaliKelasMasukPulang) {
+			for (const tgl of allDates) {
+				if (redDaySet.has(tgl)) continue;
+				const masukKet = khMap.get(`${murid.id}:${tgl}`);
+				const pulangKet = khPulangMap.get(`${murid.id}:${tgl}`);
+				const countSession = (ket: string | null | undefined) => {
+					if (ket === null) countHadir++;
+					else if (ket === 'sakit') sakit++;
+					else if (ket === 'izin') izin++;
+					else alfa++;
+				};
+				countSession(masukKet);
+				countSession(pulangKet);
+			}
+			const totalSessions = totalHariBelajar * 2;
+			const persentase = totalSessions > 0 ? Math.round((countHadir / totalSessions) * 100) : 0;
+			return { no: index + 1, nama: murid.nama, persentase, hadir: countHadir, sakit, izin, alfa };
+		}
 		for (const tgl of allDates) {
 			if (redDaySet.has(tgl)) continue;
 			const keterangan = khMap.get(`${murid.id}:${tgl}`);

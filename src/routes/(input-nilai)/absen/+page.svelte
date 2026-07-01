@@ -967,6 +967,8 @@
 			rows={data.persentaseBulananRows}
 			namaBulan={bulanList[data.bulan - 1] ?? ''}
 			totalHariBelajar={data.totalHariBelajar}
+			jenisPresensi={data.jenisPresensi}
+			tipePresensi={data.tipePresensi}
 		/>
 		<AbsenPagination {pages} {currentPage} onPageClick={handlePageClick} />
 	{:else if data.mode === 'persentase_harian'}
@@ -981,6 +983,8 @@
 			tanggalMulai={data.tanggalMulaiRapor}
 			tanggalAkhir={data.tanggalAkhirRapor}
 			totalHariBelajar={data.totalHariBelajar}
+			jenisPresensi={data.jenisPresensi}
+			tipePresensi={data.tipePresensi}
 		/>
 		<AbsenPagination {pages} {currentPage} onPageClick={handlePageClick} />
 	{:else}

@@ -32,6 +32,11 @@ export async function loadBulanan(params: {
 		url
 	} = params;
 
+	const jenisPresensi = presensiSettings.jenisPresensi ?? 'wali_kelas_saja';
+	const tipePresensi = presensiSettings.tipePresensi ?? '';
+	const isWaliKelasMasukPulang =
+		jenisPresensi === 'wali_kelas_saja' && tipePresensi === 'masuk_pulang';
+
 	const baseFilter = and(eq(tableMurid.sekolahId, sekolahId), eq(tableMurid.kelasId, kelasId));
 	const searchFilter = search
 		? and(baseFilter, sql`${tableMurid.nama} LIKE ${'%' + search + '%'} COLLATE NOCASE`)
@@ -104,7 +109,7 @@ export async function loadBulanan(params: {
 			if (keterangan === 'alfa') return 'TK';
 			return 'TK';
 		}
-		if (absensiSet.has(`${muridId}:${tgl}`)) return 'H';
+		if (!isWaliKelasMasukPulang && absensiSet.has(`${muridId}:${tgl}`)) return 'H';
 		return '';
 	}
 
@@ -166,8 +171,8 @@ export async function loadBulanan(params: {
 		tanggalAkhirRapor: '',
 		presensiReady: true,
 		presensiWarningMessage: '',
-		jenisPresensi: presensiSettings.jenisPresensi ?? 'wali_kelas_saja',
-		tipePresensi: '',
+		jenisPresensi,
+		tipePresensi,
 		persentaseHarianSubjects: [],
 		persentaseHarianRows: [],
 		jadwalSaatIni: null,

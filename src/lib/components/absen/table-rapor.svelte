@@ -56,7 +56,7 @@
 				<th class="text-center" style="min-width: 80px;">Hadir</th>
 				<th class="text-center" style="min-width: 80px;">Sakit</th>
 				<th class="text-center" style="min-width: 80px;">Izin</th>
-				<th class="text-center" style="min-width: 80px;">Alfa</th>
+				<th class="text-center" style="min-width: 80px;">TK</th>
 				<th class="text-center" style="min-width: 160px;">Aksi</th>
 			</tr>
 		</thead>
