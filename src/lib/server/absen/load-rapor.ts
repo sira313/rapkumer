@@ -4,12 +4,15 @@ import {
 	tableKetidakhadiranHarian,
 	tableKetidakhadiranRapor,
 	tableAbsensi,
-	tableSemester
+	tableSemester,
+	tableMataPelajaran,
+	tableJadwalPelajaran
 } from '$lib/server/db/schema';
 import { asc, eq, inArray, and, sql } from 'drizzle-orm';
 import { isValidDate } from './utils';
 import { computePagination, PER_PAGE } from './pagination';
 import { buildRangeLiburDates, buildRangeRedDays } from './libur';
+import { getUniqueSubjectKodes } from './first-mapel';
 import type { RaporRow, AbsenLoadData } from './types';
 import type { PresensiCheckResult } from './presensi';
 
@@ -44,7 +47,7 @@ export async function loadRapor(params: {
 	const tipePresensi = presensiSettings.tipePresensi ?? '';
 	const isWaliKelasMasukPulang =
 		jenisPresensi === 'wali_kelas_saja' && tipePresensi === 'masuk_pulang';
-
+	const isTiapMapel = jenisPresensi === 'tiap_mapel';
 	const defaultData = {
 		meta: { title: 'Kehadiran Murid' } as const,
 		tableReady: true,
@@ -59,6 +62,7 @@ export async function loadRapor(params: {
 		tahun: 0,
 		daysInMonth: 0,
 		totalHariBelajar: 0,
+		totalPertemuan: 0,
 		bulananRows: [],
 		raporRows: [] as RaporRow[],
 		persentaseBulananRows: [],
@@ -73,8 +77,12 @@ export async function loadRapor(params: {
 		persentaseHarianSubjects: [],
 		persentaseHarianRows: [],
 		jadwalSaatIni: null,
+		harianMapelId: null,
+		guruMapelSubject: null,
+		isMapelOnJadwal: false,
 		simulasiHari: simHari,
-		simulasiJam: simJam
+		simulasiJam: simJam,
+		isLibur: false
 	};
 
 	const activeTa = academicContext?.tahunAjaranList.find((ta: any) => ta.id === tahunAjaranId);
@@ -156,43 +164,6 @@ export async function loadRapor(params: {
 		};
 	}
 
-	// Auto-extend: if actual data exists outside configured range, expand to cover it
-	if (muridIds.length > 0) {
-		const [khRange, absensiRange] = await Promise.all([
-			db
-				.select({
-					minTgl: sql<string>`COALESCE(MIN(${tableKetidakhadiranHarian.tanggal}), '9999-12-31')`,
-					maxTgl: sql<string>`COALESCE(MAX(${tableKetidakhadiranHarian.tanggal}), '0000-01-01')`
-				})
-				.from(tableKetidakhadiranHarian)
-				.where(
-					and(
-						inArray(tableKetidakhadiranHarian.muridId, muridIds),
-						sql`${tableKetidakhadiranHarian.mataPelajaranId} IS NULL`
-					)
-				),
-			db
-				.select({
-					minTgl: sql<string>`COALESCE(MIN(SUBSTR(${tableAbsensi.waktu}, 1, 10)), '9999-12-31')`,
-					maxTgl: sql<string>`COALESCE(MAX(SUBSTR(${tableAbsensi.waktu}, 1, 10)), '0000-01-01')`
-				})
-				.from(tableAbsensi)
-				.where(
-					and(inArray(tableAbsensi.muridId, muridIds), sql`${tableAbsensi.mataPelajaranId} IS NULL`)
-				)
-		]);
-		const khMin = khRange[0]?.minTgl;
-		const khMax = khRange[0]?.maxTgl;
-		const absMin = absensiRange[0]?.minTgl;
-		const absMax = absensiRange[0]?.maxTgl;
-		const dataMin = [khMin, absMin].reduce((a, b) => (a < b ? a : b));
-		const dataMax = [khMax, absMax].reduce((a, b) => (a > b ? a : b));
-		if (dataMin && dataMax && dataMin !== '9999-12-31' && dataMax !== '0000-01-01') {
-			if (dataMin < tanggalMulaiRapor) tanggalMulaiRapor = dataMin;
-			if (dataMax > tanggalAkhirRapor) tanggalAkhirRapor = dataMax;
-		}
-	}
-
 	const hariSekolah = presensiSettings.hariSekolah ?? 6;
 	const rangeLiburDates = buildRangeLiburDates(
 		presensiSettings,
@@ -206,39 +177,195 @@ export async function loadRapor(params: {
 		rangeLiburDates
 	);
 
-	const allKetidakhadiran = await db.query.tableKetidakhadiranHarian.findMany({
-		columns: { muridId: true, tanggal: true, keterangan: true, keteranganPulang: true },
-		where: and(
-			inArray(tableKetidakhadiranHarian.muridId, muridIds),
-			sql`${tableKetidakhadiranHarian.tanggal} >= ${tanggalMulaiRapor}`,
-			sql`${tableKetidakhadiranHarian.tanggal} <= ${tanggalAkhirRapor}`,
-			sql`${tableKetidakhadiranHarian.mataPelajaranId} IS NULL`
-		)
-	});
-
-	const khMap = new Map<string, string | null>();
-	const khPulangMap = new Map<string, string | null>();
-	for (const kh of allKetidakhadiran) {
-		khMap.set(`${kh.muridId}:${kh.tanggal}`, kh.keterangan);
-		khPulangMap.set(`${kh.muridId}:${kh.tanggal}`, kh.keteranganPulang);
-	}
-
+	const totalHariBelajar = allDates.filter((tgl) => !redDaySet.has(tgl)).length;
 	const rangeStartISO = `${tanggalMulaiRapor}T00:00:00.000Z`;
 	const rangeEndISO = `${tanggalAkhirRapor}T23:59:59.999Z`;
 
-	const allAbsensi = await db.query.tableAbsensi.findMany({
-		columns: { muridId: true, waktu: true },
-		where: and(
-			inArray(tableAbsensi.muridId, muridIds),
-			sql`${tableAbsensi.waktu} >= ${rangeStartISO}`,
-			sql`${tableAbsensi.waktu} <= ${rangeEndISO}`,
-			sql`${tableAbsensi.mataPelajaranId} IS NULL`
-		)
-	});
+	// For tiap_mapel, build day -> subject mapping across full range
+	const dateSubjectKodesMap = new Map<string, string[]>();
+	const kodeToMpMap = new Map<string, number>();
+
+	if (isTiapMapel) {
+		const dayNames = ['minggu', 'senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu'];
+		const hariJadwalCache = new Map<string, string[]>();
+
+		for (const tgl of allDates) {
+			if (redDaySet.has(tgl)) continue;
+			const hariNama = dayNames[new Date(tgl + 'T00:00:00').getDay()];
+
+			let uniqueKode: string[];
+			if (hariJadwalCache.has(hariNama)) {
+				uniqueKode = hariJadwalCache.get(hariNama)!;
+			} else {
+				const jadwal = await db.query.tableJadwalPelajaran.findMany({
+					columns: { kodeKegiatan: true, jamKe: true },
+					where: and(
+						eq(tableJadwalPelajaran.sekolahId, sekolahId),
+						eq(tableJadwalPelajaran.kelasId, kelasId),
+						eq(tableJadwalPelajaran.hari, hariNama)
+					),
+					orderBy: [asc(tableJadwalPelajaran.jamKe)]
+				});
+				uniqueKode = getUniqueSubjectKodes(jadwal);
+				hariJadwalCache.set(hariNama, uniqueKode);
+			}
+
+			dateSubjectKodesMap.set(tgl, uniqueKode);
+		}
+
+		// Build kodeToMpMap from all unique kodes across all days
+		const allKodes = [...new Set(Array.from(dateSubjectKodesMap.values()).flat())];
+		const matchingMp = await db.query.tableMataPelajaran.findMany({
+			columns: { id: true, kode: true },
+			where: and(
+				eq(tableMataPelajaran.kelasId, kelasId),
+				inArray(tableMataPelajaran.kode, allKodes)
+			)
+		});
+		for (const mp of matchingMp) {
+			if (mp.kode) kodeToMpMap.set(mp.kode, mp.id);
+		}
+
+		// Keep all kodes — rapor uses only the first valid mapel per day
+	}
+
+	const mpIds = [...kodeToMpMap.values()];
+
+	let allKetidakhadiran: Array<{
+		muridId: number;
+		tanggal: string;
+		keterangan: string | null;
+		keteranganPulang: string | null;
+		mataPelajaranId: number | null;
+	}> = [];
+	let allAbsensi: Array<{ muridId: number; waktu: string; mataPelajaranId?: number | null }> = [];
+	let allNullKetidakhadiran: Array<{
+		muridId: number;
+		tanggal: string;
+		keterangan: string | null;
+		keteranganPulang: string | null;
+	}> = [];
+	let allNullAbsensi: Array<{ muridId: number; waktu: string }> = [];
+
+	if (isTiapMapel) {
+		const isiMapelKhPromise =
+			mpIds.length > 0
+				? db.query.tableKetidakhadiranHarian.findMany({
+						columns: {
+							muridId: true,
+							tanggal: true,
+							keterangan: true,
+							keteranganPulang: true,
+							mataPelajaranId: true
+						},
+						where: and(
+							inArray(tableKetidakhadiranHarian.muridId, muridIds),
+							sql`${tableKetidakhadiranHarian.tanggal} >= ${tanggalMulaiRapor}`,
+							sql`${tableKetidakhadiranHarian.tanggal} <= ${tanggalAkhirRapor}`,
+							inArray(tableKetidakhadiranHarian.mataPelajaranId, mpIds)
+						)
+					})
+				: Promise.resolve([]);
+		const isiMapelAbsPromise =
+			mpIds.length > 0
+				? db.query.tableAbsensi.findMany({
+						columns: { muridId: true, waktu: true, mataPelajaranId: true },
+						where: and(
+							inArray(tableAbsensi.muridId, muridIds),
+							sql`${tableAbsensi.waktu} >= ${rangeStartISO}`,
+							sql`${tableAbsensi.waktu} <= ${rangeEndISO}`,
+							inArray(tableAbsensi.mataPelajaranId, mpIds)
+						)
+					})
+				: Promise.resolve([]);
+		const [kh, abs, nullKh, nullAbs] = await Promise.all([
+			isiMapelKhPromise,
+			isiMapelAbsPromise,
+			db.query.tableKetidakhadiranHarian.findMany({
+				columns: { muridId: true, tanggal: true, keterangan: true, keteranganPulang: true },
+				where: and(
+					inArray(tableKetidakhadiranHarian.muridId, muridIds),
+					sql`${tableKetidakhadiranHarian.tanggal} >= ${tanggalMulaiRapor}`,
+					sql`${tableKetidakhadiranHarian.tanggal} <= ${tanggalAkhirRapor}`,
+					sql`${tableKetidakhadiranHarian.mataPelajaranId} IS NULL`
+				)
+			}),
+			db.query.tableAbsensi.findMany({
+				columns: { muridId: true, waktu: true },
+				where: and(
+					inArray(tableAbsensi.muridId, muridIds),
+					sql`${tableAbsensi.waktu} >= ${rangeStartISO}`,
+					sql`${tableAbsensi.waktu} <= ${rangeEndISO}`,
+					sql`${tableAbsensi.mataPelajaranId} IS NULL`
+				)
+			})
+		]);
+		allKetidakhadiran = kh;
+		allAbsensi = abs;
+		allNullKetidakhadiran = nullKh;
+		allNullAbsensi = nullAbs;
+	} else if (!isTiapMapel) {
+		const [kh, abs] = await Promise.all([
+			db.query.tableKetidakhadiranHarian.findMany({
+				columns: {
+					muridId: true,
+					tanggal: true,
+					keterangan: true,
+					keteranganPulang: true,
+					mataPelajaranId: true
+				},
+				where: and(
+					inArray(tableKetidakhadiranHarian.muridId, muridIds),
+					sql`${tableKetidakhadiranHarian.tanggal} >= ${tanggalMulaiRapor}`,
+					sql`${tableKetidakhadiranHarian.tanggal} <= ${tanggalAkhirRapor}`,
+					sql`${tableKetidakhadiranHarian.mataPelajaranId} IS NULL`
+				)
+			}),
+			db.query.tableAbsensi.findMany({
+				columns: { muridId: true, waktu: true, mataPelajaranId: true },
+				where: and(
+					inArray(tableAbsensi.muridId, muridIds),
+					sql`${tableAbsensi.waktu} >= ${rangeStartISO}`,
+					sql`${tableAbsensi.waktu} <= ${rangeEndISO}`,
+					sql`${tableAbsensi.mataPelajaranId} IS NULL`
+				)
+			})
+		]);
+		allKetidakhadiran = kh;
+		allAbsensi = abs;
+	}
+
+	const khMap = new Map<string, string | null>();
+	const khPulangMap = new Map<string, string | null>();
+	const nullKhMap = new Map<string, string | null>();
+	const nullKhPulangMap = new Map<string, string | null>();
+	for (const kh of allKetidakhadiran) {
+		if (isTiapMapel) {
+			khMap.set(`${kh.muridId}:${kh.tanggal}:${kh.mataPelajaranId}`, kh.keterangan);
+			khPulangMap.set(`${kh.muridId}:${kh.tanggal}:${kh.mataPelajaranId}`, kh.keteranganPulang);
+		} else {
+			khMap.set(`${kh.muridId}:${kh.tanggal}`, kh.keterangan);
+			khPulangMap.set(`${kh.muridId}:${kh.tanggal}`, kh.keteranganPulang);
+		}
+	}
+	for (const kh of allNullKetidakhadiran) {
+		nullKhMap.set(`${kh.muridId}:${kh.tanggal}`, kh.keterangan);
+		nullKhPulangMap.set(`${kh.muridId}:${kh.tanggal}`, kh.keteranganPulang);
+	}
 
 	const absensiSet = new Set<string>();
+	const absensiPerMapel = new Map<string, number>();
+	const nullAbsensiSet = new Set<string>();
 	for (const a of allAbsensi) {
-		absensiSet.add(`${a.muridId}:${a.waktu.slice(0, 10)}`);
+		if (isTiapMapel) {
+			const key = `${a.muridId}:${a.waktu.slice(0, 10)}:${a.mataPelajaranId}`;
+			absensiPerMapel.set(key, (absensiPerMapel.get(key) ?? 0) + 1);
+		} else {
+			absensiSet.add(`${a.muridId}:${a.waktu.slice(0, 10)}`);
+		}
+	}
+	for (const a of allNullAbsensi) {
+		nullAbsensiSet.add(`${a.muridId}:${a.waktu.slice(0, 10)}`);
 	}
 
 	const allOverrides = await db.query.tableKetidakhadiranRapor.findMany({
@@ -266,16 +393,69 @@ export async function loadRapor(params: {
 		if (isWaliKelasMasukPulang) {
 			for (const tgl of allDates) {
 				if (redDaySet.has(tgl)) continue;
-				const masukKet = khMap.get(`${murid.id}:${tgl}`);
-				const pulangKet = khPulangMap.get(`${murid.id}:${tgl}`);
-				const countSession = (ket: string | null | undefined) => {
-					if (ket === null) hadir++;
-					else if (ket === 'sakit') sakit++;
-					else if (ket === 'izin') izin++;
+				const keterangan = khMap.get(`${murid.id}:${tgl}`);
+				if (keterangan !== undefined) {
+					if (keterangan === null) hadir++;
+					else if (keterangan === 'sakit') sakit++;
+					else if (keterangan === 'izin') izin++;
+					else if (keterangan === 'alfa') alfa++;
 					else alfa++;
-				};
-				countSession(masukKet);
-				countSession(pulangKet);
+				} else if (absensiSet.has(`${murid.id}:${tgl}`)) {
+					hadir++;
+				} else {
+					alfa++;
+				}
+			}
+		} else if (isTiapMapel) {
+			for (const tgl of allDates) {
+				if (redDaySet.has(tgl)) continue;
+				const subjectKodes = dateSubjectKodesMap.get(tgl) ?? [];
+
+				// Rapor follows harian/bulanan: use first valid mapel only
+				let mpId: number | null = null;
+				for (const kode of subjectKodes) {
+					const found = kodeToMpMap.get(kode);
+					if (found != null) {
+						mpId = found;
+						break;
+					}
+				}
+
+				const nullKey = `${murid.id}:${tgl}`;
+				let keterangan: string | null | undefined;
+
+				if (mpId != null) {
+					const khKey = `${murid.id}:${tgl}:${mpId}`;
+					keterangan = khMap.get(khKey);
+					if (keterangan === undefined && nullKhMap.has(nullKey)) {
+						keterangan = nullKhMap.get(nullKey);
+					}
+				} else {
+					// No valid mapel — fall back to null-mpId record
+					keterangan = nullKhMap.get(nullKey);
+				}
+
+				if (keterangan !== undefined) {
+					if (keterangan === null) {
+						hadir++;
+					} else if (keterangan === 'sakit') {
+						sakit++;
+					} else if (keterangan === 'izin') {
+						izin++;
+					} else {
+						alfa++;
+					}
+				} else {
+					const hasAbsensi =
+						mpId != null
+							? absensiPerMapel.has(`${murid.id}:${tgl}:${mpId}`) || nullAbsensiSet.has(nullKey)
+							: nullAbsensiSet.has(nullKey);
+					if (hasAbsensi) {
+						hadir++;
+					} else {
+						alfa++;
+					}
+				}
 			}
 		} else {
 			for (const tgl of allDates) {
@@ -324,6 +504,7 @@ export async function loadRapor(params: {
 		muridCount: muridCount ?? 0,
 		tanggalMulaiRapor,
 		tanggalAkhirRapor,
+		totalHariBelajar,
 		raporRows
 	};
 }

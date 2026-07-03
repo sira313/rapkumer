@@ -6,14 +6,11 @@ import {
 	tableAbsensi,
 	tableAuthUserMataPelajaran,
 	tableMataPelajaran,
-	tableJadwalPelajaran,
-	tableBellSettings,
-	tableKegiatanCustom,
 	tablePresensiSettings,
 	tableTahunAjaran,
 	tableSemester
 } from '$lib/server/db/schema';
-import { and, eq, inArray, sql, asc } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import { fail } from '@sveltejs/kit';
 import {
 	canUserEditAbsen,
@@ -22,7 +19,7 @@ import {
 	todayDateString,
 	TABLE_MISSING_MESSAGE
 } from './utils';
-import { computeJamKeFromTime } from '$lib/server/absen-utils';
+
 import {
 	simWriteKetidakhadiran,
 	simWriteAbsensi,
@@ -68,7 +65,9 @@ export async function handleUpdate({
 	const keteranganPulangRaw = formData.get('keteranganPulang')?.toString().trim() ?? '';
 	const keteranganPulang = ['sakit', 'izin', 'alfa'].includes(keteranganPulangRaw)
 		? keteranganPulangRaw
-		: null;
+		: keteranganPulangRaw === ''
+			? ''
+			: null;
 
 	const mataPelajaranIdRaw = formData.get('mataPelajaranId')?.toString();
 	const mataPelajaranId = mataPelajaranIdRaw ? Number(mataPelajaranIdRaw) : null;
@@ -200,45 +199,8 @@ export async function handleIsiSekaligus({
 	// Guru mapel only: validate schedule match + own subject
 	if (locals.user?.type === 'user') {
 		const settings = allSettings;
-		if (settings?.jenisPresensi === 'tiap_mapel' && settings.jamMasuk) {
-			const dayNames = ['minggu', 'senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu'];
-			const dayN = simHari ? simHari.toLowerCase() : dayNames[new Date().getDay()];
-			const [bellSettingsRaw, kegiatanCustom, jadwalHariIni] = await Promise.all([
-				db.query.tableBellSettings.findFirst({
-					columns: {
-						jamMulai: true,
-						jamPelajaranMenit: true,
-						durasiIstirahat: true,
-						durasiUpacara: true
-					},
-					where: eq(tableBellSettings.sekolahId, sekolahId)
-				}),
-				db.query.tableKegiatanCustom.findMany({
-					columns: { kode: true, durasi: true },
-					where: eq(tableKegiatanCustom.sekolahId, sekolahId)
-				}),
-				db.query.tableJadwalPelajaran.findMany({
-					columns: { kodeKegiatan: true, jamKe: true },
-					where: and(
-						eq(tableJadwalPelajaran.sekolahId, sekolahId),
-						eq(tableJadwalPelajaran.kelasId, kelasId),
-						eq(tableJadwalPelajaran.hari, dayN)
-					),
-					orderBy: [asc(tableJadwalPelajaran.jamKe)]
-				})
-			]);
-			const jamKe = computeJamKeFromTime(
-				simJam,
-				jadwalHariIni,
-				bellSettingsRaw ?? null,
-				kegiatanCustom,
-				settings.jamMasuk
-			);
-			const jadwal = jadwalHariIni.find((j) => j.jamKe === jamKe);
-			const tambahan = new Set(['IST', 'PLG']);
-			if (!jadwal || tambahan.has(jadwal.kodeKegiatan.toUpperCase())) {
-				return fail(403, { fail: 'Jam pelajaran bapak/ibu belum dimulai' });
-			}
+		if (settings?.jenisPresensi === 'tiap_mapel') {
+			// No time restriction for tiap_mapel — guru mapel can fill attendance anytime
 
 			if (mataPelajaranId) {
 				const agamaMapelNames = [
@@ -334,29 +296,30 @@ export async function handleIsiSekaligus({
 						}
 					}
 				} else {
-					const existingMasukMapSim = new Map<number, string | null>();
 					if (presensiType === 'pulang') {
 						const existingSim = simGetKetidakhadiran(sekolahId, kelasId, tanggal, simHari, simJam);
+						const existingMasukMapSim = new Map<number, string | null>();
 						for (const e of existingSim) {
 							if (e.muridId != null) {
 								existingMasukMapSim.set(e.muridId, e.keterangan);
 							}
 						}
+						for (const murid of semuaMurid) {
+							const masukKet = existingMasukMapSim.get(murid.id) ?? null;
+							simWriteKetidakhadiran(
+								sekolahId,
+								kelasId,
+								tanggal,
+								murid.id,
+								masukKet,
+								mataPelajaranId,
+								simHari,
+								simJam,
+								masukKet ?? ''
+							);
+						}
 					}
 					for (const murid of semuaMurid) {
-						const isPulang = presensiType === 'pulang';
-						const masukKet = isPulang ? (existingMasukMapSim.get(murid.id) ?? null) : null;
-						simWriteKetidakhadiran(
-							sekolahId,
-							kelasId,
-							tanggal,
-							murid.id,
-							masukKet,
-							mataPelajaranId,
-							simHari,
-							simJam,
-							isPulang ? masukKet : null
-						);
 						simWriteAbsensi(
 							sekolahId,
 							kelasId,
@@ -394,7 +357,7 @@ export async function handleIsiSekaligus({
 			}
 
 			// Fetch existing records before delete if we need them for pulang auto-copy
-			let existingMasukMap = new Map<number, string | null>();
+			const existingMasukMap = new Map<number, string | null>();
 			if (presensiType === 'pulang') {
 				const existingRecs = await db.query.tableKetidakhadiranHarian.findMany({
 					columns: { muridId: true, keterangan: true },
@@ -414,52 +377,46 @@ export async function handleIsiSekaligus({
 				}
 			}
 
-			// SQLite treats NULLs as distinct in UNIQUE indexes, so onConflictDoUpdate
-			// never fires when mataPelajaranId is NULL — always inserts a new row instead
-			// of updating. Delete old rows first so each insert lands fresh.
-			if (mataPelajaranId == null) {
-				const allMuridIds = semuaMurid.map((m) => m.id);
-				await db
-					.delete(tableKetidakhadiranHarian)
-					.where(
-						and(
-							inArray(tableKetidakhadiranHarian.muridId, allMuridIds),
-							eq(tableKetidakhadiranHarian.tanggal, tanggal),
-							sql`${tableKetidakhadiranHarian.mataPelajaranId} IS NULL`
-						)
-					);
+			if (presensiType === 'pulang') {
+				// SQLite treats NULLs as distinct in UNIQUE indexes, so onConflictDoUpdate
+				// never fires when mataPelajaranId is NULL — always inserts a new row instead
+				// of updating. Delete old rows first so each insert lands fresh.
+				if (mataPelajaranId == null) {
+					const allMuridIds = semuaMurid.map((m) => m.id);
+					await db
+						.delete(tableKetidakhadiranHarian)
+						.where(
+							and(
+								inArray(tableKetidakhadiranHarian.muridId, allMuridIds),
+								eq(tableKetidakhadiranHarian.tanggal, tanggal),
+								sql`${tableKetidakhadiranHarian.mataPelajaranId} IS NULL`
+							)
+						);
+				}
+
+				for (const murid of semuaMurid) {
+					const masukKet = existingMasukMap.get(murid.id) ?? null;
+					await db
+						.insert(tableKetidakhadiranHarian)
+						.values({
+							muridId: murid.id,
+							tanggal,
+							mataPelajaranId,
+							keterangan: masukKet,
+							keteranganPulang: masukKet ?? ''
+						})
+						.onConflictDoUpdate({
+							target: [
+								tableKetidakhadiranHarian.muridId,
+								tableKetidakhadiranHarian.tanggal,
+								tableKetidakhadiranHarian.mataPelajaranId
+							],
+							set: { keterangan: masukKet, keteranganPulang: masukKet ?? '', updatedAt: now }
+						});
+				}
 			}
 
 			for (const murid of semuaMurid) {
-				const values: typeof tableKetidakhadiranHarian.$inferInsert = {
-					muridId: murid.id,
-					tanggal,
-					mataPelajaranId
-				};
-
-				if (presensiType === 'pulang') {
-					const masukKet = existingMasukMap.get(murid.id) ?? null;
-					values.keterangan = masukKet;
-					values.keteranganPulang = masukKet;
-				} else {
-					values.keterangan = null;
-				}
-
-				await db
-					.insert(tableKetidakhadiranHarian)
-					.values(values)
-					.onConflictDoUpdate({
-						target: [
-							tableKetidakhadiranHarian.muridId,
-							tableKetidakhadiranHarian.tanggal,
-							tableKetidakhadiranHarian.mataPelajaranId
-						],
-						set: {
-							...values,
-							updatedAt: now
-						}
-					});
-
 				if (isDualSession) {
 					const currentCount = absensiCountMap!.get(murid.id) ?? 0;
 					if (sessionType === 'akhir') {
@@ -600,7 +557,7 @@ export async function handleIsiSekaligus({
 			}
 
 			// Fetch existing records before delete if we need them for pulang auto-copy
-			let existingMasukMap = new Map<number, string | null>();
+			const existingMasukMap = new Map<number, string | null>();
 			if (presensiType === 'pulang') {
 				const existingRecs = await db.query.tableKetidakhadiranHarian.findMany({
 					columns: { muridId: true, keterangan: true },
@@ -636,7 +593,8 @@ export async function handleIsiSekaligus({
 			// SQLite treats NULLs as distinct in UNIQUE indexes, so onConflictDoUpdate
 			// never fires when mataPelajaranId is NULL — always inserts a new row instead
 			// of updating. Delete old rows first so each insert lands fresh.
-			if (mataPelajaranId == null) {
+			// Only delete for pulang mode — masuk mode handles selected students individually.
+			if (mataPelajaranId == null && presensiType === 'pulang') {
 				const allMuridIds = semuaMurid.map((m) => m.id);
 				await db
 					.delete(tableKetidakhadiranHarian)
@@ -701,38 +659,31 @@ export async function handleIsiSekaligus({
 			}
 
 			for (const murid of nonSelectedMurid) {
-				const isPulang = presensiType === 'pulang';
-				let nsKeterangan: string | null | undefined = null;
-				let nsKeteranganPulang: string | null | undefined = undefined;
-
-				if (isPulang) {
+				if (presensiType === 'pulang') {
 					const masukKet = existingMasukMap.get(murid.id) ?? null;
-					nsKeterangan = masukKet;
-					nsKeteranganPulang = masukKet;
+					await db
+						.insert(tableKetidakhadiranHarian)
+						.values({
+							muridId: murid.id,
+							tanggal,
+							keterangan: masukKet,
+							keteranganPulang: masukKet ?? '',
+							mataPelajaranId
+						})
+						.onConflictDoUpdate({
+							target: [
+								tableKetidakhadiranHarian.muridId,
+								tableKetidakhadiranHarian.tanggal,
+								tableKetidakhadiranHarian.mataPelajaranId
+							],
+							set: {
+								keterangan: masukKet,
+								keteranganPulang: masukKet ?? '',
+								mataPelajaranId,
+								updatedAt: now
+							}
+						});
 				}
-
-				await db
-					.insert(tableKetidakhadiranHarian)
-					.values({
-						muridId: murid.id,
-						tanggal,
-						keterangan: nsKeterangan,
-						keteranganPulang: nsKeteranganPulang,
-						mataPelajaranId
-					})
-					.onConflictDoUpdate({
-						target: [
-							tableKetidakhadiranHarian.muridId,
-							tableKetidakhadiranHarian.tanggal,
-							tableKetidakhadiranHarian.mataPelajaranId
-						],
-						set: {
-							keterangan: nsKeterangan,
-							keteranganPulang: nsKeteranganPulang,
-							mataPelajaranId,
-							updatedAt: now
-						}
-					});
 
 				if (isDualSessionSelected) {
 					const currentCount = nonSelectedAbsensiCountMap!.get(murid.id) ?? 0;
@@ -825,6 +776,22 @@ export async function handleDeletePresensi({
 	const todayStart = new Date(tanggal + 'T00:00:00');
 	const todayEnd = new Date(tanggal + 'T23:59:59.999');
 
+	const activeTa = await db.query.tableTahunAjaran.findFirst({
+		columns: { id: true },
+		where: and(eq(tableTahunAjaran.sekolahId, sekolahId), eq(tableTahunAjaran.isAktif, true))
+	});
+	const tahunAjaranId = activeTa?.id ?? null;
+	const presensiSettings = tahunAjaranId
+		? await db.query.tablePresensiSettings.findFirst({
+				columns: { jenisPresensi: true },
+				where: and(
+					eq(tablePresensiSettings.sekolahId, sekolahId),
+					eq(tablePresensiSettings.tahunAjaranId, tahunAjaranId)
+				)
+			})
+		: null;
+	const isTiapMapel = presensiSettings?.jenisPresensi === 'tiap_mapel';
+
 	try {
 		await db.transaction(async (tx) => {
 			await tx
@@ -832,7 +799,7 @@ export async function handleDeletePresensi({
 				.where(
 					and(
 						inArray(tableAbsensi.muridId, ids),
-						sql`${tableAbsensi.mataPelajaranId} IS NULL`,
+						isTiapMapel ? undefined : sql`${tableAbsensi.mataPelajaranId} IS NULL`,
 						sql`${tableAbsensi.waktu} >= ${todayStart.toISOString()}`,
 						sql`${tableAbsensi.waktu} <= ${todayEnd.toISOString()}`
 					)
@@ -843,7 +810,7 @@ export async function handleDeletePresensi({
 				.where(
 					and(
 						inArray(tableKetidakhadiranHarian.muridId, ids),
-						sql`${tableKetidakhadiranHarian.mataPelajaranId} IS NULL`,
+						isTiapMapel ? undefined : sql`${tableKetidakhadiranHarian.mataPelajaranId} IS NULL`,
 						eq(tableKetidakhadiranHarian.tanggal, tanggal)
 					)
 				);

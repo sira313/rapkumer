@@ -102,6 +102,7 @@ export type AbsenLoadData = {
 	tahun: number;
 	daysInMonth: number;
 	totalHariBelajar: number;
+	totalPertemuan: number;
 	bulananRows: BulananRow[];
 	raporRows: RaporRow[];
 	persentaseBulananRows: PersentaseBulananRow[];
@@ -116,6 +117,10 @@ export type AbsenLoadData = {
 	persentaseHarianSubjects: PersentaseHarianSubject[];
 	persentaseHarianRows: PersentaseHarianRow[];
 	jadwalSaatIni: JadwalSaatIni | null;
+	guruMapelSubject: { id: number; nama: string } | null;
+	isMapelOnJadwal: boolean;
+	harianMapelId: number | null;
 	simulasiHari: string | null;
 	simulasiJam: string | null;
+	isLibur: boolean;
 };

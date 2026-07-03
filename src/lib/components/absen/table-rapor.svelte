@@ -23,6 +23,7 @@
 		editingValues,
 		editingSubmitting,
 		editingSaveDisabled,
+		totalHariBelajar,
 		onStartEdit,
 		onCancelEdit,
 		onEditValueChange,
@@ -37,6 +38,7 @@
 		editingValues: { sakit: number; izin: number; alfa: number };
 		editingSubmitting: boolean;
 		editingSaveDisabled: boolean;
+		totalHariBelajar?: number;
 		onStartEdit: (row: RaporRow) => void;
 		onCancelEdit: () => void;
 		onEditValueChange: (value: { sakit: number; izin: number; alfa: number }) => void;
@@ -57,7 +59,14 @@
 				<th class="text-center" style="min-width: 80px;">Sakit</th>
 				<th class="text-center" style="min-width: 80px;">Izin</th>
 				<th class="text-center" style="min-width: 80px;">TK</th>
-				<th class="text-center" style="min-width: 160px;">Aksi</th>
+				<th class="text-center" style="min-width: 160px;">
+					Aksi
+					{#if totalHariBelajar}
+						<span class="text-base-content/60 block text-xs font-normal">
+							{totalHariBelajar} hari belajar
+						</span>
+					{/if}
+				</th>
 			</tr>
 		</thead>
 		<tbody>

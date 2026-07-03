@@ -104,6 +104,7 @@
 			alfa: number;
 		}>;
 		totalHariBelajar: number;
+		totalPertemuan: number;
 		persentaseBulananRows: Array<{
 			no: number;
 			nama: string;
@@ -134,8 +135,12 @@
 			jamKe: number;
 			perkiraanJam: string;
 		} | null;
+		guruMapelSubject: { id: number; nama: string } | null;
+		isMapelOnJadwal: boolean;
+		harianMapelId: number | null;
 		simulasiHari: string | null;
 		simulasiJam: string | null;
+		isLibur: boolean;
 	};
 
 	let { data }: { data: PageData } = $props();
@@ -143,7 +148,17 @@
 	const kelasAktif = $derived(page.data.kelasAktif ?? null);
 	const kelasAktifLabel = $derived.by(() => {
 		if (!kelasAktif) return null;
-		return kelasAktif.fase ? `${kelasAktif.nama} - ${kelasAktif.fase}` : kelasAktif.nama;
+		const base = kelasAktif.fase ? `${kelasAktif.nama} - ${kelasAktif.fase}` : kelasAktif.nama;
+		const presensiLabel = data.jenisPresensi === 'tiap_mapel' ? 'Per Mapel' : 'Presensi Wali Kelas';
+		const tipeLabel =
+			data.tipePresensi === 'masuk_pulang'
+				? 'Masuk Pulang'
+				: data.tipePresensi === 'awal_akhir_mapel'
+					? 'Awal & Akhir Mapel'
+					: data.tipePresensi === 'awal_mapel'
+						? 'Awal Mapel'
+						: 'Masuk Saja';
+		return `${base} - ${presensiLabel} - ${tipeLabel}`;
 	});
 
 	// Restrict editing: only admin and wali_kelas can edit
@@ -528,7 +543,7 @@
 		page.data.user?.type === 'user' && data.jenisPresensi === 'tiap_mapel'
 	);
 
-	const jadwalBelumDimulai = $derived(isGuruMapelMode && !data.jadwalSaatIni);
+	const jadwalBelumDimulai = $derived(false);
 
 	function formatTanggal(dateStr: string) {
 		const d = new Date(dateStr + 'T00:00:00');
@@ -605,7 +620,12 @@
 				{/if}
 			</h2>
 			{#if kelasAktifLabel}
-				<p class="text-base-content/80 block text-sm">{kelasAktifLabel}</p>
+				<p class="text-base-content/80 block text-sm">
+					{kelasAktifLabel}
+					{#if data.mode === 'harian' || data.mode === 'persentase_harian'}
+						- {data.isLibur ? 'Libur' : 'Masuk'}
+					{/if}
+				</p>
 			{/if}
 		</div>
 		{#if data.mode === 'rapor' || data.mode === 'persentase_bulanan' || data.mode === 'persentase_semester' || data.mode === 'bulanan'}{:else}
@@ -627,8 +647,18 @@
 							toast({ message: 'Jam pelajaran bapak/ibu belum dimulai', type: 'warning' });
 							return;
 						}
-						const useMapelData =
-							page.data.user?.type === 'user' || data.mode === 'persentase_harian';
+						if (page.data.user?.type === 'user' && !data.isMapelOnJadwal) {
+							toast({
+								message: 'Mata pelajaran tidak dijadwalkan pada tanggal ini',
+								type: 'warning'
+							});
+							return;
+						}
+						const useMapelData = page.data.user?.type === 'user';
+						const fallbackSubject = data.guruMapelSubject;
+						const isiMapelId = useMapelData
+							? (currentMapel?.mataPelajaranId ?? fallbackSubject?.id ?? null)
+							: (data.harianMapelId ?? null);
 						showModal({
 							title: 'Isi Kehadiran Sekaligus',
 							body: IsiSekaligusModal,
@@ -636,9 +666,9 @@
 								daftarMurid: data.semuaMurid,
 								kelasId: kelasAktif?.id ?? undefined,
 								tanggal: data.tanggal,
-								mataPelajaranId: useMapelData ? (currentMapel?.mataPelajaranId ?? null) : null,
+								mataPelajaranId: isiMapelId,
 								namaMataPelajaran: useMapelData
-									? (currentMapel?.namaMataPelajaran ?? undefined)
+									? (currentMapel?.namaMataPelajaran ?? fallbackSubject?.nama ?? undefined)
 									: undefined,
 								perkiraanJam: useMapelData ? (currentMapel?.perkiraanJam ?? undefined) : undefined,
 								simulasiHari: data.simulasiHari,
@@ -955,6 +985,7 @@
 			editingValues={raporEditingValues}
 			editingSubmitting={raporEditingSubmitting}
 			editingSaveDisabled={raporEditingSaveDisabled}
+			totalHariBelajar={data.totalHariBelajar}
 			onStartEdit={startRaporEdit}
 			onCancelEdit={cancelRaporEdit}
 			onEditValueChange={(v) => (raporEditingValues = v)}
@@ -969,6 +1000,7 @@
 			totalHariBelajar={data.totalHariBelajar}
 			jenisPresensi={data.jenisPresensi}
 			tipePresensi={data.tipePresensi}
+			totalPertemuan={data.totalPertemuan}
 		/>
 		<AbsenPagination {pages} {currentPage} onPageClick={handlePageClick} />
 	{:else if data.mode === 'persentase_harian'}
@@ -985,6 +1017,7 @@
 			totalHariBelajar={data.totalHariBelajar}
 			jenisPresensi={data.jenisPresensi}
 			tipePresensi={data.tipePresensi}
+			totalPertemuan={data.totalPertemuan}
 		/>
 		<AbsenPagination {pages} {currentPage} onPageClick={handlePageClick} />
 	{:else}
@@ -1005,6 +1038,7 @@
 			onSubmitStateChange={(v) => (editingSubmitting = v)}
 			jenisPresensi={data.jenisPresensi}
 			tipePresensi={data.tipePresensi}
+			harianMapelId={data.harianMapelId}
 		/>
 		<AbsenPagination {pages} {currentPage} onPageClick={handlePageClick} />
 	{/if}

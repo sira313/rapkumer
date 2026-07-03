@@ -8,7 +8,8 @@ import {
 	tableJadwalPelajaran
 } from '$lib/server/db/schema';
 import { asc, desc, eq, inArray, and, sql } from 'drizzle-orm';
-import { isTableMissingError, todayDateString } from './utils';
+import { isTableMissingError, isSunday, isSaturday } from './utils';
+import { buildLiburDates } from './libur';
 import { computePagination, PER_PAGE } from './pagination';
 import {
 	computeJamKeFromTime,
@@ -16,6 +17,7 @@ import {
 	type CustomKegiatanData
 } from '$lib/server/absen-utils';
 import { simGetKetidakhadiran, simGetAbsensi } from '$lib/server/simulasi-cache';
+import { getFirstMapelForDay } from './first-mapel';
 import type {
 	KehadiranRow,
 	PersentaseHarianRow,
@@ -34,6 +36,7 @@ const agamaMapelNames = [
 	'Pendidikan Agama Hindu dan Budi Pekerti',
 	'Pendidikan Agama Konghuchu dan Budi Pekerti'
 ];
+const agamaNameSet = new Set(agamaMapelNames);
 
 async function computePersentaseHarian(params: {
 	sekolahId: number;
@@ -87,10 +90,15 @@ async function computePersentaseHarian(params: {
 	let jadwalSaatIni: JadwalSaatIni | null = null;
 
 	if (uniqueJadwal.length === 0) {
-		return { persentaseHarianSubjects, persentaseHarianRows, jadwalSaatIni };
+		return {
+			persentaseHarianSubjects,
+			persentaseHarianRows,
+			jadwalSaatIni,
+			isMapelOnJadwal: false,
+			papbMpId: null
+		};
 	}
 
-	const agamaNameSet = new Set(agamaMapelNames);
 	const tambahanKode = new Set(['IST', 'PLG']);
 	const uniqueKode = uniqueJadwal
 		.map((j) => j.kodeKegiatan)
@@ -111,7 +119,13 @@ async function computePersentaseHarian(params: {
 	}
 
 	if (uniqueKode.length === 0) {
-		return { persentaseHarianSubjects, persentaseHarianRows, jadwalSaatIni };
+		return {
+			persentaseHarianSubjects,
+			persentaseHarianRows,
+			jadwalSaatIni,
+			isMapelOnJadwal: false,
+			papbMpId: null
+		};
 	}
 
 	const matchingMp = await db.query.tableMataPelajaran.findMany({
@@ -403,7 +417,18 @@ async function computePersentaseHarian(params: {
 		};
 	});
 
-	return { persentaseHarianSubjects, persentaseHarianRows, jadwalSaatIni };
+	const isMapelOnJadwal =
+		userKodeSet && userKodeSet.size > 0
+			? jadwalHariIni.some((j) => userKodeSet.has(j.kodeKegiatan.toUpperCase()))
+			: false;
+
+	return {
+		persentaseHarianSubjects,
+		persentaseHarianRows,
+		jadwalSaatIni,
+		isMapelOnJadwal,
+		papbMpId: kodeToMpMap.get('PAPB')?.id ?? null
+	};
 }
 
 type MuridMinimal = Pick<typeof tableMurid.$inferSelect, 'id' | 'nama'>;
@@ -444,6 +469,15 @@ export async function loadHarian(params: {
 		url
 	} = params;
 
+	const jenisPresensi = presensiSettings.jenisPresensi ?? 'wali_kelas_saja';
+	const isTiapMapel = jenisPresensi === 'tiap_mapel';
+
+	const firstMapel =
+		isTiapMapel && mode === 'harian'
+			? await getFirstMapelForDay(sekolahId, kelasId, tanggal, simHari)
+			: null;
+	const firstMapelId = firstMapel?.mataPelajaranId ?? null;
+
 	const baseFilter = and(eq(tableMurid.sekolahId, sekolahId), eq(tableMurid.kelasId, kelasId));
 	const searchFilter = search
 		? and(baseFilter, sql`${tableMurid.nama} LIKE ${'%' + search + '%'} COLLATE NOCASE`)
@@ -458,6 +492,16 @@ export async function loadHarian(params: {
 
 	const todayStart = new Date(tanggal + 'T00:00:00');
 	const todayEnd = new Date(tanggal + 'T23:59:59.999');
+
+	const mpFilter =
+		firstMapelId != null
+			? sql`(${tableKetidakhadiranHarian.mataPelajaranId} = ${firstMapelId} OR ${tableKetidakhadiranHarian.mataPelajaranId} IS NULL)`
+			: sql`${tableKetidakhadiranHarian.mataPelajaranId} IS NULL`;
+
+	const absensiMpFilter =
+		firstMapelId != null
+			? sql`(${tableAbsensi.mataPelajaranId} = ${firstMapelId} OR ${tableAbsensi.mataPelajaranId} IS NULL)`
+			: sql`${tableAbsensi.mataPelajaranId} IS NULL`;
 
 	let queryRecords: QueryRecord[] = [];
 	let tableReady = true;
@@ -477,16 +521,14 @@ export async function loadHarian(params: {
 						createdAt: true,
 						updatedAt: true
 					},
-					where: and(
-						eq(tableKetidakhadiranHarian.tanggal, tanggal),
-						sql`${tableKetidakhadiranHarian.mataPelajaranId} IS NULL`
-					)
+					where: and(eq(tableKetidakhadiranHarian.tanggal, tanggal), mpFilter)
 				},
 				absensi: {
 					columns: { id: true },
 					where: and(
 						sql`${tableAbsensi.waktu} >= ${todayStart.toISOString()}`,
-						sql`${tableAbsensi.waktu} <= ${todayEnd.toISOString()}`
+						sql`${tableAbsensi.waktu} <= ${todayEnd.toISOString()}`,
+						absensiMpFilter
 					),
 					limit: 1
 				}
@@ -516,9 +558,27 @@ export async function loadHarian(params: {
 		}
 	}
 
+	function pickKh(
+		khArray: Array<{
+			mataPelajaranId: number | null;
+			keterangan: string | null;
+			keteranganPulang: string | null;
+			updatedAt: string | null;
+			createdAt: string | null;
+		}>
+	) {
+		if (!khArray?.length) return null;
+		if (firstMapelId != null) {
+			const specific = khArray.find((kh) => kh.mataPelajaranId === firstMapelId);
+			if (specific) return specific;
+		}
+		const nullKh = khArray.find((kh) => kh.mataPelajaranId == null);
+		if (nullKh) return nullKh;
+		return khArray[khArray.length - 1];
+	}
+
 	const rows: KehadiranRow[] = queryRecords.map((murid, index) => {
-		const khArray = murid.ketidakhadiranHarian;
-		const kh = khArray?.length ? khArray[khArray.length - 1] : null;
+		const kh = pickKh(murid.ketidakhadiranHarian);
 		return {
 			id: murid.id,
 			no: pagination.offset + index + 1,
@@ -539,7 +599,9 @@ export async function loadHarian(params: {
 		>();
 		const cacheAbsenGlobal = new Set<number>();
 		for (const kh of cacheKetidakhadiran) {
-			if (kh.mataPelajaranId == null) {
+			const matches =
+				firstMapelId != null ? kh.mataPelajaranId === firstMapelId : kh.mataPelajaranId == null;
+			if (matches) {
 				cacheKhGlobal.set(kh.muridId, {
 					keterangan: kh.keterangan,
 					keteranganPulang: kh.keteranganPulang,
@@ -548,7 +610,9 @@ export async function loadHarian(params: {
 			}
 		}
 		for (const a of cacheAbsensi) {
-			if (a.mataPelajaranId == null) {
+			const matches =
+				firstMapelId != null ? a.mataPelajaranId === firstMapelId : a.mataPelajaranId == null;
+			if (matches) {
 				cacheAbsenGlobal.add(a.muridId);
 			}
 		}
@@ -574,12 +638,18 @@ export async function loadHarian(params: {
 				columns: { id: true, nama: true },
 				with: {
 					ketidakhadiranHarian: {
-						columns: { keterangan: true },
+						columns: {
+							id: true,
+							muridId: true,
+							tanggal: true,
+							mataPelajaranId: true,
+							keterangan: true,
+							keteranganPulang: true,
+							createdAt: true,
+							updatedAt: true
+						},
 						orderBy: [desc(tableKetidakhadiranHarian.createdAt)],
-						where: and(
-							eq(tableKetidakhadiranHarian.tanggal, tanggal),
-							sql`${tableKetidakhadiranHarian.mataPelajaranId} IS NULL`
-						),
+						where: and(eq(tableKetidakhadiranHarian.tanggal, tanggal), mpFilter),
 						limit: 1
 					}
 				},
@@ -587,7 +657,8 @@ export async function loadHarian(params: {
 				orderBy: asc(tableMurid.nama)
 			});
 			semuaMurid = semuaMuridRecords.map((m) => {
-				const kh = m.ketidakhadiranHarian?.[0] ?? null;
+				const khArray = m.ketidakhadiranHarian ?? [];
+				const kh = pickKh(khArray);
 				return { id: m.id, nama: m.nama, keterangan: kh?.keterangan ?? null };
 			});
 		} catch {
@@ -599,7 +670,9 @@ export async function loadHarian(params: {
 		const cacheKetidakhadiran = simGetKetidakhadiran(sekolahId, kelasId, tanggal, simHari, simJam);
 		const cacheKhGlobal = new Map<number, string | null>();
 		for (const kh of cacheKetidakhadiran) {
-			if (kh.mataPelajaranId == null) {
+			const matches =
+				firstMapelId != null ? kh.mataPelajaranId === firstMapelId : kh.mataPelajaranId == null;
+			if (matches) {
 				cacheKhGlobal.set(kh.muridId, kh.keterangan);
 			}
 		}
@@ -611,11 +684,12 @@ export async function loadHarian(params: {
 		}
 	}
 
-	const jenisPresensi = presensiSettings.jenisPresensi ?? 'wali_kelas_saja';
-
 	let persentaseHarianSubjects: PersentaseHarianSubject[] = [];
 	let persentaseHarianRows: PersentaseHarianRow[] = [];
 	let jadwalSaatIni: JadwalSaatIni | null = null;
+	let isMapelOnJadwal = false;
+	let guruMapelSubject: { id: number; nama: string } | null = null;
+	let papbMpId: number | null = null;
 
 	if (jenisPresensi === 'tiap_mapel' && tableReady && semuaMurid.length > 0) {
 		const result = await computePersentaseHarian({
@@ -633,7 +707,43 @@ export async function loadHarian(params: {
 		persentaseHarianSubjects = result.persentaseHarianSubjects;
 		persentaseHarianRows = result.persentaseHarianRows;
 		jadwalSaatIni = result.jadwalSaatIni;
+		isMapelOnJadwal = result.isMapelOnJadwal;
+		papbMpId = result.papbMpId;
 	}
+
+	if (user.type === 'user') {
+		const userMpIds = new Set<number>();
+		if (user.mataPelajaranId) userMpIds.add(user.mataPelajaranId);
+		const additional = await db.query.tableAuthUserMataPelajaran.findMany({
+			columns: { mataPelajaranId: true },
+			where: eq(tableAuthUserMataPelajaran.authUserId, user.id)
+		});
+		for (const a of additional) {
+			if (a.mataPelajaranId) userMpIds.add(a.mataPelajaranId);
+		}
+		if (userMpIds.size > 0) {
+			const mp = await db.query.tableMataPelajaran.findFirst({
+				columns: { id: true, nama: true },
+				where: inArray(tableMataPelajaran.id, [...userMpIds])
+			});
+			if (mp) {
+				const isAgama = agamaNameSet.has(mp.nama);
+				guruMapelSubject = {
+					id: isAgama && papbMpId != null ? papbMpId : mp.id,
+					nama: isAgama ? 'Pendidikan Agama dan Budi Pekerti' : mp.nama
+				};
+			}
+		}
+	}
+
+	const [thn, bln, hri] = tanggal.split('-').map(Number);
+	const hariSekolah = presensiSettings.hariSekolah ?? 6;
+	const isWeekend =
+		hariSekolah === 5
+			? isSaturday(thn, bln, hri) || isSunday(thn, bln, hri)
+			: isSunday(thn, bln, hri);
+	const liburDates = buildLiburDates(presensiSettings, thn, bln);
+	const isLibur = isWeekend || liburDates.has(tanggal);
 
 	return {
 		meta: { title: 'Kehadiran Murid' },
@@ -655,6 +765,7 @@ export async function loadHarian(params: {
 		tahun: 0,
 		daysInMonth: 0,
 		totalHariBelajar: 0,
+		totalPertemuan: 0,
 		bulananRows: [],
 		raporRows: [],
 		persentaseBulananRows: [],
@@ -669,7 +780,11 @@ export async function loadHarian(params: {
 		persentaseHarianSubjects,
 		persentaseHarianRows,
 		jadwalSaatIni,
+		guruMapelSubject,
+		isMapelOnJadwal,
+		harianMapelId: firstMapelId,
 		simulasiHari: simHari,
-		simulasiJam: simJam
+		simulasiJam: simJam,
+		isLibur
 	};
 }

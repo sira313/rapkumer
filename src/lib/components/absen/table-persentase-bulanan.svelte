@@ -4,7 +4,8 @@
 		namaBulan,
 		totalHariBelajar,
 		jenisPresensi = 'wali_kelas_saja',
-		tipePresensi = ''
+		tipePresensi = '',
+		totalPertemuan = 0
 	}: {
 		rows: Array<{
 			no: number;
@@ -19,6 +20,7 @@
 		totalHariBelajar: number;
 		jenisPresensi?: string;
 		tipePresensi?: string;
+		totalPertemuan?: number;
 	} = $props();
 
 	const totalPresensi = $derived(
@@ -44,9 +46,11 @@
 					Persentase bulan {namaBulan}
 					{#if totalHariBelajar > 0}
 						<span class="text-base-content/60 block text-xs font-normal">
-							({totalHariBelajar} hari belajar{totalPresensi != null
-								? ` ${totalPresensi} presensi`
-								: ''})
+							({totalHariBelajar} hari belajar{jenisPresensi === 'tiap_mapel' && totalPertemuan > 0
+								? ` ${totalPertemuan} ${tipePresensi === 'awal_akhir_mapel' ? 'presensi' : 'mapel'}`
+								: totalPresensi != null
+									? ` ${totalPresensi} presensi`
+									: ''})
 						</span>
 					{/if}
 				</th>

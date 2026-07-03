@@ -35,7 +35,8 @@
 		onUpdateSuccess,
 		onSubmitStateChange,
 		jenisPresensi = 'wali_kelas_saja',
-		tipePresensi = 'masuk_pulang'
+		tipePresensi = 'masuk_pulang',
+		harianMapelId = null
 	}: {
 		rows: KehadiranRow[];
 		search: string | null;
@@ -53,6 +54,7 @@
 		onSubmitStateChange: (v: boolean) => void;
 		jenisPresensi?: string;
 		tipePresensi?: string;
+		harianMapelId?: number | null;
 	} = $props();
 
 	let editingSaveDisabled = $derived(editingRowId == null || editingSubmitting);
@@ -71,6 +73,7 @@
 
 	function displayKeterangan(value: string | null | undefined) {
 		if (value == null) return 'Hadir';
+		if (value === '') return 'Hadir';
 		const labels: Record<string, string> = {
 			sakit: 'Sakit',
 			izin: 'Izin',
@@ -80,7 +83,7 @@
 	}
 
 	function keteranganColor(value: string | null | undefined) {
-		if (value == null) return 'badge-soft badge-success';
+		if (value == null || value === '') return 'badge-soft badge-success';
 		const colors: Record<string, string> = {
 			sakit: 'badge-soft badge-warning',
 			izin: 'badge-soft badge-info',
@@ -159,7 +162,7 @@
 									<option value="izin">Izin</option>
 									<option value="alfa">TK</option>
 								</select>
-							{:else if murid.updatedAt != null || murid.hadir}
+							{:else if murid.keteranganPulang != null}
 								<span
 									class="badge badge-sm whitespace-nowrap {keteranganColor(murid.keteranganPulang)}"
 								>
@@ -253,6 +256,9 @@
 										/>
 										<input type="hidden" name="tanggal" value={tanggal} />
 										<input type="hidden" name="kelasId" value={kelasId ?? ''} />
+										{#if harianMapelId != null}
+											<input type="hidden" name="mataPelajaranId" value={harianMapelId} />
+										{/if}
 									{/snippet}
 								</FormEnhance>
 								<button

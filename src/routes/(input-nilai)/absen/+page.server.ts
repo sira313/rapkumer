@@ -7,6 +7,7 @@ import { loadPersentaseBulanan } from '$lib/server/absen/load-persentase-bulanan
 import { loadPersentaseSemester } from '$lib/server/absen/load-persentase-semester';
 import { loadRapor } from '$lib/server/absen/load-rapor';
 import { loadHarian } from '$lib/server/absen/load-harian';
+import type { AbsenLoadData } from '$lib/server/absen/types';
 import {
 	handleUpdate,
 	handleIsiSekaligus,
@@ -387,7 +388,7 @@ function defaultEmpty(
 	presensiWarningMessage: string,
 	jenisPresensi: string,
 	tipePresensi?: string
-) {
+): AbsenLoadData {
 	return {
 		meta: { title: 'Kehadiran Murid' },
 		tableReady: true,
@@ -402,6 +403,7 @@ function defaultEmpty(
 		tahun: 0,
 		daysInMonth: 0,
 		totalHariBelajar: 0,
+		totalPertemuan: 0,
 		bulananRows: [],
 		raporRows: [],
 		persentaseBulananRows: [],
@@ -416,8 +418,12 @@ function defaultEmpty(
 		persentaseHarianSubjects: [],
 		persentaseHarianRows: [],
 		jadwalSaatIni: null,
+		guruMapelSubject: null,
+		isMapelOnJadwal: false,
+		harianMapelId: null,
 		simulasiHari: simHari,
-		simulasiJam: simJam
+		simulasiJam: simJam,
+		isLibur: false
 	};
 }
 
