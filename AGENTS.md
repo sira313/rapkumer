@@ -80,6 +80,42 @@ pnpm format                  # prettier --write . (tabs, single quotes, no trail
 - **DaisyUI `.fieldset` has `padding: 0`** — inputs are flush against container edge. Inside a scrollable container (`overflow-y: auto`), the focus outline (`outline-offset: 2px`) gets clipped. Fix: `global-modal.svelte` overrides `outline-offset: -2px` via `:global(.modal input:focus)`.
 - **Disabled buttons** with `title` for tooltip use `aria-disabled` alongside `disabled` (project convention).
 
+## Absen presensi logic
+
+Attendance is split into 2 statuses: **Hadir** (Present) and **Tidak Hadir** (Sakit/Izin/Alfa). Unset defaults to TK (No Info).
+
+Configured via `jenisPresensi` (wali_kelas_saja / tiap_mapel) and `tipePresensi` (masuk_saja / masuk_pulang / awal_mapel / awal_akhir_mapel) in the Pengaturan Presensi modal at `/akademik`.
+
+The 4 logic blocks below are **mutually exclusive** — gated by `isWaliKelasMasukPulang` / `isTiapMapel` / `isAwalAkhir` guards in `load-persentase-bulanan.ts` and `load-persentase-semester.ts`.
+
+### Logic 1 — Wali Kelas only + Masuk only
+- `bulanan`: already correct (1 session/day)
+- `persentase_bulanan`: already correct (`hadir / totalHariBelajar * 100%`)
+- `persentase_semester`: same as bulanan, computed from `tanggalMasuk` to `tanggalBagiRapor`
+- `rapor`: same as `bulanan`
+
+### Logic 2 — Wali Kelas only + Masuk pulang
+- `bulanan`: references "presensi masuk" from Isi Sekaligus (1 session/day)
+- `persentase_bulanan`: `masuk=1, pulang=1` → `persentase = countHadir / (totalHariBelajar * 2) * 100%`
+- `persentase_semester`: same as bulanan, date range from semester start to rapor date
+- `rapor`: same as `bulanan`
+
+### Logic 3 — Per-Mapel + Awal mapel (guru mapel only)
+- Each subject = 1 **pertemuan** (meeting).
+- Isi Sekaligus for guru mapel has no time restriction (`jadwalBelumDimulai = false` in `+page.svelte`). `isMapelOnJadwal` validates whether the teacher's subject is scheduled that day.
+- `harian` & `persentase_harian`: uses the first scheduled subject (`first-mapel.ts`). Subsequent subjects count as present even if unattended.
+- `persentase_bulanan`: `persentase = countHadir / totalPertemuan * 100%`. Header: `(N days M subjects)`.
+- `bulanan` & `rapor`: follows `harian` (first subject per day).
+- `persentase_semester`: same as bulanan, date range from semester start to rapor date.
+
+### Logic 4 — Per-Mapel + Awal & akhir mapel
+- Like logic 3, but each meeting has **2 attendance sessions** (start + end).
+- `totalPertemuan` is **doubled** (`totalPertemuan *= 2`). Header: `(N days M sessions)`.
+- `countHadir` = raw `absCount` per subject (not halved). If `keterangan===null` with no absensi records, defaults to 2 sessions present.
+- `sakit`/`izin`/`alfa` are **doubled** (`+= 2`) to match session count.
+- `persentase = countHadir / totalPertemuan * 100%` (denominator already doubled).
+- Other modes (`harian`, `bulanan`, `rapor`, `persentase_harian`, `persentase_semester`) same as logic 3.
+
 ## Quality
 
 - Run `pnpm lint` then `pnpm check` before committing.
