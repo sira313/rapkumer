@@ -577,6 +577,29 @@ export async function handleIsiSekaligus({
 				}
 			}
 
+			// Preserve existing keterangan (masuk) when sessionType is 'akhir' for dual session
+			const existingKetAkhirMap = new Map<number, string | null>();
+			const isAkhirSesiSelected =
+				tipePresensi === 'awal_akhir_mapel' && mataPelajaranId != null && sessionType === 'akhir';
+			if (isAkhirSesiSelected) {
+				const existingRecs = await db.query.tableKetidakhadiranHarian.findMany({
+					columns: { muridId: true, keterangan: true },
+					where: and(
+						inArray(
+							tableKetidakhadiranHarian.muridId,
+							semuaMurid.map((m) => m.id)
+						),
+						eq(tableKetidakhadiranHarian.tanggal, tanggal),
+						mataPelajaranId != null
+							? eq(tableKetidakhadiranHarian.mataPelajaranId, mataPelajaranId)
+							: sql`${tableKetidakhadiranHarian.mataPelajaranId} IS NULL`
+					)
+				});
+				for (const r of existingRecs) {
+					existingKetAkhirMap.set(r.muridId, r.keterangan);
+				}
+			}
+
 			const selectedIds = Array.from(entryMap.keys());
 			if (selectedIds.length > 0) {
 				const deleteAbsensiConditions: any[] = [
@@ -609,13 +632,20 @@ export async function handleIsiSekaligus({
 
 			for (const [muridId, keterangan] of entryMap) {
 				const isPulang = presensiType === 'pulang';
+				const preservedKet = isAkhirSesiSelected
+					? (existingKetAkhirMap.get(muridId) ?? null)
+					: null;
 				await db
 					.insert(tableKetidakhadiranHarian)
 					.values({
 						muridId,
 						tanggal,
-						keterangan: isPulang ? (existingMasukMap.get(muridId) ?? null) : keterangan,
-						keteranganPulang: isPulang ? keterangan : undefined,
+						keterangan: isPulang
+							? (existingMasukMap.get(muridId) ?? null)
+							: isAkhirSesiSelected
+								? preservedKet
+								: keterangan,
+						keteranganPulang: isPulang ? keterangan : isAkhirSesiSelected ? keterangan : undefined,
 						mataPelajaranId
 					})
 					.onConflictDoUpdate({
@@ -625,8 +655,16 @@ export async function handleIsiSekaligus({
 							tableKetidakhadiranHarian.mataPelajaranId
 						],
 						set: {
-							keterangan: isPulang ? (existingMasukMap.get(muridId) ?? null) : keterangan,
-							keteranganPulang: isPulang ? keterangan : undefined,
+							keterangan: isPulang
+								? (existingMasukMap.get(muridId) ?? null)
+								: isAkhirSesiSelected
+									? preservedKet
+									: keterangan,
+							keteranganPulang: isPulang
+								? keterangan
+								: isAkhirSesiSelected
+									? keterangan
+									: undefined,
 							mataPelajaranId,
 							updatedAt: now
 						}

@@ -165,7 +165,7 @@ async function computePersentaseHarian(params: {
 
 	const [allKetidakhadiran, allAbsensi] = await Promise.all([
 		db.query.tableKetidakhadiranHarian.findMany({
-			columns: { muridId: true, mataPelajaranId: true, keterangan: true },
+			columns: { muridId: true, mataPelajaranId: true, keterangan: true, keteranganPulang: true },
 			where: and(
 				inArray(tableKetidakhadiranHarian.muridId, allMuridIds),
 				eq(tableKetidakhadiranHarian.tanggal, tanggal)
@@ -183,11 +183,14 @@ async function computePersentaseHarian(params: {
 
 	const khGlobal = new Map<number, string | null>();
 	const khPerMapel = new Map<string, string | null>();
+	const khPulangPerMapel = new Map<string, string | null>();
 	for (const kh of allKetidakhadiran) {
 		if (kh.mataPelajaranId == null) {
 			khGlobal.set(kh.muridId, kh.keterangan);
 		} else {
-			khPerMapel.set(`${kh.muridId}:${kh.mataPelajaranId}`, kh.keterangan);
+			const key = `${kh.muridId}:${kh.mataPelajaranId}`;
+			khPerMapel.set(key, kh.keterangan);
+			if (kh.keteranganPulang != null) khPulangPerMapel.set(key, kh.keteranganPulang);
 		}
 	}
 
@@ -209,7 +212,9 @@ async function computePersentaseHarian(params: {
 			if (kh.mataPelajaranId == null) {
 				khGlobal.set(kh.muridId, kh.keterangan);
 			} else {
-				khPerMapel.set(`${kh.muridId}:${kh.mataPelajaranId}`, kh.keterangan);
+				const key = `${kh.muridId}:${kh.mataPelajaranId}`;
+				khPerMapel.set(key, kh.keterangan);
+				if (kh.keteranganPulang != null) khPulangPerMapel.set(key, kh.keteranganPulang);
 			}
 		}
 		for (const a of cacheAbsensi) {
@@ -326,7 +331,20 @@ async function computePersentaseHarian(params: {
 						status = 'H';
 						if (useHalfWeight) {
 							const count = absenPerMapel.get(`${murid.id}:${mpId}`);
-							if (count != null) {
+							const pulangKey = khPulangPerMapel.get(`${murid.id}:${mpId}`);
+							if (pulangKey !== undefined) {
+								const selesaiStatus =
+									pulangKey === ''
+										? 'H'
+										: pulangKey === 'sakit'
+											? 'S'
+											: pulangKey === 'izin'
+												? 'I'
+												: 'TK';
+								masuk = 'H';
+								selesai = selesaiStatus;
+								attendedPoints += 0.5;
+							} else if (count != null) {
 								attendedPoints += count * 0.5;
 								masuk = 'H';
 								if (count >= 2) selesai = 'H';
@@ -344,12 +362,22 @@ async function computePersentaseHarian(params: {
 						const khStatus = mapelKey === 'sakit' ? 'S' : mapelKey === 'izin' ? 'I' : 'TK';
 						if (useHalfWeight) {
 							const count = absenPerMapel.get(`${murid.id}:${mpId}`);
-							if (count != null) {
+							const pulangKey = khPulangPerMapel.get(`${murid.id}:${mpId}`);
+							masuk = khStatus;
+							if (pulangKey !== undefined) {
+								selesai =
+									pulangKey === ''
+										? 'H'
+										: pulangKey === 'sakit'
+											? 'S'
+											: pulangKey === 'izin'
+												? 'I'
+												: 'TK';
+								if (count != null) attendedPoints += count * 0.5;
+							} else if (count != null) {
 								attendedPoints += count * 0.5;
-								masuk = count >= 1 ? 'H' : khStatus;
 								selesai = count >= 2 ? 'H' : khStatus;
 							} else {
-								masuk = khStatus;
 								selesai = khStatus;
 							}
 							status = masuk === 'H' || selesai === 'H' ? 'H' : khStatus;
