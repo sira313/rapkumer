@@ -251,7 +251,7 @@
 	</div>
 
 	<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-		<label class="fieldset flex flex-col gap-1 overflow-hidden">
+		<label class="fieldset flex flex-col gap-1">
 			<span class="fieldset-legend text-sm font-semibold">Hari Sekolah</span>
 			<select
 				class="select bg-base-200 dark:bg-base-300 w-full truncate dark:border-none"
@@ -261,7 +261,7 @@
 				<option value="6">6 Hari Sekolah (Senin - Sabtu)</option>
 			</select>
 		</label>
-		<label class="fieldset flex flex-col gap-1 overflow-hidden">
+		<label class="fieldset flex flex-col gap-1">
 			<span class="fieldset-legend text-sm font-semibold">Jenis Presensi</span>
 			<select
 				class="select bg-base-200 dark:bg-base-300 w-full truncate dark:border-none"
@@ -275,7 +275,7 @@
 
 	<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 		<div class="flex flex-col gap-2 sm:order-2">
-			<label class="fieldset flex flex-col gap-1 overflow-hidden">
+			<label class="fieldset flex flex-col gap-1">
 				<span class="fieldset-legend text-sm font-semibold">Tipe Presensi</span>
 				<select
 					class="select bg-base-200 dark:bg-base-300 w-full truncate dark:border-none"

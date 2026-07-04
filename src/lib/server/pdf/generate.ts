@@ -11,12 +11,7 @@ import { renderPiagamHTML } from './templates/piagam';
 import { renderJurnalMengajarHTML } from './templates/jurnal-mengajar';
 
 export type DocumentType =
-	| 'cover'
-	| 'rapor'
-	| 'biodata'
-	| 'keasramaan'
-	| 'piagam'
-	| 'jurnal-mengajar';
+	'cover' | 'rapor' | 'biodata' | 'keasramaan' | 'piagam' | 'jurnal-mengajar';
 
 export function renderHTML(
 	docType: DocumentType,

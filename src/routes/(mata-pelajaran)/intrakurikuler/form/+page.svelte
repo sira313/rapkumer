@@ -189,7 +189,7 @@
 			/>
 			<p class="label text-wrap">Singkatan/kode singkat untuk mata pelajaran (opsional).</p>
 		</fieldset>
-		<fieldset class="fieldset overflow-hidden">
+		<fieldset class="fieldset">
 			<legend class="fieldset-legend">Jenis Mata Pelajaran</legend>
 			<select
 				class="select bg-base-200 w-full truncate dark:border-none"

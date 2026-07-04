@@ -255,7 +255,7 @@
 				jenisPresensi: existing?.jenisPresensi ?? 'wali_kelas_saja',
 				liburNasional: existing?.liburNasional ?? '[]',
 				liburSemester: existing?.liburSemester ?? '[]',
-				onAction: (a) => {
+				onAction: (a: { submit: () => Promise<void>; cancel: () => void }) => {
 					actions = a;
 				}
 			},
@@ -371,7 +371,7 @@
 						value={semesterGanjil ? String(semesterGanjil.id) : ''}
 					/>
 					<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-						<fieldset class="fieldset overflow-hidden">
+						<fieldset class="fieldset">
 							<legend class="fieldset-legend">Tahun Ajaran</legend>
 							<select
 								class="select bg-base-200 dark:bg-base-300 w-full truncate dark:border-none"
@@ -390,7 +390,7 @@
 							</select>
 						</fieldset>
 
-						<fieldset class="fieldset overflow-hidden">
+						<fieldset class="fieldset">
 							<legend class="fieldset-legend">Semester</legend>
 							<select
 								class="select bg-base-200 dark:bg-base-300 w-full truncate dark:border-none"

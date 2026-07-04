@@ -83,8 +83,7 @@
 					value={catatanValue}
 					oninput={handleInput}
 					placeholder="Tuliskan catatan yang ingin diterapkan ke semua murid"
-					spellcheck="false"
-				></textarea>
+					spellcheck="false"></textarea>
 				<small class="text-base-content/70 text-xs">
 					Biarkan kosong untuk menghapus catatan seluruh murid pada halaman ini.
 				</small>

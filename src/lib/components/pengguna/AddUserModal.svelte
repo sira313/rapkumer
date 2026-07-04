@@ -202,7 +202,7 @@
 			<h3 class="mb-3 text-lg font-bold">Tambah Pengguna</h3>
 			<div class="flex-1 space-y-3 overflow-y-auto px-1">
 				<!-- Sekolah -->
-				<fieldset class="fieldset overflow-hidden">
+				<fieldset class="fieldset">
 					<legend class="fieldset-legend">Sekolah</legend>
 					<select
 						id="add-user-sekolah"

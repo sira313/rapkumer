@@ -23,8 +23,7 @@
 			oninput={(e) => onUpdateNama(e.currentTarget.value)}
 			placeholder="Tuliskan mata evaluasi"
 			disabled={isSubmitting}
-			required
-		></textarea>
+			required></textarea>
 	</td>
 	<td class="align-top">
 		<div class="flex flex-col gap-2">
@@ -36,8 +35,7 @@
 						oninput={(e) => onUpdateIndicator(indicatorIdx, e.currentTarget.value)}
 						placeholder="Tuliskan indikator"
 						disabled={isSubmitting}
-						required={indicatorIdx === 0}
-					></textarea>
+						required={indicatorIdx === 0}></textarea>
 					{#if group.indikator.length > 1 && indicator.deskripsi.trim().length > 0}
 						<button
 							type="button"

@@ -115,8 +115,7 @@ export async function load({ params, locals }) {
 
 	const meta: PageMeta = { title: 'Form Kelas' };
 	const jenjang = locals.sekolah?.jenjangPendidikan as
-		| keyof typeof tingkatOptionsByJenjang
-		| undefined;
+		keyof typeof tingkatOptionsByJenjang | undefined;
 	const tingkatOptions = jenjang ? tingkatOptionsByJenjang[jenjang] : [];
 
 	if (!locals.sekolah?.id) error(400, `Sekolah aktif tidak ditemukan`);

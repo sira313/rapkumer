@@ -48,7 +48,7 @@ async function resolveNama(docType: string, locals: App.Locals, url: URL): Promi
 				preview = p.piagamData as unknown as PreviewData | null;
 				break;
 			}
-			}
+		}
 		nama = ((preview?.murid as Record<string, unknown> | undefined)?.nama as string) || '';
 	} catch {
 		// fallback

@@ -60,7 +60,7 @@
 				</div>
 
 				<!-- Fase -->
-				<div class="fieldset overflow-hidden">
+				<div class="fieldset">
 					<legend class="fieldset-legend">Fase</legend>
 					<select
 						class="select bg-base-200 dark:bg-base-300 w-full truncate dark:border-none"

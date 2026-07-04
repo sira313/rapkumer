@@ -104,7 +104,7 @@
 			<div class="grid grid-cols-1 items-center gap-2 md:grid-cols-2">
 				<!-- Jenjang Pendidikan & Lokasi Tanda Tangan -->
 				<div class="grid grid-cols-1 gap-2 md:col-span-2 md:grid-cols-2 md:items-end">
-					<div class="fieldset overflow-hidden">
+					<div class="fieldset">
 						<legend class="fieldset-legend">Jenjang Pendidikan</legend>
 						<select
 							class="select bg-base-200 dark:bg-base-300 validator w-full truncate border dark:border-none"
@@ -294,7 +294,7 @@
 				</div>
 
 				<!-- Kementrian -->
-				<div class="fieldset overflow-hidden">
+				<div class="fieldset">
 					<legend class="fieldset-legend">Pilih Naungan</legend>
 					<select
 						class="select bg-base-200 dark:bg-base-300 validator w-full truncate border dark:border-none"
@@ -314,7 +314,7 @@
 				</div>
 
 				<!-- Status definitif plt -->
-				<div class="fieldset overflow-hidden">
+				<div class="fieldset">
 					<legend class="fieldset-legend">Status Kepala Sekolah</legend>
 					<select
 						class="select bg-base-200 dark:bg-base-300 validator w-full truncate border dark:border-none"

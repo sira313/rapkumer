@@ -83,7 +83,7 @@
 						</fieldset>
 
 						<!-- Kelas -->
-						<fieldset class="fieldset flex-1 overflow-hidden">
+						<fieldset class="fieldset flex-1">
 							<legend class="fieldset-legend">Kelas</legend>
 							<select
 								class="select bg-base-200 dark:bg-base-300 w-full truncate dark:border-none"
@@ -128,7 +128,7 @@
 					</div>
 					<div class="flex flex-col gap-2 sm:flex-row">
 						<!-- Jenis Kelamin -->
-						<fieldset class="fieldset flex-1 overflow-hidden">
+						<fieldset class="fieldset flex-1">
 							<legend class="fieldset-legend">Jenis Kelamin</legend>
 							<select
 								class="select validator bg-base-200 dark:bg-base-300 w-full truncate dark:border-none"

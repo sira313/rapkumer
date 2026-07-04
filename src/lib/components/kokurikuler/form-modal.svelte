@@ -116,8 +116,7 @@
 						value={tujuanInput}
 						oninput={(event) => onTujuanChange((event.currentTarget as HTMLTextAreaElement).value)}
 						required
-						disabled={!canManage}
-					></textarea>
+						disabled={!canManage}></textarea>
 				{/snippet}
 			</FormEnhance>
 

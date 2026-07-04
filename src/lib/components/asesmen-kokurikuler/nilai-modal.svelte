@@ -98,7 +98,7 @@
 
 					<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
 						{#each kokurikuler.dimensi as dim (dim.key)}
-							<fieldset class="fieldset overflow-hidden">
+							<fieldset class="fieldset">
 								<legend class="fieldset-legend text-base-content/80 text-sm font-semibold">
 									{dim.label}
 								</legend>

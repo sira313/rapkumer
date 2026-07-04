@@ -1,13 +1,7 @@
 <script lang="ts">
 	import Icon from '$lib/components/icon.svelte';
 
-	type DocumentType =
-		| 'cover'
-		| 'biodata'
-		| 'rapor'
-		| 'piagam'
-		| 'keasramaan'
-		| 'jurnal-mengajar';
+	type DocumentType = 'cover' | 'biodata' | 'rapor' | 'piagam' | 'keasramaan' | 'jurnal-mengajar';
 	type RaporPeriode = 'rts' | 'ras';
 
 	type MuridData = {

@@ -22,7 +22,7 @@
 	});
 </script>
 
-<fieldset class="fieldset overflow-hidden">
+<fieldset class="fieldset">
 	<legend class="fieldset-legend">Pilih Agama</legend>
 
 	<select

@@ -212,8 +212,7 @@
 										required
 										disabled={!canManage}
 										aria-invalid={invalid}
-										aria-busy={submitting}
-									></textarea>
+										aria-busy={submitting}></textarea>
 								{/snippet}
 							</FormEnhance>
 						</td>
@@ -276,8 +275,7 @@
 												required
 												disabled={!canManage}
 												aria-invalid={invalid}
-												aria-busy={submitting}
-											></textarea>
+												aria-busy={submitting}></textarea>
 										{/snippet}
 									</FormEnhance>
 								</td>

@@ -154,8 +154,7 @@ export async function load({ parent, url, depends }) {
 	// prefer the subject with the same name in the active kelas (so subject exists
 	// across multiple kelas rows with same name).
 	const maybeUser = user as unknown as
-		| { id?: number; type?: string; mataPelajaranId?: number }
-		| undefined;
+		{ id?: number; type?: string; mataPelajaranId?: number } | undefined;
 	// Special rule: if the logged-in user is a 'user' assigned to any agama
 	// variant (Katolik, Islam, Kristen, Hindu, Buddha, Khonghucu, etc.),
 	// treat them like the admin behaviour: show the parent agama subject and

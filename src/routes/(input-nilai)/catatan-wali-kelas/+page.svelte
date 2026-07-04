@@ -195,7 +195,7 @@
 				onSuccess: async () => {
 					await handleBulkSuccess();
 				},
-				onAction: (a) => {
+				onAction: (a: { submit: () => void }) => {
 					actions = a;
 				}
 			},
@@ -302,8 +302,7 @@
 												bind:value={editingCatatan}
 												placeholder={`Tuliskan catatan untuk ${item.nama}`}
 												spellcheck="false"
-												aria-invalid={invalid}
-											></textarea>
+												aria-invalid={invalid}></textarea>
 											<small class="text-base-content/60 text-xs">
 												Kosongkan catatan dan simpan untuk menghapus.
 											</small>

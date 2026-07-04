@@ -501,7 +501,7 @@
 			title: 'Download Rekap Kehadiran',
 			body: DownloadRekapModal,
 			bodyProps: {
-				onAction: (a) => {
+				onAction: (a: { download: () => Promise<void>; cancel: () => void }) => {
 					actions = a;
 				}
 			},

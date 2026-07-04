@@ -186,8 +186,7 @@
 						formCatatan = (e.currentTarget as HTMLTextAreaElement).value;
 					}}
 					placeholder="Tuliskan catatan (maksimal 300 karakter)"
-					spellcheck="false"
-				></textarea>
+					spellcheck="false"></textarea>
 				<small class="text-base-content/60 text-xs">
 					{formCatatan.length}/300 karakter
 				</small>

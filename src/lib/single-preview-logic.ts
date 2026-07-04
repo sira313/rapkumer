@@ -16,12 +16,7 @@ export type MuridData = {
 };
 
 export type DocumentType =
-	| 'cover'
-	| 'biodata'
-	| 'rapor'
-	| 'piagam'
-	| 'keasramaan'
-	| 'jurnal-mengajar';
+	'cover' | 'biodata' | 'rapor' | 'piagam' | 'keasramaan' | 'jurnal-mengajar';
 
 export type { PreviewPayload } from '$lib/preview-types';
 

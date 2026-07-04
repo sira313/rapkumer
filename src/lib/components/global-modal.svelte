@@ -62,7 +62,7 @@
 				<h3 class="shrink-0 text-lg font-bold">{modalProps.title}</h3>
 			{/if}
 
-			<div class="min-h-0 w-full max-w-none flex-1 overflow-y-auto py-4">
+			<div class="min-h-0 w-full max-w-none flex-1 overflow-y-auto px-1 py-4">
 				{#if typeof modalProps.body === 'function'}
 					<modalProps.body {...modalProps.bodyProps ?? {}} />
 				{:else if typeof modalProps.body === 'string'}
@@ -153,10 +153,3 @@
 		{/if}
 	</dialog>
 {/if}
-
-<style>
-	:global(.modal input:focus),
-	:global(.modal input:focus-visible) {
-		outline-offset: -2px;
-	}
-</style>

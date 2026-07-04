@@ -791,11 +791,9 @@ export const actions: Actions = {
 		const resolvedSemesterId: number | null = hasSemester ? semesterCandidate : null;
 
 		let semesterRecord:
-			| (typeof tableSemester.$inferSelect & { tahunAjaran: TahunAjaranRow })
-			| null = null;
+			(typeof tableSemester.$inferSelect & { tahunAjaran: TahunAjaranRow }) | null = null;
 		let tahunAjaranRecord:
-			| (typeof tableTahunAjaran.$inferSelect & { semester: SemesterRow[] })
-			| null = null;
+			(typeof tableTahunAjaran.$inferSelect & { semester: SemesterRow[] }) | null = null;
 
 		if (resolvedSemesterId) {
 			const semesterRow = await db.query.tableSemester.findFirst({
@@ -959,8 +957,7 @@ export const actions: Actions = {
 		}
 
 		let sourceSemester:
-			| (typeof tableSemester.$inferSelect & { tahunAjaran: TahunAjaranRow })
-			| null = null;
+			(typeof tableSemester.$inferSelect & { tahunAjaran: TahunAjaranRow }) | null = null;
 
 		if (Number.isFinite(sourceSemesterId) && (sourceSemesterId ?? 0) > 0) {
 			const candidate = await db.query.tableSemester.findFirst({
@@ -1242,10 +1239,7 @@ export const actions: Actions = {
 
 		const validTipe = ['masuk_pulang', 'masuk_saja', 'awal_mapel', 'awal_akhir_mapel'];
 		const tipePresensiEnum = tipePresensi as
-			| 'masuk_pulang'
-			| 'masuk_saja'
-			| 'awal_mapel'
-			| 'awal_akhir_mapel';
+			'masuk_pulang' | 'masuk_saja' | 'awal_mapel' | 'awal_akhir_mapel';
 		if (!validTipe.includes(tipePresensiEnum)) {
 			return fail(400, { fail: 'Tipe presensi tidak valid' });
 		}

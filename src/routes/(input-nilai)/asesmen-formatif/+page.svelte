@@ -210,7 +210,7 @@
 	</div>
 
 	<div class="flex flex-col items-center gap-2 sm:flex-row">
-		<form class="w-full overflow-hidden md:max-w-80" method="get" use:autoSubmit>
+		<form class="w-full md:max-w-80" method="get" use:autoSubmit>
 			<select
 				class="select bg-base-200 w-full truncate dark:border-none"
 				title="Pilih mata pelajaran"
