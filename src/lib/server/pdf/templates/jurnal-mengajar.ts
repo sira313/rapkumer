@@ -139,7 +139,7 @@ tr.striped td {
 				<th style="width: 6%;">Jam</th>
 				<th style="width: 17%;">Materi</th>
 				<th style="width: 22%;">Tujuan Pembelajaran</th>
-				<th style="width: 10%;">Kehadiran (H/S/I/A)</th>
+				<th style="width: 10%;">Kehadiran (H/S/I/TK)</th>
 				<th style="width: 17%;">Catatan</th>
 			</tr>
 		</thead>
