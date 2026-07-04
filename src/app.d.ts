@@ -45,7 +45,6 @@ declare global {
 			raporData?: RaporPrintData;
 			piagamData?: PiagamPrintData;
 			keasramaanData?: KeasramaanPrintData;
-			kartuMuridData?: KartuMuridData;
 			piagamRankingOptions?: PiagamRankingOption[];
 			user?: Pick<
 				AuthUser,

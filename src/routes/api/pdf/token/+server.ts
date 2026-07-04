@@ -5,7 +5,6 @@ import { getRaporPreviewPayload } from '../../../cetak/rapor/preview-data';
 import { getBiodataPreviewPayload } from '../../../cetak/biodata/preview-data';
 import { getKeasramaanPreviewPayload } from '../../../cetak/keasramaan/preview-data';
 import { getPiagamPreviewPayload } from '../../../cetak/piagam/preview-data';
-import { getKartuMuridPreviewPayload } from '../../../cetak/kartu-murid/preview-data';
 import type { RequestHandler } from './$types';
 
 function slugify(text: string): string {
@@ -49,12 +48,7 @@ async function resolveNama(docType: string, locals: App.Locals, url: URL): Promi
 				preview = p.piagamData as unknown as PreviewData | null;
 				break;
 			}
-			case 'kartu-murid': {
-				const p = await getKartuMuridPreviewPayload({ locals, url });
-				preview = p.kartuMuridData as unknown as PreviewData | null;
-				break;
 			}
-		}
 		nama = ((preview?.murid as Record<string, unknown> | undefined)?.nama as string) || '';
 	} catch {
 		// fallback

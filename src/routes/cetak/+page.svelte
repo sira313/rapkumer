@@ -27,7 +27,6 @@
 			{ value: 'rapor', label: 'Rapor' },
 			{ value: 'piagam', label: 'Piagam' },
 			{ value: 'keasramaan', label: 'Rapor Keasramaan' },
-			{ value: 'kartu-murid', label: 'Kartu Murid' },
 			{ value: 'jurnal-mengajar', label: 'Jurnal Mengajar' }
 		];
 		if (userType === 'wali_asuh') {

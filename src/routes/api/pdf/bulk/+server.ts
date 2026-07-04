@@ -5,14 +5,7 @@ import { getCoverPreviewPayload } from '../../../cetak/cover/preview-data';
 import { getBiodataPreviewPayload } from '../../../cetak/biodata/preview-data';
 import { getKeasramaanPreviewPayload } from '../../../cetak/keasramaan/preview-data';
 import { getPiagamPreviewPayload } from '../../../cetak/piagam/preview-data';
-import { getKartuMuridPreviewPayload } from '../../../cetak/kartu-murid/preview-data';
 import { getLogoSrc } from '$lib/server/pdf/preview-utils';
-
-import {
-	renderKartuMuridBulkHTML,
-	type KartuMuridData
-} from '$lib/server/pdf/templates/kartu-murid';
-import { renderPDF } from '$lib/server/pdf/pagedpdf';
 
 import type { RequestHandler } from './$types';
 
@@ -77,35 +70,6 @@ export const POST = (async ({ locals, request }) => {
 
 	if (!body.docType || !body.muridIds?.length) {
 		throw error(400, 'Parameter docType dan muridIds wajib diisi.');
-	}
-
-	if (body.docType === 'kartu-murid') {
-		const sekolahId = locals.sekolah?.id;
-		const sharedLogo = sekolahId ? await getLogoSrc(sekolahId) : null;
-
-		const kartuData = await Promise.all(
-			body.muridIds.map(async (muridId) => {
-				const url = new URL('http://localhost');
-				url.searchParams.set('murid_id', String(muridId));
-				if (body.kelasId) url.searchParams.set('kelas_id', String(body.kelasId));
-
-				const p = await getKartuMuridPreviewPayload({ locals, url }, sharedLogo);
-				return p.kartuMuridData as KartuMuridData;
-			})
-		);
-
-		const html = renderKartuMuridBulkHTML(kartuData);
-		const pdfBuffer = await renderPDF(html);
-
-		const docLabel = body.docLabel || body.docType;
-		const kelasLabel = body.kelasLabel || 'Semua-Kelas';
-		const filename = `${docLabel}-${kelasLabel}-${body.muridIds.length}murid.pdf`;
-
-		return new Response(new Blob([pdfBuffer as unknown as BlobPart], { type: 'application/pdf' }), {
-			headers: {
-				'Content-Disposition': `attachment; filename="${filename}"`
-			}
-		});
 	}
 
 	const allData = await Promise.all(

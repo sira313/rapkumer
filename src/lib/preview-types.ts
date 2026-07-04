@@ -6,7 +6,6 @@ export type DocumentType =
 	| 'rapor'
 	| 'piagam'
 	| 'keasramaan'
-	| 'kartu-murid'
 	| 'jurnal-mengajar';
 
 export type MuridData = {

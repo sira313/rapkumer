@@ -157,19 +157,6 @@ interface RaporPrintData {
 	showBgLogo?: boolean;
 }
 
-interface KartuMuridData {
-	murid: {
-		nama: string;
-		nis: string;
-		nisn: string;
-	};
-	sekolah: {
-		nama: string;
-		logo?: string | null;
-	};
-	qrDataUri: string;
-}
-
 interface PiagamPrintData {
 	sekolah: {
 		nama: string;

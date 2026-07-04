@@ -33,10 +33,6 @@
 		'Desember'
 	];
 
-	const waktuSekarang = $derived(
-		`${hariList[serverTime.now.getDay()]}, ${serverTime.now.getDate()} ${bulanList[serverTime.now.getMonth()]} ${serverTime.now.getFullYear()} ${String(serverTime.now.getHours()).padStart(2, '0')}:${String(serverTime.now.getMinutes()).padStart(2, '0')}`
-	);
-
 	type KehadiranRow = {
 		id: number;
 		no: number;
@@ -613,7 +609,7 @@
 					<span class="text-primary">{formatTanggal(data.tanggal)}</span>
 				{:else if isToday}
 					Kehadiran murid hari Ini -
-					<span class="text-primary">{waktuSekarang}</span>
+					<span class="text-primary">{formatTanggal(data.tanggal)}</span>
 				{:else}
 					Kehadiran murid -
 					<span class="text-primary">{formatTanggal(data.tanggal)}</span>

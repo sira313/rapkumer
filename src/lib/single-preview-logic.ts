@@ -21,7 +21,6 @@ export type DocumentType =
 	| 'rapor'
 	| 'piagam'
 	| 'keasramaan'
-	| 'kartu-murid'
 	| 'jurnal-mengajar';
 
 export type { PreviewPayload } from '$lib/preview-types';
@@ -51,7 +50,6 @@ const DOCUMENT_PATHS: Record<DocumentType, string> = {
 	rapor: '/cetak/rapor',
 	piagam: '/cetak/piagam',
 	keasramaan: '/cetak/keasramaan',
-	'kartu-murid': '/cetak/kartu-murid',
 	'jurnal-mengajar': '/cetak/jurnal-mengajar'
 };
 
@@ -61,7 +59,6 @@ const DOCUMENT_LABELS: Record<DocumentType, string> = {
 	rapor: 'Rapor',
 	piagam: 'Piagam',
 	keasramaan: 'Rapor Keasramaan',
-	'kartu-murid': 'Kartu Murid',
 	'jurnal-mengajar': 'Jurnal Mengajar'
 };
 
@@ -116,7 +113,6 @@ export function isPreviewableDocument(value: DocumentType | ''): value is Docume
 		value === 'rapor' ||
 		value === 'piagam' ||
 		value === 'keasramaan' ||
-		value === 'kartu-murid' ||
 		value === 'jurnal-mengajar'
 	);
 }

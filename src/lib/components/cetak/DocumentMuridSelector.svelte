@@ -7,7 +7,6 @@
 		| 'rapor'
 		| 'piagam'
 		| 'keasramaan'
-		| 'kartu-murid'
 		| 'jurnal-mengajar';
 	type RaporPeriode = 'rts' | 'ras';
 

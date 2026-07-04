@@ -7,7 +7,6 @@
 		| 'rapor'
 		| 'piagam'
 		| 'keasramaan'
-		| 'kartu-murid'
 		| 'jurnal-mengajar';
 
 	type PreviewPayload = {
@@ -17,7 +16,6 @@
 		raporData?: NonNullable<App.PageData['raporData']> | null;
 		piagamData?: NonNullable<App.PageData['piagamData']> | null;
 		keasramaanData?: NonNullable<App.PageData['keasramaanData']> | null;
-		kartuMuridData?: NonNullable<App.PageData['kartuMuridData']> | null;
 	};
 
 	let {
