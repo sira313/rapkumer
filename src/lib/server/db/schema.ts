@@ -1163,6 +1163,50 @@ export const tableUserFavoritesRelations = relations(tableUserFavorites, ({ one 
 	})
 }));
 
+export const tableJurnalMengajar = sqliteTable(
+	'jurnal_mengajar',
+	{
+		id: int().primaryKey({ autoIncrement: true }),
+		authUserId: int()
+			.references(() => tableAuthUser.id, { onDelete: 'cascade' })
+			.notNull(),
+		kelasId: int()
+			.references(() => tableKelas.id, { onDelete: 'cascade' })
+			.notNull(),
+		mataPelajaranId: int()
+			.references(() => tableMataPelajaran.id, { onDelete: 'cascade' })
+			.notNull(),
+		tanggal: text().notNull(),
+		jamPelajaran: text().notNull(),
+		lingkupMateri: text().notNull(),
+		tujuanPembelajaranId: int().references(() => tableTujuanPembelajaran.id, {
+			onDelete: 'set null'
+		}),
+		catatan: text(),
+		...audit
+	},
+	(table) => [index('jurnal_mengajar_auth_user_idx').on(table.authUserId)]
+);
+
+export const tableJurnalMengajarRelations = relations(tableJurnalMengajar, ({ one }) => ({
+	authUser: one(tableAuthUser, {
+		fields: [tableJurnalMengajar.authUserId],
+		references: [tableAuthUser.id]
+	}),
+	kelas: one(tableKelas, {
+		fields: [tableJurnalMengajar.kelasId],
+		references: [tableKelas.id]
+	}),
+	mataPelajaran: one(tableMataPelajaran, {
+		fields: [tableJurnalMengajar.mataPelajaranId],
+		references: [tableMataPelajaran.id]
+	}),
+	tujuanPembelajaran: one(tableTujuanPembelajaran, {
+		fields: [tableJurnalMengajar.tujuanPembelajaranId],
+		references: [tableTujuanPembelajaran.id]
+	})
+}));
+
 export const tableJadwalPelajaran = sqliteTable(
 	'jadwal_pelajaran',
 	{

@@ -1,7 +1,14 @@
 <script lang="ts">
 	import Icon from '$lib/components/icon.svelte';
 
-	type DocumentType = 'cover' | 'biodata' | 'rapor' | 'piagam' | 'keasramaan' | 'kartu-murid';
+	type DocumentType =
+		| 'cover'
+		| 'biodata'
+		| 'rapor'
+		| 'piagam'
+		| 'keasramaan'
+		| 'kartu-murid'
+		| 'jurnal-mengajar';
 	type RaporPeriode = 'rts' | 'ras';
 
 	type MuridData = {
@@ -36,7 +43,9 @@
 		onBulkDownload,
 		downloadDisabled = false,
 		downloadButtonTitle = '',
-		downloadLoading = false
+		downloadLoading = false,
+		jurnalTanggalMulai = $bindable(''),
+		jurnalTanggalSelesai = $bindable('')
 	}: {
 		selectedDocument: DocumentType | '';
 		selectedTemplate: '1' | '2';
@@ -50,9 +59,12 @@
 		downloadDisabled?: boolean;
 		downloadButtonTitle?: string;
 		downloadLoading?: boolean;
+		jurnalTanggalMulai?: string;
+		jurnalTanggalSelesai?: string;
 	} = $props();
 
 	const isPiagamSelected = $derived.by(() => selectedDocument === 'piagam');
+	const isJurnalMengajar = $derived.by(() => selectedDocument === 'jurnal-mengajar');
 	const hasMurid = $derived.by(() => daftarMurid.length > 0);
 	const hasPiagamRankingOptions = $derived.by(() => piagamRankingOptions.length > 0);
 
@@ -118,7 +130,24 @@
 			</select>
 		</div>
 	{/if}
-	{#if isPiagamSelected}
+	{#if isJurnalMengajar}
+		<fieldset class="fieldset min-w-0 flex-1 py-0">
+			<input
+				type="date"
+				class="input bg-base-100 dark:bg-base-200 w-full dark:border-none"
+				bind:value={jurnalTanggalMulai}
+			/>
+			<p class="text-wrap">Pilih tanggal mulai</p>
+		</fieldset>
+		<fieldset class="fieldset min-w-0 flex-1 py-0">
+			<input
+				type="date"
+				class="input bg-base-100 dark:bg-base-200 w-full dark:border-none"
+				bind:value={jurnalTanggalSelesai}
+			/>
+			<p class="text-wrap">Pilih tanggal selesai</p>
+		</fieldset>
+	{:else if isPiagamSelected}
 		<div class="min-w-0 flex-1 overflow-hidden">
 			<select
 				class="select bg-base-200 w-full min-w-0 truncate dark:border-none"
@@ -156,7 +185,8 @@
 	{/if}
 	<div class="flex flex-row">
 		<button
-			class="btn btn-soft flex-1 rounded-r-none shadow-none"
+			class="btn btn-soft flex-1 shadow-none"
+			class:rounded-r-none={!isJurnalMengajar}
 			type="button"
 			title={downloadButtonTitle}
 			disabled={downloadDisabled}
@@ -169,30 +199,32 @@
 			{/if}
 			Preview
 		</button>
-		<div class="dropdown dropdown-end">
-			<div
-				tabindex="0"
-				role="button"
-				class="btn btn-primary rounded-l-none shadow-none"
-				class:btn-disabled={!selectedDocument}
-				title={selectedDocument ? 'Opsi download lainnya' : 'Pilih dokumen terlebih dahulu'}
-			>
-				<Icon name="down" />
+		{#if !isJurnalMengajar}
+			<div class="dropdown dropdown-end">
+				<div
+					tabindex="0"
+					role="button"
+					class="btn btn-primary rounded-l-none shadow-none"
+					class:btn-disabled={!selectedDocument}
+					title={selectedDocument ? 'Opsi download lainnya' : 'Pilih dokumen terlebih dahulu'}
+				>
+					<Icon name="down" />
+				</div>
+				<ul
+					tabindex="-1"
+					class="dropdown-content menu bg-base-100 rounded-box border-base-300 z-1 mt-2 w-38 border p-2 shadow-xl"
+				>
+					<li>
+						<button
+							type="button"
+							onclick={onBulkDownload}
+							disabled={!selectedDocument || !hasSelectionOptions}
+						>
+							Semua Murid
+						</button>
+					</li>
+				</ul>
 			</div>
-			<ul
-				tabindex="-1"
-				class="dropdown-content menu bg-base-100 rounded-box border-base-300 z-1 mt-2 w-38 border p-2 shadow-xl"
-			>
-				<li>
-					<button
-						type="button"
-						onclick={onBulkDownload}
-						disabled={!selectedDocument || !hasSelectionOptions}
-					>
-						Semua Murid
-					</button>
-				</li>
-			</ul>
-		</div>
+		{/if}
 	</div>
 </div>

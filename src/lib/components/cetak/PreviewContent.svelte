@@ -1,7 +1,14 @@
 <script lang="ts">
 	import Icon from '$lib/components/icon.svelte';
 
-	type DocumentType = 'cover' | 'biodata' | 'rapor' | 'piagam' | 'keasramaan' | 'kartu-murid';
+	type DocumentType =
+		| 'cover'
+		| 'biodata'
+		| 'rapor'
+		| 'piagam'
+		| 'keasramaan'
+		| 'kartu-murid'
+		| 'jurnal-mengajar';
 
 	type PreviewPayload = {
 		meta?: { title?: string | null } | null;

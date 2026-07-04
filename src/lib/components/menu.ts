@@ -87,6 +87,10 @@ export const appMenuItems: MenuItem[] = [
 				path: '/absen'
 			},
 			{
+				title: 'Jurnal Mengajar',
+				path: '/jurnal-mengajar'
+			},
+			{
 				title: 'Catatan Wali Kelas',
 				path: '/catatan-wali-kelas'
 			},

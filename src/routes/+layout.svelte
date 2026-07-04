@@ -82,6 +82,7 @@
 		'/nilai-ekstrakurikuler',
 		'/asesmen-keasramaan',
 		'/absen',
+		'/jurnal-mengajar',
 		'/catatan-wali-kelas',
 		'/keputusan',
 		'/cetak'
@@ -94,9 +95,13 @@
 
 	const userIsGuruMapel = $derived(data.user?.type === 'user' && data.hasMataPelajaran);
 	const isAbsenPage = $derived(page.url.pathname.startsWith('/absen'));
+	const isJurnalMengajarPage = $derived(page.url.pathname.startsWith('/jurnal-mengajar'));
+	const isCetakPage = $derived(page.url.pathname.startsWith('/cetak'));
 
 	const disableInteraction = $derived(
-		data.user?.type === 'user' && isReadonlyPage && !(isAbsenPage && userIsGuruMapel)
+		data.user?.type === 'user' &&
+			isReadonlyPage &&
+			!((isAbsenPage || isJurnalMengajarPage || isCetakPage) && userIsGuruMapel)
 	);
 
 	async function stopServer() {

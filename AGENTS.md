@@ -89,18 +89,21 @@ Configured via `jenisPresensi` (wali_kelas_saja / tiap_mapel) and `tipePresensi`
 The 4 logic blocks below are **mutually exclusive** — gated by `isWaliKelasMasukPulang` / `isTiapMapel` / `isAwalAkhir` guards in `load-persentase-bulanan.ts` and `load-persentase-semester.ts`.
 
 ### Logic 1 — Wali Kelas only + Masuk only
+
 - `bulanan`: already correct (1 session/day)
 - `persentase_bulanan`: already correct (`hadir / totalHariBelajar * 100%`)
 - `persentase_semester`: same as bulanan, computed from `tanggalMasuk` to `tanggalBagiRapor`
 - `rapor`: same as `bulanan`
 
 ### Logic 2 — Wali Kelas only + Masuk pulang
+
 - `bulanan`: references "presensi masuk" from Isi Sekaligus (1 session/day)
 - `persentase_bulanan`: `masuk=1, pulang=1` → `persentase = countHadir / (totalHariBelajar * 2) * 100%`
 - `persentase_semester`: same as bulanan, date range from semester start to rapor date
 - `rapor`: same as `bulanan`
 
 ### Logic 3 — Per-Mapel + Awal mapel (guru mapel only)
+
 - Each subject = 1 **pertemuan** (meeting).
 - Isi Sekaligus for guru mapel has no time restriction (`jadwalBelumDimulai = false` in `+page.svelte`). `isMapelOnJadwal` validates whether the teacher's subject is scheduled that day.
 - `harian` & `persentase_harian`: uses the first scheduled subject (`first-mapel.ts`). Subsequent subjects count as present even if unattended.
@@ -109,6 +112,7 @@ The 4 logic blocks below are **mutually exclusive** — gated by `isWaliKelasMas
 - `persentase_semester`: same as bulanan, date range from semester start to rapor date.
 
 ### Logic 4 — Per-Mapel + Awal & akhir mapel
+
 - Like logic 3, but each meeting has **2 attendance sessions** (start + end).
 - `totalPertemuan` is **doubled** (`totalPertemuan *= 2`). Header: `(N days M sessions)`.
 - `countHadir` = raw `absCount` per subject (not halved). If `keterangan===null` with no absensi records, defaults to 2 sessions present.

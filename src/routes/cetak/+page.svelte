@@ -27,10 +27,15 @@
 			{ value: 'rapor', label: 'Rapor' },
 			{ value: 'piagam', label: 'Piagam' },
 			{ value: 'keasramaan', label: 'Rapor Keasramaan' },
-			{ value: 'kartu-murid', label: 'Kartu Murid' }
+			{ value: 'kartu-murid', label: 'Kartu Murid' },
+			{ value: 'jurnal-mengajar', label: 'Jurnal Mengajar' }
 		];
 		if (userType === 'wali_asuh') {
 			return all.filter((o) => o.value === 'keasramaan');
+		}
+		// For guru mapel ('user' type), only show jurnal-mengajar
+		if (userType === 'user') {
+			return all.filter((o) => o.value === 'jurnal-mengajar');
 		}
 		return all;
 	});
@@ -85,6 +90,11 @@
 	let waitingForPrintable = $state(false);
 	let bulkLoadProgress = $state<{ current: number; total: number } | null>(null);
 
+	// Jurnal mengajar date range
+	let jurnalTanggalMulai = $state(data.tanggalMasuk || '');
+	let jurnalTanggalSelesai = $state(data.tanggalBagiRaport || '');
+	const isJurnalMengajar = $derived(selectedDocument === 'jurnal-mengajar');
+
 	// increment this to bust background cache after upload
 	let bgRefreshKey = $state<number>(0);
 
@@ -128,7 +138,11 @@
 		() => selectedMuridIndex >= 0 && selectedMuridIndex < navigationMuridIds.length - 1
 	);
 	const hasSelectionOptions = $derived.by(() =>
-		isPiagamSelected ? hasPiagamRankingOptions : hasMurid
+		isJurnalMengajar
+			? Boolean(jurnalTanggalMulai && jurnalTanggalSelesai)
+			: isPiagamSelected
+				? hasPiagamRankingOptions
+				: hasMurid
 	);
 	const canNavigateMurid = $derived.by(() => {
 		if (!selectedDocument) return false;
@@ -201,11 +215,19 @@
 		return parts.join(' - ');
 	});
 
-	const downloadDisabled = $derived.by(
-		() => !selectedDocument || !hasSelectionOptions || !selectedMurid || downloadLoading
-	);
+	const downloadDisabled = $derived.by(() => {
+		if (!selectedDocument) return true;
+		if (isJurnalMengajar) return !jurnalTanggalMulai || !jurnalTanggalSelesai || downloadLoading;
+		return !hasSelectionOptions || !selectedMurid || downloadLoading;
+	});
 	const downloadButtonTitle = $derived.by(() => {
 		if (!selectedDocument) return 'Pilih dokumen terlebih dahulu';
+		if (isJurnalMengajar) {
+			if (!jurnalTanggalMulai || !jurnalTanggalSelesai)
+				return 'Pilih rentang tanggal terlebih dahulu';
+			if (downloadLoading) return 'Sedang membuat PDF...';
+			return `Preview Jurnal Mengajar`;
+		}
 		if (!hasSelectionOptions) {
 			return isPiagamSelected
 				? 'Tidak ada data peringkat piagam untuk kelas ini'
@@ -246,6 +268,10 @@
 		const documentType = selectedDocument;
 		if (!documentType) {
 			toast('Pilih dokumen terlebih dahulu', 'warning');
+			return;
+		}
+		if (documentType === 'jurnal-mengajar') {
+			await handleDownloadJurnal();
 			return;
 		}
 		if (!isPreviewableDocument(documentType)) {
@@ -338,6 +364,37 @@
 		if (wasViewerOpen) {
 			const murid = selectedMurid;
 			if (murid) loadPdf(murid);
+		}
+	}
+
+	async function handleDownloadJurnal() {
+		if (!isJurnalMengajar) return;
+		if (!jurnalTanggalMulai || !jurnalTanggalSelesai) {
+			toast('Pilih rentang tanggal terlebih dahulu', 'warning');
+			return;
+		}
+		downloadLoading = true;
+		try {
+			const params = new URLSearchParams({
+				tanggal_mulai: jurnalTanggalMulai,
+				tanggal_selesai: jurnalTanggalSelesai
+			});
+			const res = await fetch(`/api/pdf/jurnal-mengajar?${params}`);
+			if (!res.ok) throw new Error('Gagal membuat PDF');
+			const blob = await res.blob();
+
+			if (pdfViewerUrl) URL.revokeObjectURL(pdfViewerUrl);
+			pdfViewerUrl = URL.createObjectURL(blob);
+			pdfViewerTitle = `Jurnal Mengajar ${jurnalTanggalMulai} - ${jurnalTanggalSelesai}`;
+
+			scrollToViewer();
+
+			toast('PDF Jurnal Mengajar berhasil dibuat!', 'success');
+		} catch (err) {
+			console.error('Jurnal download error:', err);
+			toast('Gagal membuat PDF Jurnal Mengajar', 'error');
+		} finally {
+			downloadLoading = false;
 		}
 	}
 
@@ -524,6 +581,8 @@
 		{downloadDisabled}
 		{downloadButtonTitle}
 		{downloadLoading}
+		bind:jurnalTanggalMulai
+		bind:jurnalTanggalSelesai
 	/>
 
 	<PreviewFooter

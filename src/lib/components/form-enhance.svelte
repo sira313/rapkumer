@@ -128,6 +128,7 @@
 						if (showToast) {
 							toast(successMessage, 'success');
 						}
+						if (update) await update();
 						const callForm = args.form ?? args.formElement;
 						if (callForm && onsuccess) {
 							onsuccess({ form: callForm, data: successData });
