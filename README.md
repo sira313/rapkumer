@@ -37,7 +37,7 @@ Dokumentasi lengkap aplikasi ini disusun dalam bahasa Indonesia. File README ini
 ### Versi Pengguna (Windows Installer)
 
 1. Kunjungi halaman rilis:
-   https://github.com/sira313/raporkumer/releases
+   https://github.com/sira313/rapkumer/releases
 2. Unduh file `RapkumerSetup.exe`.
 3. Jalankan installer dan ikuti proses instalasi.
 4. Setelah selesai, buka aplikasi melalui shortcut yang tersedia.
@@ -52,10 +52,10 @@ Dokumentasi lengkap aplikasi ini disusun dalam bahasa Indonesia. File README ini
 
 #### Instalasi
 
-1. Clone repository.
+1. Clone repository menggunakan perintah di bawah atau download [file zip](https://github.com/sira313/rapkumer/archive/refs/heads/main.zip) dari project ini.
 
    ```bash
-   git clone https://github.com/sira313/raporkumer && cd raporkumer
+   git clone https://github.com/sira313/rapkumer && cd rapkumer
    ```
 
 2. Install seluruh dependency.

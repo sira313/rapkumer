@@ -13,7 +13,7 @@
 		"preview": "vite preview",
 		"start": "node scripts/start-build.mjs",
 		"package:win": "node scripts/prepare-windows.mjs",
-		"package:win:installer": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"& 'C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe' 'installer/raporkumer.iss'\"",
+		"package:win:installer": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"& 'C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe' 'installer/rapkumer.iss'\"",
 		"sign:executables": "powershell -NoProfile -ExecutionPolicy Bypass -File installer/scripts/sign-files.ps1 -SignExecutables",
 		"sign:installer": "powershell -NoProfile -ExecutionPolicy Bypass -File installer/scripts/sign-files.ps1 -SignInstaller",
 		"sign:verify": "powershell -NoProfile -ExecutionPolicy Bypass -File installer/scripts/sign-files.ps1 -VerifyOnly -SignExecutables -SignInstaller",

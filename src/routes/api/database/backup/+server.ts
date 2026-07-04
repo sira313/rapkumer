@@ -37,7 +37,7 @@ export async function GET() {
 
 	const fileBuffer = await readFile(dbPath);
 	const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-	const filename = `raporkumer-backup-${timestamp}.sqlite3`;
+	const filename = `rapkumer-backup-${timestamp}.sqlite3`;
 	const body = new Uint8Array(fileBuffer);
 
 	return new Response(body, {

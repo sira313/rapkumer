@@ -8,7 +8,7 @@ import { join, dirname } from 'node:path';
 
 import { getAppVersion } from './app-info';
 
-const releasesEndpoint = 'https://api.github.com/repos/sira313/raporkumer/releases/latest';
+const releasesEndpoint = 'https://api.github.com/repos/sira313/rapkumer/releases/latest';
 const userAgent = 'RapkumerUpdater/1.0';
 
 const downloads = new Map<string, DownloadRecord>();

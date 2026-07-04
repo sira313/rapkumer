@@ -72,7 +72,7 @@ pnpm format                  # prettier --write . (tabs, single quotes, no trail
 
 - InnoSetup bundles **VC++ Redistributable 2015-2022 (x64)** for `@libsql/win32-x64-msvc`.
 - `scripts/prepare-windows.mjs` downloads `vc_redist.x64.exe` to `dist/windows/`.
-- Build on Linux via Wine: install InnoSetup 7+, then `wine ISCC.exe installer/raporkumer.iss`. Run `pnpm build` first.
+- Build on Linux via Wine: install InnoSetup 7+, then `wine ISCC.exe installer/rapkumer.iss`. Run `pnpm build` first.
 
 ## Gotchas
 
