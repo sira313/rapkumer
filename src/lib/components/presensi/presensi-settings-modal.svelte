@@ -224,7 +224,7 @@
 	});
 </script>
 
-<div class="not-prose flex flex-col gap-6">
+<div class="not-prose flex flex-col gap-2">
 	<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 		<label class="fieldset flex flex-col gap-1">
 			<span class="fieldset-legend text-sm font-semibold">Jam Masuk</span>
@@ -273,71 +273,76 @@
 		</label>
 	</div>
 
-	<div class="flex flex-col gap-2">
-		<span class="fieldset-legend text-sm font-semibold">Tanggal Libur Nasional</span>
-		<div class="flex items-center gap-2">
-			<input
-				type="date"
-				class="input bg-base-200 dark:bg-base-300 w-44 dark:border-none"
-				bind:value={newLiburDate}
-				disabled={submitting}
-			/>
-			<button
-				type="button"
-				class="btn btn-soft btn-sm shadow-none"
-				onclick={addLiburDate}
-				disabled={submitting || !newLiburDate}
-			>
-				Tambah
-			</button>
+	<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+		<div class="flex flex-col gap-2 sm:order-2">
+			<label class="fieldset flex flex-col gap-1 overflow-hidden">
+				<span class="fieldset-legend text-sm font-semibold">Tipe Presensi</span>
+				<select
+					class="select bg-base-200 dark:bg-base-300 w-full truncate dark:border-none"
+					bind:value={tipePresensiValue}
+				>
+					<option value="masuk_pulang" disabled={jenisPresensiValue === 'tiap_mapel'}>
+						Masuk Pulang
+					</option>
+					<option value="masuk_saja" disabled={jenisPresensiValue === 'tiap_mapel'}>
+						Masuk Saja
+					</option>
+					<option value="awal_mapel" disabled={jenisPresensiValue !== 'tiap_mapel'}>
+						Awal Mapel
+					</option>
+					<option value="awal_akhir_mapel" disabled={jenisPresensiValue !== 'tiap_mapel'}>
+						Awal & Akhir Mapel
+					</option>
+				</select>
+			</label>
 		</div>
-		{#if liburDates.length > 0}
-			<div class="flex flex-wrap gap-1.5">
-				{#each liburDates as date, i (date)}
-					<div class="badge badge-outline gap-1 px-2 py-3 text-sm">
-						{date}
-						<button
-							type="button"
-							class="btn btn-xs btn-ghost btn-circle hover:bg-error/20 p-0 shadow-none"
-							onclick={() => removeLiburDate(i)}
-							disabled={submitting}
-							aria-label="Hapus {date}"
-						>
-							<svg
-								xmlns="http://www.w3.org/2000/svg"
-								class="h-3 w-3"
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								stroke-width="2"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg
-							>
-						</button>
-					</div>
-				{/each}
+
+		<div class="flex flex-col gap-2 sm:order-1">
+			<span class="fieldset-legend text-sm font-semibold">Tanggal Libur Nasional</span>
+			<div class="join">
+				<input
+					type="date"
+					class="input bg-base-200 dark:bg-base-300 join-item w-full dark:border-none"
+					bind:value={newLiburDate}
+					disabled={submitting}
+				/>
+				<button
+					type="button"
+					class="btn btn-soft join-item shadow-none"
+					onclick={addLiburDate}
+					disabled={submitting || !newLiburDate}
+				>
+					Tambah
+				</button>
 			</div>
-		{/if}
+		</div>
 	</div>
 
-	<label class="fieldset flex flex-col gap-1 overflow-hidden">
-		<span class="fieldset-legend text-sm font-semibold">Tipe Presensi</span>
-		<select
-			class="select bg-base-200 dark:bg-base-300 w-full truncate dark:border-none"
-			bind:value={tipePresensiValue}
-		>
-			<option value="masuk_pulang" disabled={jenisPresensiValue === 'tiap_mapel'}>
-				Masuk Pulang
-			</option>
-			<option value="masuk_saja" disabled={jenisPresensiValue === 'tiap_mapel'}>
-				Masuk Saja
-			</option>
-			<option value="awal_mapel" disabled={jenisPresensiValue !== 'tiap_mapel'}>
-				Awal Mapel
-			</option>
-			<option value="awal_akhir_mapel" disabled={jenisPresensiValue !== 'tiap_mapel'}>
-				Awal & Akhir Mapel
-			</option>
-		</select>
-	</label>
+	{#if liburDates.length > 0}
+		<div class="flex flex-wrap gap-1.5 my-2">
+			{#each liburDates as date, i (date)}
+				<div class="badge badge-outline gap-1 px-2 py-3 text-sm">
+					{date}
+					<button
+						type="button"
+						class="btn btn-xs btn-ghost btn-circle hover:bg-error/20 p-0 shadow-none"
+						onclick={() => removeLiburDate(i)}
+						disabled={submitting}
+						aria-label="Hapus {date}"
+					>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="h-3 w-3"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg
+						>
+					</button>
+				</div>
+			{/each}
+		</div>
+	{/if}
 
 	<div class="flex flex-col gap-2">
 		<div class="flex items-center justify-between">
