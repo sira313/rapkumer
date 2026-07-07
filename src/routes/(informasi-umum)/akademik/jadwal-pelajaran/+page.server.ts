@@ -57,7 +57,7 @@ export const load: PageServerLoad = async ({ locals, depends }) => {
 			}),
 			db.query.tableKelas.findMany({
 				where: eq(tableKelas.sekolahId, sekolahId),
-				columns: { id: true }
+				columns: { id: true, nama: true }
 			})
 		]);
 
@@ -86,7 +86,7 @@ export const load: PageServerLoad = async ({ locals, depends }) => {
 		kelasIdList.length > 0
 			? db.query.tableMataPelajaran.findMany({
 					where: inArray(tableMataPelajaran.kelasId, kelasIdList),
-					columns: { kode: true, nama: true }
+					columns: { kode: true, nama: true, kelasId: true }
 				})
 			: Promise.resolve([]),
 		kelasIdList.length > 0
@@ -106,15 +106,27 @@ export const load: PageServerLoad = async ({ locals, depends }) => {
 		'Pendidikan Agama Konghuchu dan Budi Pekerti'
 	];
 	const agamaNameSet = new Set(agamaMapelNames);
+	const mapelByKelas = new Map<number, { namaKelas: string; kodes: Set<string> }>();
 	const kodeSet = new Set<string>();
 	for (const m of daftarMapel) {
-		if (agamaNameSet.has(m.nama)) {
-			kodeSet.add('PAPB');
-		} else if (m.kode) {
-			kodeSet.add(m.kode);
+		const kode = agamaNameSet.has(m.nama) ? 'PAPB' : m.kode;
+		if (!kode) continue;
+		if (!mapelByKelas.has(m.kelasId)) {
+			const kelasInfo = kelasRows.find((k) => k.id === m.kelasId);
+			mapelByKelas.set(m.kelasId, {
+				namaKelas: kelasInfo?.nama ?? `Kelas ${m.kelasId}`,
+				kodes: new Set()
+			});
 		}
+		mapelByKelas.get(m.kelasId)!.kodes.add(kode);
+		kodeSet.add(kode);
 	}
 	const daftarKodeMapel = [...kodeSet].sort() as string[];
+	const kodeMapelPerKelas = [...mapelByKelas.entries()].map(([kelasId, info]) => ({
+		kelasId,
+		namaKelas: info.namaKelas,
+		kodeMapel: [...info.kodes].sort()
+	}));
 
 	const daftarKodeKokurikuler = daftarKokurikulerRows.map((k) => k.kode);
 
@@ -124,6 +136,7 @@ export const load: PageServerLoad = async ({ locals, depends }) => {
 		kegiatanCustom,
 		jadwalPelajaran,
 		daftarKodeMapel,
+		kodeMapelPerKelas,
 		daftarKodeKokurikuler,
 		bellSounds,
 		hariSekolah,

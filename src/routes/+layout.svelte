@@ -216,8 +216,6 @@
 							</div>
 						</div>
 						<div class="sticky top-4 self-start">
-							<Task variant="sidebar" />
-							<FavoriteMenusSidebar />
 							{#if isJadwalPage && page.data.daftarKodeMapel}
 								<div class="hidden xl:block">
 									<div class="card bg-base-100 rounded-box mb-4 max-w-70 min-w-70 shadow-md">
@@ -240,7 +238,11 @@
 										{#if kodeKegiatanOpen}
 											<div class="p-4 pt-0">
 												<KodeKegiatan
-													kodeMapel={page.data.daftarKodeMapel as string[]}
+													kodeMapelPerKelas={(page.data.kodeMapelPerKelas as Array<{
+														kelasId: number;
+														namaKelas: string;
+														kodeMapel: string[];
+													}>) ?? []}
 													kodeTambahan={['UPB', 'IST', 'PLG']}
 													kodeKokurikuler={(page.data.daftarKodeKokurikuler as string[]) ?? []}
 													kegiatanCustom={(page.data.kegiatanCustom as Array<{
@@ -257,6 +259,8 @@
 									</div>
 								</div>
 							{/if}
+							<Task variant="sidebar" />
+							<FavoriteMenusSidebar />
 						</div>
 					</div>
 				</div>

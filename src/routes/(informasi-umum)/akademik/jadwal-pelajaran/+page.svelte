@@ -25,6 +25,13 @@
 	const kegiatanCustom = $derived(data.kegiatanCustom as KegiatanCustomRow[]);
 	let jadwalPelajaran = $state(data.jadwalPelajaran as JadwalPelajaranRow[]);
 	const daftarKodeMapel = $derived(data.daftarKodeMapel as string[]);
+	const kodeMapelPerKelas = $derived(
+		(data.kodeMapelPerKelas as Array<{
+			kelasId: number;
+			namaKelas: string;
+			kodeMapel: string[];
+		}>) ?? []
+	);
 	const daftarKodeKokurikuler = $derived(data.daftarKodeKokurikuler as string[]);
 	const bellSounds = $derived(data.bellSounds as BellSoundsRow[]);
 
@@ -501,7 +508,7 @@
 			title: 'Kode Kegiatan',
 			body: KodeKegiatan,
 			bodyProps: {
-				kodeMapel: daftarKodeMapel,
+				kodeMapelPerKelas,
 				kodeTambahan,
 				kodeKokurikuler: daftarKodeKokurikuler,
 				kegiatanCustom,
@@ -668,6 +675,23 @@
 		e.preventDefault();
 		const kode = e.dataTransfer?.getData('text/plain');
 		if (!kode || !canManage || !isEditing || jamKe === hariMaxJam[hari]) return;
+
+		// Validasi drag dari KodeKegiatan: kode mapel per-kelas
+		if (!dragSource) {
+			const sourceKelasIdStr = e.dataTransfer?.getData('application/x-kelas-id');
+			if (sourceKelasIdStr) {
+				const sourceKelasId = Number(sourceKelasIdStr);
+				if (kelasId === undefined) {
+					toast('Kode mapel tidak bisa ditempatkan di baris gabungan', 'error');
+					return;
+				}
+				if (sourceKelasId !== kelasId) {
+					const kelasNama = kelasTerurut.find((k) => k.id === sourceKelasId)?.nama ?? '';
+					toast(`Kode "${kode}" hanya bisa ditempatkan di kolom ${kelasNama}`, 'error');
+					return;
+				}
+			}
+		}
 
 		function setPlg({ close }: { close: () => void }) {
 			// PLG always applies to all classes (row-level)
