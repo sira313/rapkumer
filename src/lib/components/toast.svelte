@@ -99,14 +99,20 @@
 			</span>
 			<span class="flex-1 text-wrap">{@html t.message.replaceAll('\n', '<br />')}</span>
 			<button
-				class="btn btn-circle btn-ghost"
+				class="btn btn-circle btn-ghost toast-btn-close"
 				type="button"
 				title="Tutup"
 				onclick={() => close(t.id)}
 			>
-				<Icon name="close" class="h-4 w-4" />
+				<Icon name="close" class="h-4 w-4 {config.iconClass}" />
 				<span class="sr-only">Tutup</span>
 			</button>
 		</div>
 	{/each}
 </div>
+
+<style>
+	:global([data-theme='dark']) .toast-btn-close:hover :global(svg) {
+		color: white !important;
+	}
+</style>
