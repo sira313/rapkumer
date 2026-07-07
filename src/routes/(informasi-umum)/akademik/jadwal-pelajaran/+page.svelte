@@ -1003,7 +1003,7 @@
 						</tr>
 						<tr class="bg-base-200 dark:bg-base-300 text-left font-bold">
 							{#each kelasTerurut as kelas (kelas.id)}
-								<th class="min-w-[70px] text-center">{kelas.nama}</th>
+								<th class="min-w-[70px] max-w-[15ch] truncate text-center" title={kelas.nama}>{kelas.nama.slice(0, 15)}{kelas.nama.length > 15 ? '…' : ''}</th>
 							{/each}
 						</tr>
 					</thead>

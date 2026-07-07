@@ -83,6 +83,6 @@
 		</div>
 	</div>
 	{#if kelasLabel}
-		<p class="text-base-content/60 text-xs">Kelas aktif: {kelasLabel}</p>
+		<p class="text-base-content/60 truncate text-xs" title={kelasLabel}>Kelas aktif: {kelasLabel.slice(0, 15)}{kelasLabel.length > 15 ? '…' : ''}</p>
 	{/if}
 </div>
