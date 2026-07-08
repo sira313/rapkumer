@@ -714,7 +714,7 @@
 		<div class="flex flex-wrap items-center gap-2 max-sm:w-full">
 			<div class="flex flex-row max-sm:w-full">
 				{#if data.mode === 'bulanan' || data.mode === 'persentase_bulanan'}
-					<div class="min-w-0 flex-1 overflow-hidden">
+					<div class="min-w-0 flex-1">
 						<select
 							class="select bg-base-200 dark:bg-base-300 w-full truncate rounded-r-none max-sm:w-full dark:border-none"
 							bind:value={selectedBulan}
@@ -885,7 +885,7 @@
 		spellcheck="false"
 		onsubmit={submitSearch}
 	>
-		<div class="join w-full overflow-hidden">
+		<div class="join w-full">
 			<label class="input bg-base-200 dark:bg-base-300 join-item grow dark:border-none">
 				<Icon name="search" />
 				<input
