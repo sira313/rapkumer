@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { sharedStyles, formatUpper } from './shared';
+import { sharedStyles, formatUpper, formatValue } from './shared';
 
 export interface PiagamPrintData {
 	sekolah: {
@@ -385,13 +385,13 @@ export function renderPiagamHTML(data: PiagamPrintData, template: '1' | '2'): st
 	<div class="footer">
 		<div class="footer-left">
 			<div class="kepala-status">${ttd.kepalaSekolah.statusKepalaSekolah === 'plt' ? 'Plt. Kepala Sekolah' : 'Kepala Sekolah'}</div>
-			<div class="ttd-name">${formatUpper(ttd.kepalaSekolah.nama)}</div>
+			<div class="ttd-name">${formatValue(ttd.kepalaSekolah.nama)}</div>
 			<div class="ttd-nip">${ttd.kepalaSekolah.nip ? `${ttd.kepalaSekolah.nip}` : ''}</div>
 		</div>
 		<div class="footer-right">
 			<div class="footer-label">${ttd.tempat}, ${ttd.tanggal}</div>
 			<div class="footer-label">Wali Kelas</div>
-			<div class="ttd-name">${formatUpper(ttd.waliKelas.nama)}</div>
+			<div class="ttd-name">${formatValue(ttd.waliKelas.nama)}</div>
 			<div class="ttd-nip">${ttd.waliKelas.nip ? `${ttd.waliKelas.nip}` : ''}</div>
 		</div>
 	</div>`;
