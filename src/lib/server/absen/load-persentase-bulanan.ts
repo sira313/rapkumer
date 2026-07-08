@@ -306,6 +306,7 @@ export async function loadPersentaseBulanan(params: {
 				const subjectKodes = daySubjectKodesMap.get(d) ?? [];
 
 				for (const kode of subjectKodes) {
+					if (kode === 'UPB') continue;
 					const mpId = kodeToMpMap.get(kode);
 					const nullKey = `${murid.id}:${tgl}`;
 					let keterangan: string | null | undefined;

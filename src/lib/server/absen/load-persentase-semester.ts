@@ -388,6 +388,7 @@ export async function loadPersentaseSemester(params: {
 				const subjectKodes = dateSubjectKodesMap.get(tgl) ?? [];
 
 				for (const kode of subjectKodes) {
+					if (kode === 'UPB') continue;
 					const mpId = kodeToMpMap.get(kode);
 					const nullKey = `${murid.id}:${tgl}`;
 					let keterangan: string | null | undefined;
