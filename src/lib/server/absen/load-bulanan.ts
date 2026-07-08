@@ -257,6 +257,7 @@ export async function loadBulanan(params: {
 	}
 
 	function getStatus(muridId: number, day: number): StatusPerDay {
+		if (redDays.includes(day)) return '';
 		const tgl = dateStr(tahun, bulan, day);
 		if (isTiapMapel) {
 			const firstMp = firstMapelByDay.get(day);
@@ -273,7 +274,7 @@ export async function loadBulanan(params: {
 					return 'TK';
 				}
 				if (nullAbsensiSet.has(nullKey)) return 'H';
-				return '';
+				return 'TK';
 			}
 			const mpId = firstMp.mpId;
 			const khKey = `${muridId}:${tgl}:${mpId}`;
@@ -294,7 +295,7 @@ export async function loadBulanan(params: {
 			}
 			if (absensiSet.has(`${muridId}:${tgl}`) || nullAbsensiSet.has(`${muridId}:${tgl}`))
 				return 'H';
-			return '';
+			return 'TK';
 		}
 		const keterangan = khMap.get(`${muridId}:${tgl}`);
 		if (keterangan !== undefined) {
@@ -305,7 +306,7 @@ export async function loadBulanan(params: {
 			return 'TK';
 		}
 		if (!isWaliKelasMasukPulang && absensiSet.has(`${muridId}:${tgl}`)) return 'H';
-		return '';
+		return 'TK';
 	}
 
 	const bulananRows: BulananRow[] = semuaMurid.map((murid, index) => {
