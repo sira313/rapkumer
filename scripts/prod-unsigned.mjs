@@ -165,7 +165,7 @@ async function main() {
 			);
 		}
 
-		run(iscc.cmd, [...iscc.args, path.join('installer', 'raporkumer.iss')], {
+		run(iscc.cmd, [...iscc.args, path.join('installer', 'rapkumer.iss')], {
 			cwd: projectRoot
 		});
 
