@@ -21,7 +21,13 @@ import type { RequestHandler } from './$types';
 
 export const GET = (async ({ locals, url }) => {
 	const sekolahId = locals.sekolah?.id;
-	const user = locals.user as { id?: number; type?: string; pegawaiId?: number } | null;
+	const user = locals.user as {
+		id?: number;
+		type?: string;
+		pegawaiId?: number;
+		kelasId?: number | null;
+		mataPelajaranId?: number | null;
+	} | null;
 
 	if (!sekolahId || !user?.id) {
 		throw error(401, 'Unauthorized');
@@ -33,10 +39,9 @@ export const GET = (async ({ locals, url }) => {
 	const tanggalSelesai = url.searchParams.get('tanggal_selesai');
 
 	// For guru mapel ('user' type), scope to their assigned subject only
-	const userWithSubject = user as { type?: string; mataPelajaranId?: number | null };
 	const mataPelajaranFilter =
-		userWithSubject.type === 'user' && userWithSubject.mataPelajaranId
-			? eq(tableJurnalMengajar.mataPelajaranId, userWithSubject.mataPelajaranId)
+		user?.type === 'user' && user?.mataPelajaranId
+			? eq(tableJurnalMengajar.mataPelajaranId, user.mataPelajaranId)
 			: undefined;
 
 	if (!tanggalMulai || !tanggalSelesai) {
@@ -56,14 +61,16 @@ export const GET = (async ({ locals, url }) => {
 		.limit(1)
 		.then((r) => r[0]);
 
-	// Get user pegawai name
+	// Get user pegawai data
 	let userName = '';
+	let guruNip: string | null = null;
 	if (user.pegawaiId) {
 		const peg = await db.query.tablePegawai.findFirst({
-			columns: { nama: true },
+			columns: { nama: true, nip: true },
 			where: eq(tablePegawai.id, user.pegawaiId)
 		});
 		userName = peg?.nama ?? '';
+		guruNip = peg?.nip ?? null;
 	}
 
 	// Fetch journal entries within date range for the current user
@@ -178,10 +185,40 @@ export const GET = (async ({ locals, url }) => {
 		};
 	});
 
-	// Get sekolah name
+	// Get sekolah name + kepala sekolah + tempat tanda tangan
 	const sekolah = await db.query.tableSekolah.findFirst({
-		columns: { nama: true },
+		columns: {
+			nama: true,
+			kepalaSekolahId: true,
+			lokasiTandaTangan: true,
+			statusKepalaSekolah: true
+		},
 		where: eq(tableSekolah.id, sekolahId)
+	});
+
+	// Get kepala sekolah info
+	let kepalaSekolahNama = '';
+	let kepalaSekolahNip: string | null = null;
+	const kepalaSekolahStatus = sekolah?.statusKepalaSekolah;
+	if (sekolah?.kepalaSekolahId) {
+		const kepala = await db.query.tablePegawai.findFirst({
+			columns: { nama: true, nip: true },
+			where: eq(tablePegawai.id, sekolah.kepalaSekolahId)
+		});
+		kepalaSekolahNama = kepala?.nama ?? '';
+		kepalaSekolahNip = kepala?.nip ?? null;
+	}
+
+	// Determine label
+	const userType = user?.type ?? '';
+	const isWaliKelas = userType === 'wali_kelas';
+	const guruLabel = isWaliKelas ? 'Wali Kelas' : 'Guru Mata Pelajaran';
+
+	const tempatTtd = sekolah?.lokasiTandaTangan ?? '';
+	const tanggalTtd = new Date().toLocaleDateString('id-ID', {
+		day: 'numeric',
+		month: 'long',
+		year: 'numeric'
 	});
 
 	const printData = {
@@ -198,7 +235,22 @@ export const GET = (async ({ locals, url }) => {
 			tanggalMulai: formatTanggal(tanggalMulai),
 			tanggalSelesai: formatTanggal(tanggalSelesai)
 		},
-		rows: rowsWithAttendance
+		rows: rowsWithAttendance,
+		kepalaSekolah: {
+			nama: kepalaSekolahNama,
+			nip: kepalaSekolahNip,
+			statusKepalaSekolah: kepalaSekolahStatus
+		},
+		guru: {
+			nama: userName,
+			nip: guruNip
+		},
+		isWaliKelas,
+		guruLabel,
+		ttd: {
+			tempat: tempatTtd,
+			tanggal: tanggalTtd
+		}
 	};
 
 	const html = renderJurnalMengajarHTML(printData);

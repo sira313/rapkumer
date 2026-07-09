@@ -27,6 +27,21 @@ export interface JurnalMengajarPrintData {
 		alfa: number;
 		catatan: string;
 	}>;
+	kepalaSekolah: {
+		nama: string;
+		nip?: string | null;
+		statusKepalaSekolah?: string | null;
+	};
+	guru: {
+		nama: string;
+		nip?: string | null;
+	};
+	isWaliKelas: boolean;
+	guruLabel: string;
+	ttd: {
+		tempat: string;
+		tanggal: string;
+	};
 }
 
 export function renderJurnalMengajarHTML(data: JurnalMengajarPrintData): string {
@@ -116,6 +131,44 @@ tr.striped td {
 .text-center {
 	text-align: center;
 }
+
+.signature-section {
+	margin-top: 24pt;
+}
+
+.signature-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 10pt;
+	border: none;
+}
+
+.signature-table td {
+	padding: 2pt 6pt;
+	vertical-align: top;
+	text-align: center;
+	border: none;
+}
+
+.signature-table .text-right {
+	text-align: right;
+}
+
+.signature-table .font-bold {
+	font-weight: bold;
+}
+
+.signature-table .underline {
+	text-decoration: underline;
+}
+
+.signature-table .h-24 {
+	height: 4rem;
+}
+
+.signature-table .h-4 {
+	height: 1rem;
+}
 </style>
 </head>
 <body>
@@ -148,8 +201,35 @@ tr.striped td {
 		</tbody>
 	</table>
 
-	<div style="margin-top: 20px; font-size: 9pt;">
-		<p><em>Dicetak pada: ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</em></p>
+	<div class="signature-section">
+		<table class="signature-table">
+			<colgroup>
+				<col style="width:50%">
+				<col style="width:50%">
+			</colgroup>
+			<tbody style="page-break-inside: avoid;">
+				<tr>
+					<td class="font-bold">Mengetahui</td>
+					<td class="text-center">${formatValue(data.ttd.tempat)}, ${formatValue(data.ttd.tanggal)}</td>
+				</tr>
+				<tr>
+					<td>${data.kepalaSekolah.statusKepalaSekolah === 'plt' ? 'Plt. Kepala Sekolah' : 'Kepala Sekolah'}</td>
+					<td>${formatValue(data.guruLabel)}</td>
+				</tr>
+				<tr>
+					<td class="h-24"></td>
+					<td class="h-24"></td>
+				</tr>
+				<tr>
+					<td class="font-bold underline">${formatValue(data.kepalaSekolah.nama)}</td>
+					<td class="font-bold underline">${formatValue(data.guru.nama)}</td>
+				</tr>
+				<tr>
+					<td class="text-center">${data.kepalaSekolah.nip ?? ''}</td>
+					<td class="text-center">${data.guru.nip ? `${data.guru.nip}` : ''}</td>
+				</tr>
+			</tbody>
+		</table>
 	</div>
 </body>
 </html>`;

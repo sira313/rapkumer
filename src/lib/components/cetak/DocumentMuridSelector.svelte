@@ -409,7 +409,7 @@
 	{#if !selectedDocument}
 		<div class="alert alert-soft alert-info">
 			<Icon name="info" />
-			<span>Pilih dokumen terlebih dahulu untuk melihat daftar murid atau peringkat.</span>
+			<span>Pilih dokumen terlebih dahulu untuk melihat file yang ingin dicetak.</span>
 		</div>
 	{:else if !showTable && !isPiagamSelected}
 		<!-- no table shown for jurnal -->
