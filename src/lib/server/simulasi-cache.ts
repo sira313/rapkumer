@@ -13,9 +13,12 @@ export interface SimKetidakhadiranEntry {
 	updatedAt: string;
 }
 
+const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+
 interface SimCacheEntry {
 	absensi: Map<string, SimAbsensiEntry[]>;
 	ketidakhadiran: Map<string, SimKetidakhadiranEntry>;
+	createdAt: number;
 }
 
 const cache = new Map<string, SimCacheEntry>();
@@ -40,7 +43,11 @@ function getOrCreate(
 	const key = cacheKey(sekolahId, kelasId, tanggal, simHari, simJam);
 	let entry = cache.get(key);
 	if (!entry) {
-		entry = { absensi: new Map(), ketidakhadiran: new Map() };
+		entry = { absensi: new Map(), ketidakhadiran: new Map(), createdAt: Date.now() };
+		cache.set(key, entry);
+	} else if (Date.now() - entry.createdAt > CACHE_TTL) {
+		cache.delete(key);
+		entry = { absensi: new Map(), ketidakhadiran: new Map(), createdAt: Date.now() };
 		cache.set(key, entry);
 	}
 	return entry;

@@ -402,8 +402,6 @@ export async function loadRapor(params: {
 					else alfa++;
 				} else if (absensiSet.has(`${murid.id}:${tgl}`)) {
 					hadir++;
-				} else {
-					alfa++;
 				}
 			}
 		} else if (isTiapMapel) {
@@ -452,8 +450,6 @@ export async function loadRapor(params: {
 							: nullAbsensiSet.has(nullKey);
 					if (hasAbsensi) {
 						hadir++;
-					} else {
-						alfa++;
 					}
 				}
 			}
@@ -470,8 +466,6 @@ export async function loadRapor(params: {
 					else alfa++;
 				} else if (absensiSet.has(`${murid.id}:${tgl}`)) {
 					hadir++;
-				} else {
-					alfa++;
 				}
 			}
 		}
