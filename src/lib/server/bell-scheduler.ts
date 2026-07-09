@@ -12,6 +12,8 @@ import {
 	tableMataPelajaran,
 	tableTahunAjaran
 } from '$lib/server/db/schema';
+import { ensureJadwalBellSchema } from '$lib/server/db/ensure-jadwal-bell';
+import { ensurePresensiSettingsSchema } from '$lib/server/db/ensure-presensi-settings';
 import { eq, and, inArray } from 'drizzle-orm';
 
 let intervalId: ReturnType<typeof setInterval> | null = null;
@@ -423,8 +425,14 @@ function playSoundForKode(
 	}
 }
 
-export function startBellScheduler() {
+export async function startBellScheduler() {
 	if (intervalId) return;
+	try {
+		await ensureJadwalBellSchema();
+		await ensurePresensiSettingsSchema();
+	} catch (e) {
+		console.error('[bell] Failed to ensure schema:', e);
+	}
 	console.log('[bell] Scheduler started');
 	intervalId = setInterval(tick, 15_000);
 	tick();

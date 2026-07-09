@@ -12,9 +12,15 @@ import {
 	readCombinedOriginsFromEnvAndFile,
 	normalizeOrigin as normalizeFileOrigin
 } from '$lib/server/csrf-origins';
+import { ensureJadwalBellSchema } from '$lib/server/db/ensure-jadwal-bell';
+import { ensurePresensiSettingsSchema } from '$lib/server/db/ensure-presensi-settings';
 import { startBellScheduler } from '$lib/server/bell-scheduler';
 
-setTimeout(() => startBellScheduler(), 1000);
+setTimeout(() => {
+	startBellScheduler().catch((e) => {
+		console.error('[hooks] bell scheduler failed to start:', e);
+	});
+}, 1000);
 
 // Prevent crash from socket write-after-close errors
 process.on('uncaughtException', (err) => {
@@ -124,6 +130,8 @@ function resolveRedirectTarget(value: string | null) {
 const authGuard: Handle = async ({ event, resolve }) => {
 	if (!ensureDefaultAdminResolved) {
 		await ensureCoreSchema();
+		await ensureJadwalBellSchema();
+		await ensurePresensiSettingsSchema();
 		await ensureDefaultAdmin();
 		ensureDefaultAdminResolved = true;
 	}

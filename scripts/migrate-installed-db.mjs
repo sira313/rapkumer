@@ -116,6 +116,7 @@ async function main() {
 	const childEnv = { ...process.env, DB_URL: dbPath };
 
 	// Locate local drizzle-kit binary if present
+	// Note: drizzle-kit is a devDependency and may not be available in production builds.
 	const isWin = process.platform === 'win32';
 	const drizzleBin = path.join(
 		projectRoot,
@@ -123,7 +124,22 @@ async function main() {
 		'.bin',
 		`drizzle-kit${isWin ? '.cmd' : ''}`
 	);
-	const drizzleCmd = fs.existsSync(drizzleBin) ? drizzleBin : 'drizzle-kit';
+	let drizzleCmd;
+	if (fs.existsSync(drizzleBin)) {
+		drizzleCmd = drizzleBin;
+	} else {
+		// Check if drizzle-kit is available on PATH as a last resort
+		try {
+			const whichResult = spawnSync(isWin ? 'where' : 'which', ['drizzle-kit'], {
+				stdio: 'pipe',
+				encoding: 'utf-8'
+			});
+			drizzleCmd = whichResult.status === 0 ? 'drizzle-kit' : null;
+		} catch {
+			drizzleCmd = null;
+		}
+	}
+	const hasDrizzleKit = drizzleCmd !== null;
 
 	try {
 		function normalizeIndexNameForMatch(name) {
@@ -343,66 +359,77 @@ async function main() {
 			);
 		}
 
-		// Run drizzle push with retry for index conflicts.
-		// Some installed DBs have stale indexes that cause "index ... already exists".
-		// Retry up to MAX_RETRIES times, dropping conflicting indexes between attempts.
-		const MAX_RETRIES = 5;
-		let lastError;
-		for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-			try {
-				runCapture(drizzleCmd, ['push', '--force'], { env: childEnv, cwd: projectRoot });
-				lastError = null;
-				break;
-			} catch (err) {
-				lastError = err;
-				const msg = String(err?.message || err || '');
-				const isIndexConflict =
-					msg.includes('already exists') ||
-					msg.includes('UNIQUE constraint failed') ||
-					msg.includes('SQLITE_ERROR');
-				if (!isIndexConflict) throw err;
+		// Run drizzle push with retry for index conflicts (only if drizzle-kit is available).
+		// In production builds drizzle-kit is a devDependency and may not be present;
+		// tables are created by ensure-* functions during server startup instead.
+		if (hasDrizzleKit) {
+			const MAX_RETRIES = 5;
+			let lastError;
+			for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+				try {
+					runCapture(drizzleCmd, ['push', '--force'], { env: childEnv, cwd: projectRoot });
+					lastError = null;
+					break;
+				} catch (err) {
+					lastError = err;
+					const msg = String(err?.message || err || '');
+					const isIndexConflict =
+						msg.includes('already exists') ||
+						msg.includes('UNIQUE constraint failed') ||
+						msg.includes('SQLITE_ERROR');
+					if (!isIndexConflict) throw err;
 
-				if (attempt < MAX_RETRIES) {
-					const idxMatch = msg.match(/index\s+(["']?)([^"'\s]+)\1\s+already exists/i);
-					const indexName = idxMatch ? idxMatch[2] : null;
-					console.info(
-						`[migrate-installed-db] drizzle push failed (attempt ${attempt}/${MAX_RETRIES})` +
-							(indexName ? `: index "${indexName}" already exists` : '')
-					);
+					if (attempt < MAX_RETRIES) {
+						const idxMatch = msg.match(/index\s+(["']?)([^"'\s]+)\1\s+already exists/i);
+						const indexName = idxMatch ? idxMatch[2] : null;
+						console.info(
+							`[migrate-installed-db] drizzle push failed (attempt ${attempt}/${MAX_RETRIES})` +
+								(indexName ? `: index "${indexName}" already exists` : '')
+						);
 
-					if (indexName) {
-						try {
-							const { createClient: createClientLocal2 } = await import('@libsql/client');
-							const dropClient = createClientLocal2({ url: dbPath });
+						if (indexName) {
 							try {
-								await dropClient.execute({ sql: `DROP INDEX IF EXISTS "${indexName}"` });
-								console.info(`[migrate-installed-db] Dropped conflicting index: ${indexName}`);
-							} finally {
-								if (typeof dropClient.close === 'function') await dropClient.close();
+								const { createClient: createClientLocal2 } = await import('@libsql/client');
+								const dropClient = createClientLocal2({ url: dbPath });
+								try {
+									await dropClient.execute({ sql: `DROP INDEX IF EXISTS "${indexName}"` });
+									console.info(`[migrate-installed-db] Dropped conflicting index: ${indexName}`);
+								} finally {
+									if (typeof dropClient.close === 'function') await dropClient.close();
+								}
+							} catch (dropErr) {
+								console.warn(
+									'[migrate-installed-db] Failed to drop conflicting index:',
+									dropErr?.message || dropErr
+								);
 							}
-						} catch (dropErr) {
-							console.warn(
-								'[migrate-installed-db] Failed to drop conflicting index:',
-								dropErr?.message || dropErr
-							);
 						}
-					}
 
-					// Run fix-drizzle-indexes to handle auth_user username_normalized variants
-					try {
-						run(process.execPath, [path.join(projectRoot, 'scripts', 'fix-drizzle-indexes.mjs')], {
-							env: childEnv,
-							cwd: projectRoot
-						});
-					} catch (_) {
-						// non-fatal
-					}
+						// Run fix-drizzle-indexes to handle auth_user username_normalized variants
+						try {
+							run(
+								process.execPath,
+								[path.join(projectRoot, 'scripts', 'fix-drizzle-indexes.mjs')],
+								{
+									env: childEnv,
+									cwd: projectRoot
+								}
+							);
+						} catch (_) {
+							// non-fatal
+						}
 
-					continue;
+						continue;
+					}
 				}
 			}
+			if (lastError) throw lastError;
+		} else {
+			console.info(
+				'[migrate-installed-db] drizzle-kit not available (devDependency not installed in production); ' +
+					'skipping drizzle push. Tables are created by ensure-* functions during server startup.'
+			);
 		}
-		if (lastError) throw lastError;
 		run(process.execPath, [path.join(projectRoot, 'scripts', 'fix-drizzle-indexes.mjs')], {
 			env: childEnv,
 			cwd: projectRoot
