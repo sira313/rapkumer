@@ -2,7 +2,6 @@ import db from '$lib/server/db';
 import { tableKelas, tableKokurikuler } from '$lib/server/db/schema';
 import { profilPelajarPancasilaDimensions, type DimensiProfilLulusanKey } from '$lib/statics';
 import { fail, redirect } from '@sveltejs/kit';
-import { randomBytes } from 'node:crypto';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 
 const DIMENSION_KEY_SET = new Set<DimensiProfilLulusanKey>(
@@ -28,24 +27,6 @@ function isTableMissingError(error: unknown) {
 		error.message.includes('no such table') &&
 		error.message.includes('kokurikuler')
 	);
-}
-
-function generateKokurikulerCodeCandidate(): string {
-	const timePart = Date.now().toString(36).toUpperCase();
-	const randomPart = randomBytes(3).toString('hex').toUpperCase();
-	return `KK-${timePart}${randomPart}`;
-}
-
-async function generateUniqueKokurikulerCode(): Promise<string> {
-	for (let attempt = 0; attempt < 5; attempt++) {
-		const candidate = generateKokurikulerCodeCandidate();
-		const existing = await db.query.tableKokurikuler.findFirst({
-			columns: { id: true },
-			where: eq(tableKokurikuler.kode, candidate)
-		});
-		if (!existing) return candidate;
-	}
-	throw new Error('Gagal menghasilkan kode kokurikuler unik');
 }
 
 export async function load({ depends, parent }) {
@@ -100,6 +81,7 @@ export const actions = {
 	add: async ({ request, locals }) => {
 		const formData = await request.formData();
 		const kelasIdRaw = formData.get('kelasId');
+		const kode = formData.get('kode')?.toString().trim().toUpperCase() ?? '';
 		const tujuan = formData.get('kokurikuler')?.toString().trim() ?? '';
 		const dimensi = sanitizeDimensions(
 			formData.getAll('dimensi').map((value) => value?.toString() ?? '')
@@ -142,12 +124,22 @@ export const actions = {
 			return fail(400, { fail: 'Pilih minimal satu dimensi profil lulusan' });
 		}
 
+		if (!kode) {
+			return fail(400, { fail: 'Kode kokurikuler wajib diisi' });
+		}
+
 		if (!tujuan) {
 			return fail(400, { fail: 'Kegiatan kokurikuler wajib diisi' });
 		}
 
 		try {
-			const kode = await generateUniqueKokurikulerCode();
+			const existing = await db.query.tableKokurikuler.findFirst({
+				columns: { id: true },
+				where: eq(tableKokurikuler.kode, kode)
+			});
+			if (existing) {
+				return fail(400, { fail: 'Kode sudah digunakan' });
+			}
 
 			await db.insert(tableKokurikuler).values({
 				kelasId,
@@ -226,6 +218,7 @@ export const actions = {
 		const formData = await request.formData();
 		const idRaw = formData.get('id');
 		const kelasIdRaw = formData.get('kelasId');
+		const kode = formData.get('kode')?.toString().trim().toUpperCase() ?? '';
 		const tujuan = formData.get('kokurikuler')?.toString().trim() ?? '';
 		const dimensi = sanitizeDimensions(
 			formData.getAll('dimensi').map((value) => value?.toString() ?? '')
@@ -277,14 +270,26 @@ export const actions = {
 			return fail(400, { fail: 'Pilih minimal satu dimensi profil lulusan' });
 		}
 
+		if (!kode) {
+			return fail(400, { fail: 'Kode kokurikuler wajib diisi' });
+		}
+
 		if (!tujuan) {
 			return fail(400, { fail: 'Kegiatan kokurikuler wajib diisi' });
 		}
 
 		try {
+			const existing = await db.query.tableKokurikuler.findFirst({
+				columns: { id: true },
+				where: eq(tableKokurikuler.kode, kode)
+			});
+			if (existing && existing.id !== id) {
+				return fail(400, { fail: 'Kode sudah digunakan' });
+			}
+
 			const updated = await db
 				.update(tableKokurikuler)
-				.set({ dimensi, tujuan, updatedAt: new Date().toISOString() })
+				.set({ kode, dimensi, tujuan, updatedAt: new Date().toISOString() })
 				.where(and(eq(tableKokurikuler.id, id), eq(tableKokurikuler.kelasId, kelasId)))
 				.returning({ id: tableKokurikuler.id });
 

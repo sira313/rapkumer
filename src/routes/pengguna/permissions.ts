@@ -16,7 +16,7 @@ export const groupedUserPermissions = {
 		description: 'Dashboard'
 	},
 	sekolah: {
-		values: [['manage', 'Kelola Data Sekolah']],
+		values: [['manage', 'Kelola Identitas Sekolah']],
 		description: 'Sekolah'
 	},
 	app: {
@@ -28,8 +28,8 @@ export const groupedUserPermissions = {
 		description: 'Server'
 	},
 	rapor: {
-		values: [['manage', 'Kelola Data Rapor']],
-		description: 'Data Rapor'
+		values: [['manage', 'Kelola Akademik']],
+		description: 'Akademik'
 	},
 	kelas: {
 		values: [

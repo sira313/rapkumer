@@ -41,7 +41,7 @@ Keunikan installer ini:
 
 ## File-File Penting
 
-### 1. **raporkumer.iss** - Resep Installer
+### 1. **rapkumer.iss** - Resep Installer
 
 File ini berisi "resep" cara membuat installer:
 
@@ -495,7 +495,7 @@ pnpm prod:signed         # Dengan digital signature
 
 ## File-File Penting
 
-### 1. **raporkumer.iss** - Resep Installer
+### 1. **rapkumer.iss** - Resep Installer
 
 File ini berisi "resep" cara membuat installer:
 

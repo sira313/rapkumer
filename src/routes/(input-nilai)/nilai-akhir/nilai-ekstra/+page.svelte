@@ -43,7 +43,9 @@
 			</div>
 		</div>
 
-		<div class="bg-base-100 dark:bg-base-200 mt-4 overflow-x-auto rounded-md shadow-md dark:shadow-none">
+		<div
+			class="bg-base-100 dark:bg-base-200 mt-4 overflow-x-auto rounded-md shadow-md dark:shadow-none"
+		>
 			<table class="border-base-200 table border dark:border-none">
 				<thead>
 					<tr class="bg-base-200 dark:bg-base-300 text-base-content text-left font-bold">

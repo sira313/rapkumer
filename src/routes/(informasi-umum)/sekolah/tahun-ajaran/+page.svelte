@@ -146,8 +146,8 @@
 					{/if}
 					<button
 						class={hasSelection
-							? 'btn btn-error btn-soft shadow-none sm:max-w-40'
-							: 'btn btn-soft shadow-none sm:max-w-40'}
+							? 'btn btn-error btn-soft w-full shadow-none sm:max-w-40'
+							: 'btn btn-soft w-full shadow-none sm:max-w-40'}
 						type={hasSelection ? 'submit' : 'button'}
 						onclick={!hasSelection ? handleCreateRow : undefined}
 						disabled={hasSelection

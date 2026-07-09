@@ -39,8 +39,7 @@
 					oninput={(e) => onUpdate(indicatorIdx, e.currentTarget.value)}
 					placeholder="Tuliskan indikator"
 					disabled={isSubmitting}
-					required={indicatorIdx === 0}
-				></textarea>
+					required={indicatorIdx === 0}></textarea>
 				{#if indicators.length > 1 && indicator.deskripsi.trim().length > 0}
 					<button
 						type="button"

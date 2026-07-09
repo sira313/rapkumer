@@ -83,7 +83,7 @@ Empty space:      0 0 0 0 (sama untuk semua state)
 
 2. **"9 surat → 4 halaman" tidak bisa diverifikasi.** Tidak ada siswa dengan ≥9 mapel. Mungkin merujuk pada 9 siswa/baris per halaman yang terpotong, atau interpretasi lain.
 
-3. **Kondisi database sebelum migrasi Paged.js tidak diketahui.** Backup Desember 2025 (`~/Downloads/Telegram Desktop/raporkumer-backup-2025-12-15T04-14-38-634Z.sqlite3`) belum diperiksa — mungkin berisi data dengan konfigurasi yang berbeda.
+3. **Kondisi database sebelum migrasi Paged.js tidak diketahui.** Backup Desember 2025 (`~/Downloads/Telegram Desktop/rapkumer-backup-2025-12-15T04-14-38-634Z.sqlite3`) belum diperiksa — mungkin berisi data dengan konfigurasi yang berbeda.
 
 4. **Faktor eksternal (Chrome, Puppeteer, font rendering) tidak diuji.** Bug mungkin terkait dengan versi Chrome/Puppeteer tertentu, font yang belum di-load, atau race condition yang sporadis.
 

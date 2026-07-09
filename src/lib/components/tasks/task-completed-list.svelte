@@ -23,7 +23,7 @@
 
 <div class="bg-base-300 dark:bg-base-200 collapse-plus collapse mt-6">
 	<input type="checkbox" />
-	<div class="collapse-title font-bold">Tugas sudah selesai</div>
+	<div class="collapse-title text-sm font-bold">Tugas sudah selesai</div>
 	<div class="collapse-content p-0 text-sm">
 		<table class="table pl-2">
 			<tbody>
@@ -51,16 +51,18 @@
 								onchange={() => emit('restore', task.id)}
 								title="Kembalikan ke tugas aktif"
 								disabled={isProcessing || !canManage}
+								aria-disabled={isProcessing || !canManage}
 							/>
 						</th>
 						<td class="p-2"><p class="flex-1"><s>{task.title}</s></p></td>
 						<td class="p-2 text-right">
 							<button
 								type="button"
-								class="btn btn-circle btn-ghost"
+								class="btn btn-sm btn-circle btn-ghost"
 								title="Hapus tugas"
 								onclick={() => emit('remove', task.id)}
 								disabled={isProcessing || !canManage}
+								aria-disabled={isProcessing || !canManage}
 							>
 								<Icon name="del" class="text-error" />
 							</button>

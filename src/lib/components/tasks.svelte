@@ -17,9 +17,11 @@
 
 	const wrapperClass = $derived(
 		variant === 'sidebar'
-			? 'card bg-base-100 mb-6 hidden max-h-100 min-h-80 max-w-70 min-w-70 shadow-md xl:block'
+			? 'card bg-base-100 mb-4 min-w-70 max-w-70 shadow-md rounded-box'
 			: 'card bg-base-100 shadow-md w-full'
 	);
+
+	const isSidebar = $derived(variant === 'sidebar');
 
 	const listContainerClass = $derived(
 		variant === 'sidebar'
@@ -43,6 +45,7 @@
 	let isProcessing = $state(false);
 	let errorMessage = $state('');
 	let previousKelasId = $state<number | null>(null);
+	let sidebarOpen = $state(true);
 	let activeListRef = $state<{ focusInput: () => Promise<void> | void } | null>(null);
 
 	const showInitialSpinner = $derived(isLoading && !hasLoaded);
@@ -210,19 +213,7 @@
 	};
 </script>
 
-<div class={wrapperClass}>
-	<TaskHeader
-		{isAdding}
-		{isProcessing}
-		canManage={canManageTasks}
-		{showInitialSpinner}
-		{hasCompletedTasks}
-		{hasAnyTasks}
-		{kelasLabel}
-		on:toggleAdd={toggleAddTask}
-		on:clearCompleted={clearCompleted}
-		on:clearAll={clearAll}
-	/>
+{#snippet taskList()}
 	{#if errorMessage}
 		<div class="px-4 pb-2">
 			<div class="alert alert-error flex items-center gap-2 rounded-lg p-3 text-sm">
@@ -284,4 +275,110 @@
 			/>
 		</div>
 	</div>
-</div>
+{/snippet}
+
+{#if isSidebar}
+	<div class="hidden xl:block">
+		<div class={wrapperClass}>
+			<div class="p-4">
+				<div class="flex flex-row items-center gap-2">
+					<h2 class="text-sm font-bold">Daftar tugas</h2>
+					{#if showInitialSpinner}
+						<span class="loading loading-spinner loading-xs text-primary" aria-hidden="true"></span>
+					{/if}
+					<div class="flex-1"></div>
+					<div class="join">
+						<button
+							type="button"
+							class="btn btn-sm join-item btn-soft {isAdding ? 'btn-error' : ''} shadow-none"
+							onclick={(e) => {
+								e.stopPropagation();
+								toggleAddTask();
+							}}
+							title={isAdding ? 'Batalkan tambah tugas' : 'Tambah tugas'}
+							disabled={isProcessing || !canManageTasks}
+							aria-disabled={isProcessing || !canManageTasks}
+						>
+							<Icon name={isAdding ? 'close' : 'plus'} />
+						</button>
+						<div class="dropdown dropdown-end">
+							<div
+								tabindex="0"
+								role="button"
+								title="Tombol hapus"
+								class="join-item btn btn-sm shadow-none"
+							>
+								<Icon name="del" class="text-error" />
+								<Icon name="collapse-all" class="text-error" />
+							</div>
+							<ul
+								class="border-base-300 menu dropdown-content bg-base-100 rounded-box z-1 mt-2 w-43 border p-2 shadow-md"
+							>
+								<li>
+									<button
+										type="button"
+										class="btn btn-ghost btn-sm justify-start"
+										onclick={(e) => {
+											e.stopPropagation();
+											clearCompleted();
+										}}
+										disabled={!hasCompletedTasks || isProcessing || !canManageTasks}
+									>
+										Hapus tugas selesai
+									</button>
+								</li>
+								<li>
+									<button
+										type="button"
+										class="btn btn-ghost btn-sm text-error justify-start"
+										onclick={(e) => {
+											e.stopPropagation();
+											clearAll();
+										}}
+										disabled={!hasAnyTasks || isProcessing || !canManageTasks}
+									>
+										Hapus semua tugas
+									</button>
+								</li>
+							</ul>
+						</div>
+						<button
+							type="button"
+							class="btn btn-sm join-item px-2 shadow-none"
+							onclick={() => (sidebarOpen = !sidebarOpen)}
+							title={sidebarOpen ? 'Tutup daftar tugas' : 'Buka daftar tugas'}
+						>
+							<Icon name={sidebarOpen ? 'up' : 'down'} />
+						</button>
+					</div>
+				</div>
+				{#if kelasLabel}
+					<p class="text-base-content/60 truncate text-xs" title={kelasLabel}>
+						Kelas aktif: {kelasLabel.slice(0, 15)}{kelasLabel.length > 15 ? '…' : ''}
+					</p>
+				{/if}
+			</div>
+			{#if sidebarOpen}
+				<div class="p-0">
+					{@render taskList()}
+				</div>
+			{/if}
+		</div>
+	</div>
+{:else}
+	<div class={wrapperClass}>
+		<TaskHeader
+			{isAdding}
+			{isProcessing}
+			canManage={canManageTasks}
+			{showInitialSpinner}
+			{hasCompletedTasks}
+			{hasAnyTasks}
+			{kelasLabel}
+			on:toggleAdd={toggleAddTask}
+			on:clearCompleted={clearCompleted}
+			on:clearAll={clearAll}
+		/>
+		{@render taskList()}
+	</div>
+{/if}

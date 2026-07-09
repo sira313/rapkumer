@@ -2,7 +2,7 @@ import fs from 'fs';
 import fsPromises from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { spawn } from 'child_process';
+import { spawn, spawnSync } from 'child_process';
 import net from 'net';
 import os from 'os';
 
@@ -111,6 +111,40 @@ async function main() {
 		DATABASE_URL: DB_URL
 	};
 	const nodeBin = process.execPath || 'node';
+
+	// Run database migration synchronously before starting the server
+	// This ensures the schema is always up-to-date (especially after version upgrades)
+	const migrateScript = path.join(APP_HOME, 'scripts', 'migrate-installed-db.mjs');
+	if (fs.existsSync(migrateScript)) {
+		await appendLog(LOG_FILE, 'Menjalankan migrasi database...');
+		try {
+			const result = spawnSync(nodeBin, [migrateScript], {
+				cwd: APP_HOME,
+				env: childEnv,
+				stdio: ['ignore', 'pipe', 'pipe'],
+				timeout: 120000
+			});
+			if (result.error) {
+				await appendLog(LOG_FILE, `Migrasi database error: ${result.error.message}`);
+				console.error('[start-rapkumer] Database migration error:', result.error.message);
+			} else if (result.status === 0) {
+				await appendLog(LOG_FILE, 'Migrasi database berhasil');
+			} else {
+				const stderr = result.stderr?.toString() || '';
+				const stdout = result.stdout?.toString() || '';
+				await appendLog(
+					LOG_FILE,
+					`Migrasi database gagal (exit code ${result.status}): ${stderr}${stdout}`
+				);
+				console.error('[start-rapkumer] Database migration failed:', stderr || stdout);
+			}
+		} catch (err) {
+			await appendLog(LOG_FILE, `Error saat migrasi database: ${String(err)}`);
+			console.error('[start-rapkumer] Database migration error:', err);
+		}
+	} else {
+		await appendLog(LOG_FILE, `Script migrasi tidak ditemukan di ${migrateScript}, dilewati`);
+	}
 
 	// Spawn the start-build script as a detached background process.
 	// Redirect stdout/stderr directly into the log file so the parent can exit.

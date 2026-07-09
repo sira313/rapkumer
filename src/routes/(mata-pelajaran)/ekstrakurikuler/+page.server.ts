@@ -1,5 +1,9 @@
 import db from '$lib/server/db';
-import { tableEkstrakurikuler, tableEkstrakurikulerTujuan, tableKelas } from '$lib/server/db/schema';
+import {
+	tableEkstrakurikuler,
+	tableEkstrakurikulerTujuan,
+	tableKelas
+} from '$lib/server/db/schema';
 import { fail, redirect } from '@sveltejs/kit';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import { readBufferToAoA } from '$lib/utils/excel.js';

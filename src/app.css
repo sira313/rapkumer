@@ -56,3 +56,7 @@ a[data-preloading] {
 		transparent 12px
 	);
 }
+
+[data-theme='dark'] .badge-neutral {
+	color: white;
+}

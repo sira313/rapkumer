@@ -87,8 +87,7 @@
 									}}
 									placeholder="Tuliskan mata evaluasi"
 									disabled={isSubmitting}
-									required
-								></textarea>
+									required></textarea>
 							</td>
 							<td class="align-top">
 								<MataEvaluasiIndicators

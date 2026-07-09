@@ -50,22 +50,13 @@
 				if (!detail) return;
 				// match by id
 				if (String(detail.id) === String(data?.murid?.id)) {
-					// include timestamp in foto field to bust cache when filename unchanged
-					const newFoto = detail?.foto ? `${detail.foto}${detail.t ? `?t=${detail.t}` : ''}` : null;
-					// reassign `data` so runes reactivity picks up change
-					const waliAsuhNama =
-						typeof detail.waliAsuhNama === 'string'
-							? detail.waliAsuhNama
-							: data.murid?.waliAsuhNama;
-					const waliAsuhNip =
-						typeof detail.waliAsuhNip === 'string' ? detail.waliAsuhNip : data.murid?.waliAsuhNip;
+					// replace all fields with the fresh data from the server
 					data = {
 						...data,
 						murid: {
 							...(data.murid ?? {}),
-							foto: newFoto,
-							waliAsuhNama,
-							waliAsuhNip
+							...detail,
+							foto: typeof detail.foto === 'string' ? detail.foto : null
 						}
 					};
 					// Mark that data was updated, will force refresh on next modal open
@@ -113,7 +104,7 @@
 							// Dispatch custom event to notify other components
 							window.dispatchEvent(
 								new CustomEvent('murid:updated', {
-									detail: { id: data.murid.id, foto: null, t: Date.now() }
+									detail: { id: data.murid.id, foto: null }
 								})
 							);
 							toast({ message: 'Foto berhasil dihapus', type: 'success' });
@@ -150,7 +141,13 @@
 	<div class="join join-vertical w-full max-w-full">
 		<div class="tabs tabs-box">
 			<!-- data Murid -->
-			<input type="radio" name="tab-detil-murid" class="tab pointer-events-auto" aria-label="Data Murid" checked />
+			<input
+				type="radio"
+				name="tab-detil-murid"
+				class="tab pointer-events-auto"
+				aria-label="Data Murid"
+				checked
+			/>
 			<div class="tab-content bg-base-100 p-4">
 				<div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
 					<!-- Foto murid (placeholder) -->
@@ -209,7 +206,12 @@
 				</div>
 			</div>
 			<!-- data Orang Tua -->
-			<input type="radio" name="tab-detil-murid" class="tab pointer-events-auto" aria-label="Data Orang Tua" />
+			<input
+				type="radio"
+				name="tab-detil-murid"
+				class="tab pointer-events-auto"
+				aria-label="Data Orang Tua"
+			/>
 			<div class="tab-content bg-base-100 p-4">
 				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 					{@render field('Nama Ayah', data.murid.ayah?.nama)}
@@ -223,7 +225,12 @@
 				</div>
 			</div>
 			<!-- data Alamat Murid -->
-			<input type="radio" name="tab-detil-murid" class="tab pointer-events-auto" aria-label="Data Alamat Murid" />
+			<input
+				type="radio"
+				name="tab-detil-murid"
+				class="tab pointer-events-auto"
+				aria-label="Data Alamat Murid"
+			/>
 			<div class="tab-content bg-base-100 p-4">
 				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 					{@render field('Jalan', data.murid.alamat?.jalan)}
@@ -234,7 +241,12 @@
 				</div>
 			</div>
 			<!-- data Wali -->
-			<input type="radio" name="tab-detil-murid" class="tab pointer-events-auto" aria-label="Data Wali" />
+			<input
+				type="radio"
+				name="tab-detil-murid"
+				class="tab pointer-events-auto"
+				aria-label="Data Wali"
+			/>
 			<div class="tab-content bg-base-100 p-4">
 				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 					{@render field('Nama Wali', data.murid.wali?.nama)}
@@ -244,7 +256,12 @@
 				</div>
 			</div>
 			<!-- data Wali Asuh -->
-			<input type="radio" name="tab-detil-murid" class="tab pointer-events-auto" aria-label="Wali Asuh" />
+			<input
+				type="radio"
+				name="tab-detil-murid"
+				class="tab pointer-events-auto"
+				aria-label="Wali Asuh"
+			/>
 			<div class="tab-content bg-base-100 p-4">
 				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 					{@render field('Nama Wali Asuh', data.murid.waliAsuhNama)}
@@ -255,12 +272,15 @@
 	</div>
 </div>
 
-<div class="mt-4 flex flex-col gap-2 sm:flex-row">
-	<a class="btn btn-soft shadow-none" href="/murid">
+<div class="mt-4 flex flex-row justify-between gap-2">
+	<button
+		type="button"
+		class="btn btn-soft pointer-events-auto shadow-none"
+		onclick={() => history.back()}
+	>
 		<Icon name="close" />
 		Tutup
-	</a>
-	<div class="flex-1"></div>
+	</button>
 
 	{#if canEdit}
 		<a

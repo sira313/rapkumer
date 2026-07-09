@@ -1,6 +1,6 @@
 <script lang="ts">
 	import FormEnhance from '$lib/components/form-enhance.svelte';
-	import Icon from '$lib/components/icon.svelte';
+	import { hideModal, setLoading } from '$lib/components/global-modal.svelte';
 
 	interface Props {
 		formId: string;
@@ -8,8 +8,8 @@
 		catatan: string;
 		targetCount: number;
 		onCatatanChange?: (value: string) => void;
-		onRequestClose?: () => void;
 		onSuccess?: (params: { data?: Record<string, unknown> }) => void | Promise<void>;
+		onAction?: (actions: { submit: () => void }) => void;
 	}
 
 	let {
@@ -18,8 +18,8 @@
 		catatan,
 		targetCount,
 		onCatatanChange,
-		onRequestClose,
-		onSuccess
+		onSuccess,
+		onAction
 	}: Props = $props();
 
 	let catatanOverride = $state<string | null>(null);
@@ -50,11 +50,14 @@
 		data?: Record<string, unknown>;
 	}) {
 		await onSuccess?.({ data });
+		hideModal();
 	}
 
-	function handleCancel() {
-		onRequestClose?.();
-	}
+	$effect(() => {
+		onAction?.({
+			submit: () => (document.getElementById(formId) as HTMLFormElement | null)?.requestSubmit()
+		});
+	});
 </script>
 
 <div class="not-prose flex flex-col gap-4">
@@ -63,10 +66,15 @@
 		sebelumnya.
 	</p>
 
-	<FormEnhance action="?/fillAll" id={formId} onsuccess={handleSuccess}>
-		{#snippet children({ submitting, invalid })}
+	<FormEnhance
+		action="?/fillAll"
+		id={formId}
+		onsuccess={handleSuccess}
+		submitStateChange={setLoading}
+	>
+		{#snippet children()}
 			<input type="hidden" name="muridIds" value={muridIdsPayload} />
-			<label class="flex flex-col gap-2" aria-busy={submitting}>
+			<label class="flex flex-col gap-2">
 				<span class="text-sm font-semibold">Catatan</span>
 				<textarea
 					class="textarea textarea-bordered bg-base-200 dark:bg-base-300 w-full dark:border-none"
@@ -75,35 +83,11 @@
 					value={catatanValue}
 					oninput={handleInput}
 					placeholder="Tuliskan catatan yang ingin diterapkan ke semua murid"
-					spellcheck="false"
-				></textarea>
+					spellcheck="false"></textarea>
 				<small class="text-base-content/70 text-xs">
 					Biarkan kosong untuk menghapus catatan seluruh murid pada halaman ini.
 				</small>
 			</label>
-			<div class="modal-action">
-				<button
-					type="button"
-					class="btn btn-soft gap-2 shadow-none"
-					onclick={handleCancel}
-					disabled={submitting}
-				>
-					<Icon name="close" />
-					<span>Batal</span>
-				</button>
-				<button
-					type="submit"
-					class="btn btn-primary btn-soft gap-2 shadow-none"
-					disabled={invalid || submitting || !targetCount}
-				>
-					{#if submitting}
-						<span class="loading loading-spinner loading-xs" aria-hidden="true"></span>
-					{:else}
-						<Icon name="check" />
-					{/if}
-					<span>Terapkan</span>
-				</button>
-			</div>
 		{/snippet}
 	</FormEnhance>
 </div>

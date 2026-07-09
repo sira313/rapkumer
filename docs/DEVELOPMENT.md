@@ -1,7 +1,7 @@
-# Pengembangan — Raporkumer
+# Pengembangan — Rapkumer
 
 Dokumen ini berisi pedoman singkat untuk pengembang yang ingin menjalankan, membangun, atau
-mengontribusikan kode ke proyek Raporkumer.
+mengontribusikan kode ke proyek Rapkumer.
 
 Catatan utama (ikuti pedoman ini untuk konsistensi proyek):
 

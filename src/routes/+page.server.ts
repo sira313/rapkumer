@@ -4,14 +4,19 @@ import {
 	tableAsesmenEkstrakurikuler,
 	tableAsesmenSumatif,
 	tableAsesmenKokurikuler,
+	tableBellSettings,
 	tableEkstrakurikuler,
 	tableKokurikuler,
 	tableKehadiranMurid,
+	tableKegiatanCustom,
 	tableKelas,
+	tableJadwalPelajaran,
 	tableMataPelajaran,
-	tableMurid
+	tableMurid,
+	tablePresensiSettings,
+	tableUserFavorites
 } from '$lib/server/db/schema';
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 
 const AGAMA_BASE_SUBJECT = 'Pendidikan Agama dan Budi Pekerti';
 
@@ -271,8 +276,90 @@ export async function load(event) {
 		};
 	}
 
+	const [bellRow, presensiRow, kegiatanCustom, jadwalPelajaran] = await Promise.all([
+		sekolahId
+			? db.query.tableBellSettings.findFirst({
+					where: eq(tableBellSettings.sekolahId, sekolahId)
+				})
+			: Promise.resolve(null),
+		sekolahId
+			? db.query.tablePresensiSettings.findFirst({
+					columns: { hariSekolah: true, jamPulang: true, liburNasional: true, liburSemester: true },
+					where: eq(tablePresensiSettings.sekolahId, sekolahId),
+					orderBy: [desc(tablePresensiSettings.id)]
+				})
+			: Promise.resolve(null),
+		sekolahId
+			? db.query.tableKegiatanCustom.findMany({
+					where: eq(tableKegiatanCustom.sekolahId, sekolahId),
+					columns: { kode: true, nama: true, durasi: true }
+				})
+			: Promise.resolve([]),
+		sekolahId
+			? db.query.tableJadwalPelajaran.findMany({
+					where: eq(tableJadwalPelajaran.sekolahId, sekolahId),
+					columns: { hari: true, jamKe: true, kelasId: true, kodeKegiatan: true }
+				})
+			: Promise.resolve([])
+	]);
+
+	let daftarKodeMapel: string[] = [];
+	if (sekolahId) {
+		const kelasIds = daftarKelas.map((k) => k.id);
+		if (kelasIds.length > 0) {
+			const mapelRows = await db.query.tableMataPelajaran.findMany({
+				where: inArray(tableMataPelajaran.kelasId, kelasIds),
+				columns: { kode: true }
+			});
+			daftarKodeMapel = [...new Set(mapelRows.map((r) => r.kode).filter(Boolean))] as string[];
+		}
+	}
+
+	const hariSekolah = presensiRow?.hariSekolah ?? 6;
+
+	let liburNasional: string[] = [];
+	let liburSemester: Array<{ start: string; end: string }> = [];
+	if (presensiRow) {
+		try {
+			const parsed = JSON.parse(presensiRow.liburNasional || '[]');
+			if (Array.isArray(parsed)) liburNasional = parsed;
+		} catch {
+			// ignore
+		}
+		try {
+			const parsed = JSON.parse(presensiRow.liburSemester || '[]');
+			if (Array.isArray(parsed)) liburSemester = parsed;
+		} catch {
+			// ignore
+		}
+	}
+
+	const userId = event.locals.user?.id;
+	const favorites = userId
+		? await db.query.tableUserFavorites.findMany({
+				where: eq(tableUserFavorites.userId, userId),
+				orderBy: (fav, { asc }) => [asc(fav.createdAt)]
+			})
+		: [];
+
 	return {
 		...parentData,
-		statistikDashboard
+		favorites,
+		statistikDashboard,
+		bellActive: bellRow?.isActive === 1,
+		hariSekolah,
+		liburNasional,
+		liburSemester,
+		bellSettings: bellRow
+			? {
+					jamMulai: bellRow.jamMulai,
+					jamPelajaranMenit: bellRow.jamPelajaranMenit,
+					durasiIstirahat: bellRow.durasiIstirahat,
+					durasiUpacara: bellRow.durasiUpacara
+				}
+			: null,
+		kegiatanCustom,
+		jadwalPelajaran,
+		daftarKodeMapel
 	};
 }

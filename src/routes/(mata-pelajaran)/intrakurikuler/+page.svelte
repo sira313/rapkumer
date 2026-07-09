@@ -110,9 +110,9 @@
 				</p>
 			{/if}
 		</div>
-		<div class="mt-2 flex sm:mt-0">
+		<div class="mt-2 flex max-sm:w-full sm:mt-0">
 			<a
-				class={`btn btn-soft rounded-r-none shadow-none ${!canManageMapel ? 'pointer-events-none opacity-50' : ''}`}
+				class={`btn btn-soft rounded-r-none shadow-none max-sm:flex-1 ${!canManageMapel ? 'pointer-events-none opacity-50' : ''}`}
 				href={canManageMapel ? '/intrakurikuler/form' : '#'}
 				use:modalRoute={canManageMapel ? 'add-mapel' : ''}
 				aria-disabled={!canManageMapel}

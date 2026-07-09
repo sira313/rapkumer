@@ -69,7 +69,7 @@
 	</h2>
 
 	<button
-		class="btn btn-soft w-full shadow-none sm:w-auto sm:max-w-40"
+		class="btn btn-soft w-full shadow-none max-sm:hidden sm:w-auto sm:max-w-40"
 		type="button"
 		onclick={() => onOpenImport && onOpenImport()}
 		disabled={isImportDisabled}
@@ -80,17 +80,37 @@
 	</button>
 </div>
 
+<button
+	class="btn btn-soft mb-2 w-full shadow-none sm:hidden"
+	type="button"
+	onclick={() => onBack?.()}
+>
+	<Icon name="left" />
+	Kembali
+</button>
+
+<button
+	class="btn btn-soft mb-2 w-full shadow-none sm:hidden"
+	type="button"
+	onclick={() => onOpenImport && onOpenImport()}
+	disabled={isImportDisabled}
+	title={importTooltip}
+>
+	<Icon name="import" />
+	Import TP
+</button>
+
 <!-- action row -->
 <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
-	<button class="btn btn-soft shadow-none" type="button" onclick={() => onBack?.()}>
+	<button class="btn btn-soft shadow-none max-sm:hidden" type="button" onclick={() => onBack?.()}>
 		<Icon name="left" />
 		Kembali
 	</button>
 
 	{#if showAgamaSelect}
-		<div class="form-control sm:w-60">
+		<div class="form-control overflow-hidden sm:w-60">
 			<select
-				class="select bg-base-200 w-full shadow-none dark:border-none"
+				class="select bg-base-200 w-full truncate shadow-none dark:border-none"
 				id={agamaSelectId}
 				bind:this={agamaEl}
 				aria-label="Pilih Agama"

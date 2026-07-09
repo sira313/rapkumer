@@ -12,6 +12,7 @@ node_modules
 # OS
 .DS_Store
 Thumbs.db
+NUL
 
 # Env
 .env
@@ -30,6 +31,8 @@ vite.config.ts.timestamp-*
 /data/*.sqlite3-wal
 # Uploaded photos
 /data/uploads
+# Bell sounds
+/data/sounds
 
 #cert
 /installer/cert

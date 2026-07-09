@@ -51,7 +51,24 @@
 {/if}
 
 {#if page.state.modal?.name === 'detail-murid'}
-	<dialog class="modal" onclose={() => history.back()} open>
+	<!-- svelte-ignore a11y_click_events_have_key_events -->
+	<dialog
+		class="modal"
+		onclose={() => history.back()}
+		onclick={(e) => {
+			const rect = e.currentTarget.querySelector('.modal-box')?.getBoundingClientRect();
+			if (
+				rect &&
+				(e.clientX < rect.left ||
+					e.clientX > rect.right ||
+					e.clientY < rect.top ||
+					e.clientY > rect.bottom)
+			) {
+				e.currentTarget.close();
+			}
+		}}
+		open
+	>
 		<div class="modal-box p-4 sm:w-full sm:max-w-2xl">
 			<DetailMurid data={page.state.modal?.data} />
 		</div>
@@ -80,7 +97,7 @@
 					</p>
 				{/if}
 				<p class="mt-4 text-sm opacity-70">Tindakan ini tidak bisa dibatalkan.</p>
-				<div class="mt-6 flex justify-end gap-2">
+				<div class="modal-action">
 					<button class="btn btn-soft shadow-none" type="button" onclick={() => history.back()}>
 						<Icon name="close" />
 						Batal

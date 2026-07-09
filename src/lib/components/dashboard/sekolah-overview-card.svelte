@@ -16,16 +16,17 @@
 					</div>
 				</div>
 				<div class="space-y-1">
-					<h2 class="card-title">Data Sekolah</h2>
+					<h2 class="card-title">Identitas Sekolah</h2>
 					<p class="text-lg font-bold">{sekolahNama}</p>
 					<p class="text-sm">NPSN: {sekolahNpsn}</p>
 				</div>
 			</div>
 		{:else}
 			<div class="flex flex-col gap-2">
-				<h2 class="card-title">Data Sekolah</h2>
+				<h2 class="card-title">Identitas Sekolah</h2>
 				<p class="text-base-content/70">
-					Belum ada sekolah aktif. Silakan pilih atau buat data sekolah melalui menu Data Sekolah.
+					Belum ada sekolah aktif. Silakan pilih atau buat data sekolah melalui menu Identitas
+					Sekolah.
 				</p>
 			</div>
 		{/if}

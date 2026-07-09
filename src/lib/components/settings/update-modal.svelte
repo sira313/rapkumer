@@ -92,7 +92,8 @@
 		if (Number.isNaN(date.getTime())) return value;
 		return date.toLocaleString('id-ID', {
 			dateStyle: 'medium',
-			timeStyle: 'short'
+			timeStyle: 'short',
+			hour12: false
 		});
 	}
 

@@ -98,10 +98,10 @@
 			<p class="text-base-content/70 text-sm">Kelas aktif: {kelasLabel}</p>
 		</div>
 		<!-- Tombol untuk mengelola mata evaluasi -->
-		<div class="flex flex-row">
+		<div class="flex flex-row max-sm:w-full">
 			<button
 				type="button"
-				class="btn btn-soft rounded-r-none shadow-none"
+				class="btn btn-soft rounded-r-none shadow-none max-sm:flex-1"
 				title="Kelola mata evaluasi keasramaan"
 				disabled={!canEdit}
 				onclick={navigateToMatEval}

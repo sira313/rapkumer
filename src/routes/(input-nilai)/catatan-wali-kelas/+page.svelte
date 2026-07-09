@@ -180,6 +180,7 @@
 			return;
 		}
 		bulkCatatan = '';
+		let actions: { submit: () => void };
 		showModal({
 			title: 'Isi Catatan Sekaligus',
 			body: BulkFillModal,
@@ -191,10 +192,19 @@
 				onCatatanChange: (value: string) => {
 					bulkCatatan = value;
 				},
-				onRequestClose: () => hideModal(),
 				onSuccess: async () => {
 					await handleBulkSuccess();
+				},
+				onAction: (a: { submit: () => void }) => {
+					actions = a;
 				}
+			},
+			onPositive: {
+				label: 'Terapkan',
+				action: () => actions.submit()
+			},
+			onNegative: {
+				label: 'Batal'
 			},
 			dismissible: true,
 			onClose: handleBulkDialogClose
@@ -221,7 +231,7 @@
 		</div>
 		<button
 			type="button"
-			class="btn btn-primary btn-soft gap-2 self-start shadow-none sm:self-center"
+			class="btn btn-primary btn-soft gap-2 self-start shadow-none max-sm:w-full sm:self-center"
 			onclick={openBulkDialog}
 			disabled={!bulkTargetCount || editingRowId !== null || !canEdit}
 			title={!canEdit
@@ -292,8 +302,7 @@
 												bind:value={editingCatatan}
 												placeholder={`Tuliskan catatan untuk ${item.nama}`}
 												spellcheck="false"
-												aria-invalid={invalid}
-											></textarea>
+												aria-invalid={invalid}></textarea>
 											<small class="text-base-content/60 text-xs">
 												Kosongkan catatan dan simpan untuk menghapus.
 											</small>

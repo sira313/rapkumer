@@ -10,7 +10,7 @@
 		<header class="mb-2 space-y-2 text-center">
 			<h1 class="text-2xl font-bold">Masuk ke Rapkumer</h1>
 			<p class="text-base-content/70 text-sm">
-				Masukkan kredensial Anda untuk mulai mengelola data sekolah.
+				Masukkan nama pengguna dan sandi untuk mulai mengelola administrasi guru.
 			</p>
 		</header>
 

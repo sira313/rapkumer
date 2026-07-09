@@ -1,4 +1,4 @@
-# Lisensi & Pengecualian — Raporkumer
+# Lisensi & Pengecualian — Rapkumer
 
 Proyek ini menggunakan lisensi khas (custom license) yang mengizinkan penggunaan, modifikasi, dan
 distribusi untuk keperluan nonkomersial. Beberapa aset statis memiliki lisensi terpisah.

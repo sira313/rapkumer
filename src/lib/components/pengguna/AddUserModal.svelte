@@ -206,7 +206,7 @@
 					<legend class="fieldset-legend">Sekolah</legend>
 					<select
 						id="add-user-sekolah"
-						class="select dark:bg-base-200 w-full dark:border-none"
+						class="select dark:bg-base-200 w-full truncate dark:border-none"
 						bind:value={sekolahId}
 						onchange={() => {
 							kelasIds.clear();

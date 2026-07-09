@@ -1,6 +1,4 @@
 <script lang="ts">
-	import Icon from '$lib/components/icon.svelte';
-
 	type AcademicContext = {
 		activeSemesterId: number | null;
 		tahunAjaranList: Array<{
@@ -12,23 +10,11 @@
 	let {
 		headingTitle = '',
 		kelasAktifLabel = null,
-		academicContext = null,
-		canNavigateMurid = false,
-		hasPrevMurid = false,
-		hasNextMurid = false,
-		loading = false,
-		onNavigatePrev,
-		onNavigateNext
+		academicContext = null
 	}: {
 		headingTitle: string;
 		kelasAktifLabel: string | null;
 		academicContext: AcademicContext;
-		canNavigateMurid: boolean;
-		hasPrevMurid: boolean;
-		hasNextMurid: boolean;
-		loading?: boolean;
-		onNavigatePrev: () => void;
-		onNavigateNext: () => void;
 	} = $props();
 
 	const activeSemester = $derived.by(() => {
@@ -64,27 +50,5 @@
 				{/if}
 			</p>
 		{/if}
-	</div>
-	<div class="flex items-center gap-2 self-end sm:self-auto">
-		<button
-			class="btn btn-circle btn-soft shadow-none"
-			type="button"
-			onclick={onNavigatePrev}
-			title="Murid sebelumnya"
-			aria-label="Murid sebelumnya"
-			disabled={loading || !canNavigateMurid || !hasPrevMurid}
-		>
-			<Icon name="left" />
-		</button>
-		<button
-			class="btn btn-circle btn-soft shadow-none"
-			type="button"
-			onclick={onNavigateNext}
-			title="Murid berikutnya"
-			aria-label="Murid berikutnya"
-			disabled={loading || !canNavigateMurid || !hasNextMurid}
-		>
-			<Icon name="right" />
-		</button>
 	</div>
 </div>

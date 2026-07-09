@@ -1,13 +1,21 @@
 import db from '$lib/server/db';
 import { resolveSekolahAcademicContext } from '$lib/server/db/academic';
-import { tableKelas, tableMurid, tablePegawai, tableAuthUserKelas } from '$lib/server/db/schema';
+import {
+	tableKelas,
+	tableMurid,
+	tablePegawai,
+	tableAuthUserKelas,
+	tableAuthUserMataPelajaran
+} from '$lib/server/db/schema';
 import { cookieNames, findTitleByPath } from '$lib/utils.js';
 import { redirect } from '@sveltejs/kit';
+import type { LayoutServerLoad } from './$types';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 
-export async function load({ url, locals, cookies }) {
+export const load: LayoutServerLoad = async ({ url, locals, cookies }) => {
 	const meta: PageMeta = {
-		title: url.pathname === '/' ? 'Rapor Kurikulum Merdeka' : findTitleByPath(url.pathname),
+		title:
+			url.pathname === '/' ? 'Rapkumer - Administrasi Guru Terpadu' : findTitleByPath(url.pathname),
 		description: ''
 	};
 
@@ -54,7 +62,9 @@ export async function load({ url, locals, cookies }) {
 				const rows = await db
 					.selectDistinct({ kelasId: tableMurid.kelasId })
 					.from(tableMurid)
-					.where(sql`LOWER(trim(${tableMurid.waliAsuhNama})) = ${pegNamaLower} AND ${tableMurid.kelasId} IS NOT NULL`);
+					.where(
+						sql`LOWER(trim(${tableMurid.waliAsuhNama})) = ${pegNamaLower} AND ${tableMurid.kelasId} IS NOT NULL`
+					);
 
 				const kelasIds = rows.map((r) => r.kelasId).filter((id): id is number => id != null);
 				if (kelasIds.length > 0) {
@@ -62,7 +72,10 @@ export async function load({ url, locals, cookies }) {
 						columns: { id: true, nama: true, fase: true },
 						with: { waliKelas: { columns: { id: true, nama: true } } },
 						where: academicContext?.activeSemesterId
-							? and(inArray(tableKelas.id, kelasIds), eq(tableKelas.semesterId, academicContext.activeSemesterId))
+							? and(
+									inArray(tableKelas.id, kelasIds),
+									eq(tableKelas.semesterId, academicContext.activeSemesterId)
+								)
 							: inArray(tableKelas.id, kelasIds),
 						orderBy: asc(tableKelas.nama)
 					});
@@ -250,6 +263,22 @@ export async function load({ url, locals, cookies }) {
 		}
 	}
 
+	// For user type (guru), check if they have any mata pelajaran assigned
+	// (either via direct column or many-to-many table)
+	let hasMataPelajaran = false;
+	if (user?.type === 'user') {
+		const u = user as { id?: number; mataPelajaranId?: number | null };
+		hasMataPelajaran = !!u.mataPelajaranId;
+		if (!hasMataPelajaran && u.id) {
+			const records = await db.query.tableAuthUserMataPelajaran.findMany({
+				columns: { id: true },
+				where: eq(tableAuthUserMataPelajaran.authUserId, u.id),
+				limit: 1
+			});
+			hasMataPelajaran = records.length > 0;
+		}
+	}
+
 	// Set cookies AFTER all async operations are complete
 	const secure = locals.requestIsSecure ?? false;
 	if (kelasAktif) {
@@ -267,6 +296,8 @@ export async function load({ url, locals, cookies }) {
 		daftarKelas,
 		kelasAktif,
 		user: userForClient,
-		activeSemesterTipe: academicContext?.activeSemesterTipe ?? null
+		hasMataPelajaran,
+		activeSemesterTipe: academicContext?.activeSemesterTipe ?? null,
+		academicContext
 	};
-}
+};

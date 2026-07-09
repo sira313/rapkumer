@@ -186,8 +186,7 @@ export async function load({ parent, url, depends, locals }) {
 	// then fallback to legacy mataPelajaranId field if join table is empty.
 	// IMPORTANT: Match by mapel name (since same subject can exist in different classes)
 	const maybeUser = user as unknown as
-		| { id?: number; type?: string; mataPelajaranId?: number }
-		| undefined;
+		{ id?: number; type?: string; mataPelajaranId?: number } | undefined;
 	const assignedMapelIds = new Set<number>();
 
 	if (maybeUser && maybeUser.type === 'user' && maybeUser.id) {

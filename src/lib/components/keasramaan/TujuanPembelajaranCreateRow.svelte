@@ -42,8 +42,7 @@
 					required
 					disabled={!canManage}
 					aria-invalid={invalid}
-					aria-busy={formSubmitting}
-				></textarea>
+					aria-busy={formSubmitting}></textarea>
 			{/snippet}
 		</FormEnhance>
 	</td>

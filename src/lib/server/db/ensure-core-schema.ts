@@ -1,3 +1,4 @@
+import db from '$lib/server/db';
 import { ensureSchema } from './ensure-helper';
 
 const CORE = 'core';
@@ -200,4 +201,31 @@ export async function ensureCoreSchema() {
 			UNIQUE(sekolah_id, semester_id, nis)
 		)`
 	]);
+
+	// Add tanggal_masuk column to existing semester tables (migration)
+	try {
+		await db.$client.execute(`ALTER TABLE semester ADD COLUMN tanggal_masuk TEXT`);
+	} catch {
+		// column already exists
+	}
+
+	// Create user_favorites table
+	try {
+		await db.$client.execute(`
+			CREATE TABLE IF NOT EXISTS user_favorites (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				user_id INTEGER NOT NULL REFERENCES auth_user(id) ON DELETE CASCADE,
+				path TEXT NOT NULL,
+				title TEXT NOT NULL,
+				created_at TEXT NOT NULL,
+				updated_at TEXT,
+				UNIQUE(user_id, path)
+			)
+		`);
+		await db.$client.execute(
+			`CREATE INDEX IF NOT EXISTS user_favorites_user_idx ON user_favorites(user_id)`
+		);
+	} catch {
+		// table already exists
+	}
 }

@@ -65,7 +65,7 @@ function filterAddresses(entries: AddressEntry[], currentHost: string) {
 export const load: PageServerLoad = async ({ url, locals }) => {
 	const meta: PageMeta = {
 		title: 'Pengaturan',
-		description: 'Pengaturan Aplikasi E-Rapor Kurikulum Merdeka'
+		description: 'Pengaturan Aplikasi Administrasi Guru Terpadu'
 	};
 
 	const secure = locals.requestIsSecure ?? url.protocol === 'https:';

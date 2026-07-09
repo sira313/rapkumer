@@ -112,15 +112,17 @@
 				<label class="label mt-3" for="addressSelector">
 					<span class="label-text">Alamat terdeteksi lainnya</span>
 				</label>
-				<select
-					id="addressSelector"
-					class="select select-bordered dark:bg-base-200 w-full dark:border-none"
-					bind:value={appAddress}
-				>
-					{#each detectedAddresses as address (address)}
-						<option value={address}>{address}</option>
-					{/each}
-				</select>
+				<div class="overflow-hidden">
+					<select
+						id="addressSelector"
+						class="select select-bordered dark:bg-base-200 w-full truncate dark:border-none"
+						bind:value={appAddress}
+					>
+						{#each detectedAddresses as address (address)}
+							<option value={address}>{address}</option>
+						{/each}
+					</select>
+				</div>
 			{/if}
 			<p class="text-base-content/70 mt-1 text-xs">
 				Buka alamat ini pada perangkat lain di jaringan lokal yang sama.

@@ -41,14 +41,14 @@
 			<input type="hidden" name="muridId" value={data.murid.id} />
 			<input type="hidden" name="ekstrakurikulerId" value={data.ekstrakurikuler.id} />
 
-			<div class="flex flex-col gap-2 sm:flex-row">
+			<div class="flex flex-row justify-between gap-2">
 				<a href={data.backUrl} class="btn btn-soft shadow-none">
 					<Icon name="left" />
 					Kembali
 				</a>
 				<button
 					type="submit"
-					class="btn btn-primary shadow-none sm:ml-auto"
+					class="btn btn-primary shadow-none"
 					disabled={!hasTujuan || invalid || submitting}
 				>
 					{#if submitting}
@@ -111,9 +111,9 @@
 									<td class="text-base-content align-top text-sm">
 										{formatTujuan(tujuan.deskripsi)}
 									</td>
-									<td class="align-top">
+									<td class="overflow-hidden align-top">
 										<select
-											class="select bg-base-200 dark:bg-base-300 w-full dark:border-none"
+											class="select bg-base-200 dark:bg-base-300 w-full truncate dark:border-none"
 											name={`nilai.${tujuan.id}`}
 										>
 											<option value="">Belum dinilai</option>

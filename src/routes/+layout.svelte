@@ -1,12 +1,18 @@
 <script lang="ts">
 	/* eslint-disable svelte/no-navigation-without-resolve -- layout contains many intentional href links for navigation */
 	import { page } from '$app/state';
-	import GlobalModal from '$lib/components/global-modal.svelte';
+	import { invalidate } from '$app/navigation';
+	import GlobalModal, { showModal } from '$lib/components/global-modal.svelte';
 	import Icon from '$lib/components/icon.svelte';
 	import Menu from '$lib/components/menu.svelte';
 	import Navbar from '$lib/components/navbar.svelte';
 	import Task from '$lib/components/tasks.svelte';
+	import FavoriteMenusSidebar from '$lib/components/dashboard/favorite-menus-sidebar.svelte';
+	import KodeKegiatan from '$lib/components/jadwal-bell/kode-kegiatan.svelte';
+	import TambahKegiatanModal from '$lib/components/jadwal-bell/tambah-kegiatan-modal.svelte';
 	import Toast, { toast } from '$lib/components/toast.svelte';
+	import { jadwalIsEditing } from '$lib/stores/jadwal-edit';
+	import { get } from 'svelte/store';
 
 	import NavIndicator from '$lib/components/nav-indicator.svelte';
 	import ScrollToTop from '$lib/components/scroll-to-top.svelte';
@@ -18,6 +24,54 @@
 	let stoppingServer = $state(false);
 	let loggingOut = $state(false);
 	const isLoginPage = $derived(page.url.pathname === '/login');
+	let isJadwalPage = $derived(page.url.pathname === '/akademik/jadwal-pelajaran');
+	const jadwalCanManage = $derived(
+		((page.data.user as { permissions?: string[] })?.permissions ?? []).includes('rapor_manage')
+	);
+
+	async function handleHapusKegiatan(kode: string) {
+		if (!jadwalCanManage || !get(jadwalIsEditing)) return;
+		const formData = new FormData();
+		formData.append('kode', kode);
+
+		try {
+			const res = await fetch('?/hapusKegiatan', {
+				method: 'POST',
+				body: formData,
+				redirect: 'error'
+			});
+
+			if (!res.ok) {
+				const err = await res.json().catch(() => ({ fail: 'Gagal menghapus kegiatan' }));
+				throw new Error(err.fail ?? `Error ${res.status}`);
+			}
+
+			toast('Kegiatan berhasil dihapus', 'success');
+			await invalidate('app:jadwal-bell');
+		} catch (e) {
+			toast(e instanceof Error ? e.message : 'Gagal menghapus kegiatan', 'error');
+		}
+	}
+
+	function openEditKegiatan(kegiatan: { kode: string; nama: string; durasi: number | null }) {
+		let actions: { submit: () => Promise<void>; cancel: () => void };
+		showModal({
+			title: 'Edit Kegiatan',
+			body: TambahKegiatanModal,
+			bodyProps: {
+				onAction: (a: typeof actions) => {
+					actions = a;
+				},
+				existingKegiatan: kegiatan
+			},
+			onPositive: {
+				label: 'Simpan',
+				action: () => actions!.submit()
+			},
+			onNegative: { label: 'Batal' },
+			dismissible: false
+		});
+	}
 
 	const readonlyRoutes = [
 		'/murid',
@@ -28,16 +82,27 @@
 		'/nilai-ekstrakurikuler',
 		'/asesmen-keasramaan',
 		'/absen',
+		'/jurnal-mengajar',
 		'/catatan-wali-kelas',
 		'/keputusan',
 		'/cetak'
 	];
 
+	let kodeKegiatanOpen = $state(true);
 	const isReadonlyPage = $derived(
 		readonlyRoutes.some((r) => page.url.pathname === r || page.url.pathname.startsWith(r + '/'))
 	);
 
-	const disableInteraction = $derived(data.user?.type === 'user' && isReadonlyPage);
+	const userIsGuruMapel = $derived(data.user?.type === 'user' && data.hasMataPelajaran);
+	const isAbsenPage = $derived(page.url.pathname.startsWith('/absen'));
+	const isJurnalMengajarPage = $derived(page.url.pathname.startsWith('/jurnal-mengajar'));
+	const isCetakPage = $derived(page.url.pathname.startsWith('/cetak'));
+
+	const disableInteraction = $derived(
+		data.user?.type === 'user' &&
+			isReadonlyPage &&
+			!((isAbsenPage || isJurnalMengajarPage || isCetakPage) && userIsGuruMapel)
+	);
 
 	async function stopServer() {
 		if (stoppingServer) return;
@@ -151,7 +216,51 @@
 							</div>
 						</div>
 						<div class="sticky top-4 self-start">
+							{#if isJadwalPage && page.data.daftarKodeMapel}
+								<div class="hidden xl:block">
+									<div class="card bg-base-100 rounded-box mb-4 max-w-70 min-w-70 shadow-md">
+										<div class="p-4">
+											<div class="flex flex-row items-center gap-2">
+												<h2 class="text-sm font-bold">Kode Kegiatan</h2>
+												<div class="flex-1"></div>
+												<div class="join">
+													<button
+														type="button"
+														class="btn btn-sm join-item px-2 shadow-none"
+														onclick={() => (kodeKegiatanOpen = !kodeKegiatanOpen)}
+														title={kodeKegiatanOpen ? 'Tutup daftar kode' : 'Buka daftar kode'}
+													>
+														<Icon name={kodeKegiatanOpen ? 'up' : 'down'} />
+													</button>
+												</div>
+											</div>
+										</div>
+										{#if kodeKegiatanOpen}
+											<div class="p-4 pt-0">
+												<KodeKegiatan
+													kodeMapelPerKelas={(page.data.kodeMapelPerKelas as Array<{
+														kelasId: number;
+														namaKelas: string;
+														kodeMapel: string[];
+													}>) ?? []}
+													kodeTambahan={['UPB', 'IST', 'PLG']}
+													kodeKokurikuler={(page.data.daftarKodeKokurikuler as string[]) ?? []}
+													kegiatanCustom={(page.data.kegiatanCustom as Array<{
+														kode: string;
+														nama: string;
+														durasi: number | null;
+													}>) ?? []}
+													canManage={jadwalCanManage && $jadwalIsEditing}
+													onHapusKegiatan={handleHapusKegiatan}
+													onEditKegiatan={openEditKegiatan}
+												/>
+											</div>
+										{/if}
+									</div>
+								</div>
+							{/if}
 							<Task variant="sidebar" />
+							<FavoriteMenusSidebar />
 						</div>
 					</div>
 				</div>
@@ -189,7 +298,9 @@
 <NavIndicator />
 
 <style>
-	:global(.is-readonly :is(button, input, select, textarea, a, [role='button']):not(.pointer-events-auto)) {
+	:global(
+		.is-readonly :is(button, input, select, textarea, a, [role='button']):not(.pointer-events-auto)
+	) {
 		opacity: var(--btn-disabled-opacity, 0.5) !important;
 		cursor: not-allowed !important;
 		pointer-events: none !important;

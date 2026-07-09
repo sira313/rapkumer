@@ -39,8 +39,7 @@
 				oninput={(e) => onUpdateNama(e.currentTarget.value)}
 				placeholder="Contoh: Kepemimpinan"
 				disabled={isSubmitting}
-				required
-			></textarea>
+				required></textarea>
 		</td>
 		<td class="align-top">
 			<MataEvaluasiIndicators

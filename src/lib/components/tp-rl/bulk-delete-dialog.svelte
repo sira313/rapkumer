@@ -14,12 +14,18 @@
 	const idsToDelete = $derived(groups.flatMap((group) => group.ids));
 	const totalLingkup = $derived(groups.length);
 	const totalTujuan = $derived(groups.reduce((total, group) => total + group.ids.length, 0));
+	let submitting = $state(false);
 </script>
 
 <dialog class="modal" open onclose={onCancel}>
 	<div class="modal-box">
-		<FormEnhance action="?/delete" onsuccess={onSuccess}>
-			{#snippet children({ submitting })}
+		<FormEnhance
+			id="form-bulk-delete"
+			action="?/delete"
+			onsuccess={onSuccess}
+			submitStateChange={(v) => (submitting = v)}
+		>
+			{#snippet children()}
 				{#each idsToDelete as idValue (idValue)}
 					<input name="ids" value={idValue} hidden />
 				{/each}
@@ -37,23 +43,25 @@
 					{/each}
 				</ul>
 				<p class="text-sm opacity-70">Total tujuan pembelajaran: {totalTujuan}</p>
-
-				<div class="mt-4 flex justify-end gap-2">
-					<button class="btn btn-soft shadow-none" type="button" onclick={onCancel}> Batal </button>
-					<button
-						class="btn btn-error btn-soft shadow-none"
-						disabled={submitting || idsToDelete.length === 0}
-					>
-						{#if submitting}
-							<div class="loading loading-spinner"></div>
-						{:else}
-							<Icon name="del" />
-						{/if}
-						Hapus
-					</button>
-				</div>
 			{/snippet}
 		</FormEnhance>
+
+		<div class="modal-action">
+			<button class="btn btn-soft shadow-none" type="button" onclick={onCancel}> Batal </button>
+			<button
+				class="btn btn-error btn-soft shadow-none"
+				type="submit"
+				form="form-bulk-delete"
+				disabled={submitting || idsToDelete.length === 0}
+			>
+				{#if submitting}
+					<div class="loading loading-spinner"></div>
+				{:else}
+					<Icon name="del" />
+				{/if}
+				Hapus
+			</button>
+		</div>
 	</div>
 	<form method="dialog" class="modal-backdrop">
 		<button onclick={onCancel}>close</button>

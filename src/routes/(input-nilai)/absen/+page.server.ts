@@ -1,247 +1,436 @@
+import { redirect, type RequestEvent } from '@sveltejs/kit';
+import type { PageServerLoad } from './$types';
+import { isValidDate, todayDateString } from '$lib/server/absen/utils';
+import { checkPresensiReadiness } from '$lib/server/absen/presensi';
+import { loadBulanan } from '$lib/server/absen/load-bulanan';
+import { loadPersentaseBulanan } from '$lib/server/absen/load-persentase-bulanan';
+import { loadPersentaseSemester } from '$lib/server/absen/load-persentase-semester';
+import { loadRapor } from '$lib/server/absen/load-rapor';
+import { loadHarian } from '$lib/server/absen/load-harian';
+import type { AbsenLoadData } from '$lib/server/absen/types';
+import {
+	handleUpdate,
+	handleIsiSekaligus,
+	handleDeletePresensi,
+	handleUpdateRapor,
+	handleResetRapor
+} from '$lib/server/absen/actions';
+import { ensurePresensiSettingsSchema } from '$lib/server/db/ensure-presensi-settings';
+import { ensureAbsensiSchema } from '$lib/server/db/ensure-absensi';
+import { ensureKetidakhadiranHarianSchema } from '$lib/server/db/ensure-ketidakhadiran-harian';
+import { ensureKetidakhadiranRaporSchema } from '$lib/server/db/ensure-ketidakhadiran-rapor';
 import db from '$lib/server/db';
-import { tableKehadiranMurid, tableMurid } from '$lib/server/db/schema';
-import { fail, redirect } from '@sveltejs/kit';
-import { and, asc, eq, sql } from 'drizzle-orm';
-// authority() permission helper removed from this module
+import { tableKelas, tableAuthUserMataPelajaran } from '$lib/server/db/schema';
+import { eq } from 'drizzle-orm';
 
-const PER_PAGE = 20;
-const TABLE_MISSING_MESSAGE =
-	'Tabel kehadiran murid belum tersedia. Jalankan "pnpm db:push" untuk menerapkan migrasi terbaru.';
-
-function isTableMissingError(error: unknown) {
-	return (
-		error instanceof Error &&
-		error.message.includes('no such table') &&
-		error.message.includes('kehadiran_murid')
-	);
-}
-
-type KehadiranRow = {
-	id: number;
-	no: number;
-	nama: string;
-	sakit: number;
-	izin: number;
-	alfa: number;
-	updatedAt: string | null;
-};
-
-type PageState = {
-	search: string | null;
-	currentPage: number;
-	totalPages: number;
-	totalItems: number;
-	perPage: number;
-};
-
-export async function load({ parent, locals, url, depends }) {
+export const load: PageServerLoad = async ({ parent, locals, url, depends }) => {
 	depends('app:absen');
 
-	// Permission 'nilai_absen' removed — require authenticated user only
 	if (!locals.user) throw redirect(303, '/login');
 
-	const { kelasAktif } = await parent();
+	await ensurePresensiSettingsSchema();
+	await ensureAbsensiSchema();
+	await ensureKetidakhadiranHarianSchema();
+	await ensureKetidakhadiranRaporSchema();
+
+	const { kelasAktif, academicContext } = await parent();
 	const sekolahId = locals.sekolah?.id ?? null;
+	const kelasRecordTa =
+		sekolahId && kelasAktif?.id
+			? await db.query.tableKelas.findFirst({
+					columns: { tahunAjaranId: true, semesterId: true },
+					where: eq(tableKelas.id, kelasAktif.id)
+				})
+			: null;
+	const tahunAjaranId = kelasRecordTa?.tahunAjaranId ?? null;
+	const kelasSemesterId = kelasRecordTa?.semesterId ?? null;
+
+	const { presensiReady, presensiWarningMessage, presensiSettings, bellSettings, kegiatanCustom } =
+		await checkPresensiReadiness(sekolahId, kelasAktif?.id ?? null, tahunAjaranId, academicContext);
 
 	const searchParam = url.searchParams.get('q');
 	const search = searchParam?.trim() ? searchParam.trim() : null;
 	const requestedPage = Number(url.searchParams.get('page')) || 1;
 	const pageNumber =
 		Number.isFinite(requestedPage) && requestedPage > 0 ? Math.floor(requestedPage) : 1;
+	const tanggalParam = url.searchParams.get('tanggal');
+	const tanggal = tanggalParam && isValidDate(tanggalParam) ? tanggalParam : todayDateString();
 
-	const defaultPage: PageState = {
-		search,
-		currentPage: 1,
-		totalPages: 1,
-		totalItems: 0,
-		perPage: PER_PAGE
-	};
+	const simHari = url.searchParams.get('simHari')?.toLowerCase() ?? null;
+	const simJam = url.searchParams.get('simJam') ?? null;
 
-	if (!sekolahId || !kelasAktif?.id) {
-		return {
-			tableReady: true,
-			daftarMurid: [] as KehadiranRow[],
-			page: defaultPage,
-			totalMurid: 0,
-			muridCount: 0
-		};
-	}
+	const explicitMode = url.searchParams.get('mode');
+	const isGuruMapelForDefault =
+		locals.user?.type === 'user' &&
+		(!!locals.user.mataPelajaranId ||
+			(locals.user.id
+				? (
+						await db.query.tableAuthUserMataPelajaran.findMany({
+							columns: { id: true },
+							where: eq(tableAuthUserMataPelajaran.authUserId, locals.user.id),
+							limit: 1
+						})
+					).length > 0
+				: false));
+	const mode =
+		explicitMode ??
+		(isGuruMapelForDefault && presensiSettings?.jenisPresensi === 'tiap_mapel'
+			? 'persentase_harian'
+			: 'harian');
 
-	const baseFilter = and(
-		eq(tableMurid.sekolahId, sekolahId),
-		eq(tableMurid.kelasId, kelasAktif.id)
-	);
-	const searchFilter = search
-		? and(baseFilter, sql`${tableMurid.nama} LIKE ${'%' + search + '%'} COLLATE NOCASE`)
-		: baseFilter;
-
-	const [{ muridCount }] = await db
-		.select({ muridCount: sql<number>`count(*)` })
-		.from(tableMurid)
-		.where(baseFilter);
-
-	const [{ totalItems }] = await db
-		.select({ totalItems: sql<number>`count(*)` })
-		.from(tableMurid)
-		.where(searchFilter);
-
-	const total = totalItems ?? 0;
-	const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
-	const currentPage = Math.min(Math.max(pageNumber, 1), totalPages);
-	const offset = (currentPage - 1) * PER_PAGE;
-
-	if (pageNumber !== currentPage) {
-		const params = new URLSearchParams(url.searchParams);
-		if (currentPage <= 1) {
-			params.delete('page');
-		} else {
-			params.set('page', String(currentPage));
+	if (mode === 'bulanan') {
+		if (!sekolahId || !kelasAktif?.id) {
+			return defaultEmpty(
+				'bulanan',
+				search,
+				tanggal,
+				simHari,
+				simJam,
+				presensiReady,
+				presensiWarningMessage,
+				presensiSettings?.jenisPresensi ?? 'wali_kelas_saja',
+				presensiSettings?.tipePresensi
+			);
 		}
-		throw redirect(303, `${url.pathname}${params.size ? `?${params}` : ''}`);
-	}
-
-	type MuridMinimal = Pick<typeof tableMurid.$inferSelect, 'id' | 'nama'>;
-	type KehadiranMinimal = typeof tableKehadiranMurid.$inferSelect;
-	type QueryRecord = MuridMinimal & { kehadiran: KehadiranMinimal | null };
-
-	let queryRecords: QueryRecord[] = [];
-	let tableReady = true;
-
-	try {
-		queryRecords = await db.query.tableMurid.findMany({
-			columns: { id: true, nama: true },
-			with: {
-				kehadiran: {
-					columns: {
-						id: true,
-						muridId: true,
-						sakit: true,
-						izin: true,
-						alfa: true,
-						createdAt: true,
-						updatedAt: true
-					}
-				}
-			},
-			where: searchFilter,
-			orderBy: asc(tableMurid.nama),
-			limit: PER_PAGE,
-			offset
+		const bulanParam = url.searchParams.get('bulan');
+		const tahunParam = url.searchParams.get('tahun');
+		const now = new Date();
+		const bulan = bulanParam ? Number(bulanParam) : now.getMonth() + 1;
+		const tahun = tahunParam ? Number(tahunParam) : now.getFullYear();
+		if (!Number.isInteger(bulan) || bulan < 1 || bulan > 12) {
+			return defaultEmpty(
+				'bulanan',
+				search,
+				tanggal,
+				simHari,
+				simJam,
+				presensiReady,
+				presensiWarningMessage,
+				presensiSettings?.jenisPresensi ?? 'wali_kelas_saja',
+				presensiSettings?.tipePresensi
+			);
+		}
+		if (!Number.isInteger(tahun) || tahun < 2000 || tahun > 2099) {
+			return defaultEmpty(
+				'bulanan',
+				search,
+				tanggal,
+				simHari,
+				simJam,
+				presensiReady,
+				presensiWarningMessage,
+				presensiSettings?.jenisPresensi ?? 'wali_kelas_saja',
+				presensiSettings?.tipePresensi
+			);
+		}
+		if (!presensiSettings) {
+			return defaultEmpty(
+				'bulanan',
+				search,
+				tanggal,
+				simHari,
+				simJam,
+				presensiReady,
+				presensiWarningMessage,
+				'wali_kelas_saja'
+			);
+		}
+		return loadBulanan({
+			sekolahId,
+			kelasId: kelasAktif.id,
+			search,
+			pageNumber,
+			bulan,
+			tahun,
+			presensiSettings,
+			simHari,
+			simJam,
+			url
 		});
-	} catch (error) {
-		if (isTableMissingError(error)) {
-			tableReady = false;
-			const fallbackRecords = await db.query.tableMurid.findMany({
-				columns: { id: true, nama: true },
-				where: searchFilter,
-				orderBy: asc(tableMurid.nama),
-				limit: PER_PAGE,
-				offset
-			});
-			queryRecords = fallbackRecords.map((record) => ({ ...record, kehadiran: null }));
-		} else {
-			throw error;
-		}
 	}
 
-	const rows: KehadiranRow[] = queryRecords.map((murid, index) => ({
-		id: murid.id,
-		no: offset + index + 1,
-		nama: murid.nama,
-		sakit: murid.kehadiran?.sakit ?? 0,
-		izin: murid.kehadiran?.izin ?? 0,
-		alfa: murid.kehadiran?.alfa ?? 0,
-		updatedAt: murid.kehadiran?.updatedAt ?? murid.kehadiran?.createdAt ?? null
-	}));
+	if (mode === 'persentase_bulanan') {
+		if (!sekolahId || !kelasAktif?.id) {
+			return defaultEmpty(
+				'persentase_bulanan',
+				search,
+				tanggal,
+				simHari,
+				simJam,
+				presensiReady,
+				presensiWarningMessage,
+				presensiSettings?.jenisPresensi ?? 'wali_kelas_saja',
+				presensiSettings?.tipePresensi
+			);
+		}
+		const bulanParam = url.searchParams.get('bulan');
+		const tahunParam = url.searchParams.get('tahun');
+		const now = new Date();
+		const bulan = bulanParam ? Number(bulanParam) : now.getMonth() + 1;
+		const tahun = tahunParam ? Number(tahunParam) : now.getFullYear();
+		if (!Number.isInteger(bulan) || bulan < 1 || bulan > 12) {
+			return defaultEmpty(
+				'persentase_bulanan',
+				search,
+				tanggal,
+				simHari,
+				simJam,
+				presensiReady,
+				presensiWarningMessage,
+				presensiSettings?.jenisPresensi ?? 'wali_kelas_saja',
+				presensiSettings?.tipePresensi
+			);
+		}
+		if (!Number.isInteger(tahun) || tahun < 2000 || tahun > 2099) {
+			return defaultEmpty(
+				'persentase_bulanan',
+				search,
+				tanggal,
+				simHari,
+				simJam,
+				presensiReady,
+				presensiWarningMessage,
+				presensiSettings?.jenisPresensi ?? 'wali_kelas_saja',
+				presensiSettings?.tipePresensi
+			);
+		}
+		if (!presensiSettings) {
+			return defaultEmpty(
+				'persentase_bulanan',
+				search,
+				tanggal,
+				simHari,
+				simJam,
+				presensiReady,
+				presensiWarningMessage,
+				'wali_kelas_saja'
+			);
+		}
+		return loadPersentaseBulanan({
+			sekolahId,
+			kelasId: kelasAktif.id,
+			search,
+			pageNumber,
+			bulan,
+			tahun,
+			presensiSettings,
+			simHari,
+			simJam,
+			url
+		});
+	}
 
-	const pageState: PageState = {
+	if (mode === 'persentase_semester') {
+		if (!sekolahId || !kelasAktif?.id) {
+			return defaultEmpty(
+				'persentase_semester',
+				search,
+				tanggal,
+				simHari,
+				simJam,
+				presensiReady,
+				presensiWarningMessage,
+				presensiSettings?.jenisPresensi ?? 'wali_kelas_saja',
+				presensiSettings?.tipePresensi
+			);
+		}
+		if (!presensiSettings) {
+			return defaultEmpty(
+				'persentase_semester',
+				search,
+				tanggal,
+				simHari,
+				simJam,
+				presensiReady,
+				presensiWarningMessage,
+				'wali_kelas_saja'
+			);
+		}
+		if (!tahunAjaranId || !kelasSemesterId) {
+			return defaultEmpty(
+				'persentase_semester',
+				search,
+				tanggal,
+				simHari,
+				simJam,
+				false,
+				'Kelas belum memiliki tahun ajaran atau semester. Atur di halaman /akademik.',
+				presensiSettings.jenisPresensi ?? 'wali_kelas_saja',
+				presensiSettings.tipePresensi
+			);
+		}
+		return loadPersentaseSemester({
+			sekolahId,
+			kelasId: kelasAktif.id,
+			search,
+			pageNumber,
+			academicContext,
+			presensiSettings,
+			simHari,
+			simJam,
+			url,
+			tahunAjaranId,
+			semesterId: kelasSemesterId
+		});
+	}
+
+	if (mode === 'rapor') {
+		if (!sekolahId || !kelasAktif?.id) {
+			return defaultEmpty(
+				'rapor',
+				search,
+				tanggal,
+				simHari,
+				simJam,
+				presensiReady,
+				presensiWarningMessage,
+				presensiSettings?.jenisPresensi ?? 'wali_kelas_saja',
+				presensiSettings?.tipePresensi
+			);
+		}
+		if (!presensiSettings) {
+			return defaultEmpty(
+				'rapor',
+				search,
+				tanggal,
+				simHari,
+				simJam,
+				presensiReady,
+				presensiWarningMessage,
+				'wali_kelas_saja'
+			);
+		}
+		if (!tahunAjaranId || !kelasSemesterId) {
+			return defaultEmpty(
+				'rapor',
+				search,
+				tanggal,
+				simHari,
+				simJam,
+				false,
+				'Kelas belum memiliki tahun ajaran atau semester. Atur di halaman /akademik.',
+				presensiSettings.jenisPresensi ?? 'wali_kelas_saja',
+				presensiSettings.tipePresensi
+			);
+		}
+		return loadRapor({
+			sekolahId,
+			kelasId: kelasAktif.id,
+			search,
+			pageNumber,
+			academicContext,
+			presensiSettings,
+			simHari,
+			simJam,
+			url,
+			tahunAjaranId,
+			semesterId: kelasSemesterId
+		});
+	}
+
+	// harian / persentase_harian
+	if (!sekolahId || !kelasAktif?.id) {
+		return defaultEmpty(
+			mode as 'harian' | 'persentase_harian',
+			search,
+			tanggal,
+			simHari,
+			simJam,
+			presensiReady,
+			presensiWarningMessage,
+			presensiSettings?.jenisPresensi ?? 'wali_kelas_saja',
+			presensiSettings?.tipePresensi
+		);
+	}
+	if (!presensiSettings) {
+		return defaultEmpty(
+			mode as 'harian' | 'persentase_harian',
+			search,
+			tanggal,
+			simHari,
+			simJam,
+			presensiReady,
+			presensiWarningMessage,
+			'wali_kelas_saja'
+		);
+	}
+
+	return loadHarian({
+		sekolahId,
+		kelasId: kelasAktif.id,
 		search,
-		currentPage,
-		totalPages,
-		totalItems: total,
-		perPage: PER_PAGE
-	};
+		pageNumber,
+		tanggal,
+		presensiSettings,
+		bellSettings,
+		kegiatanCustom,
+		user: locals.user,
+		simHari,
+		simJam,
+		mode: mode as 'harian' | 'persentase_harian',
+		url
+	});
+};
 
+function defaultEmpty(
+	mode:
+		| 'harian'
+		| 'persentase_harian'
+		| 'bulanan'
+		| 'persentase_bulanan'
+		| 'persentase_semester'
+		| 'rapor',
+	search: string | null,
+	tanggal: string,
+	simHari: string | null,
+	simJam: string | null,
+	presensiReady: boolean,
+	presensiWarningMessage: string,
+	jenisPresensi: string,
+	tipePresensi?: string
+): AbsenLoadData {
 	return {
-		meta: { title: 'Rekap Kehadiran Murid' } satisfies PageMeta,
-		tableReady,
-		page: pageState,
-		daftarMurid: rows,
-		totalMurid: total,
-		muridCount: muridCount ?? 0
+		meta: { title: 'Kehadiran Murid' },
+		tableReady: true,
+		page: { search, currentPage: 1, totalPages: 1, totalItems: 0, perPage: 20 },
+		daftarMurid: [],
+		semuaMurid: [],
+		totalMurid: 0,
+		muridCount: 0,
+		tanggal,
+		mode,
+		bulan: 0,
+		tahun: 0,
+		daysInMonth: 0,
+		totalHariBelajar: 0,
+		totalPertemuan: 0,
+		bulananRows: [],
+		raporRows: [],
+		persentaseBulananRows: [],
+		persentaseSemesterRows: [],
+		redDays: [],
+		tanggalMulaiRapor: '',
+		tanggalAkhirRapor: '',
+		presensiReady,
+		presensiWarningMessage,
+		jenisPresensi,
+		tipePresensi: tipePresensi ?? '',
+		persentaseHarianSubjects: [],
+		persentaseHarianRows: [],
+		jadwalSaatIni: null,
+		guruMapelSubject: null,
+		isMapelOnJadwal: false,
+		harianMapelId: null,
+		simulasiHari: simHari,
+		simulasiJam: simJam,
+		isLibur: false
 	};
-}
-
-function parseCount(value: FormDataEntryValue | null): number | null {
-	if (value == null) return 0;
-	const raw = value.toString().trim();
-	if (!raw) return 0;
-	const parsed = Number(raw);
-	if (!Number.isInteger(parsed) || parsed < 0) return null;
-	return parsed;
 }
 
 export const actions = {
-	update: async ({ request, locals }) => {
-		const sekolahId = locals.sekolah?.id ?? null;
-		if (!sekolahId) {
-			return fail(401, { fail: 'Sekolah tidak ditemukan' });
-		}
-
-		const formData = await request.formData();
-		const muridIdRaw = formData.get('muridId');
-
-		if (!muridIdRaw) {
-			return fail(400, { fail: 'Murid tidak ditemukan' });
-		}
-
-		const muridId = Number(muridIdRaw);
-		if (!Number.isInteger(muridId) || muridId <= 0) {
-			return fail(400, { fail: 'ID murid tidak valid' });
-		}
-
-		const [sakit, izin, alfa] = ['sakit', 'izin', 'alfa'].map((key) =>
-			parseCount(formData.get(key))
-		);
-
-		if (sakit == null || izin == null || alfa == null) {
-			return fail(400, { fail: 'Nilai kehadiran harus berupa angka bulat dan tidak negatif' });
-		}
-
-		const muridRecord = await db.query.tableMurid.findFirst({
-			columns: { id: true },
-			where: and(eq(tableMurid.id, muridId), eq(tableMurid.sekolahId, sekolahId))
-		});
-
-		if (!muridRecord) {
-			return fail(404, { fail: 'Murid tidak ditemukan atau bukan bagian dari sekolah ini' });
-		}
-
-		try {
-			await db
-				.insert(tableKehadiranMurid)
-				.values({
-					muridId,
-					sakit,
-					izin,
-					alfa
-				})
-				.onConflictDoUpdate({
-					target: tableKehadiranMurid.muridId,
-					set: {
-						sakit,
-						izin,
-						alfa,
-						updatedAt: new Date().toISOString()
-					}
-				});
-		} catch (error) {
-			if (isTableMissingError(error)) {
-				return fail(500, { fail: TABLE_MISSING_MESSAGE });
-			}
-			throw error;
-		}
-
-		return { message: 'Rekap kehadiran murid berhasil diperbarui' };
-	}
+	update: (event: RequestEvent) => handleUpdate(event),
+	isiSekaligus: (event: RequestEvent) => handleIsiSekaligus(event),
+	deletePresensi: (event: RequestEvent) => handleDeletePresensi(event),
+	updateRapor: (event: RequestEvent) => handleUpdateRapor(event),
+	resetRapor: (event: RequestEvent) => handleResetRapor(event)
 };

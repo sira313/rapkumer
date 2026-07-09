@@ -3,4 +3,5 @@ allowBuilds:
   es5-ext: true
   esbuild: true
   puppeteer: true
-storeDir: /home/aris/.local/share/pnpm/store/v10
+minimumReleaseAgeExclude:
+  - daisyui@5.6.13

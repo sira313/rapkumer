@@ -21,6 +21,8 @@
 		dimensionOptions,
 		selectedDimensions,
 		onToggleDimension,
+		kodeInput,
+		onKodeChange,
 		tujuanInput,
 		onTujuanChange,
 		onClose,
@@ -37,11 +39,15 @@
 		dimensionOptions: DimensionOption[];
 		selectedDimensions: DimensiProfilLulusanKey[];
 		onToggleDimension: (dimension: DimensiProfilLulusanKey, checked: boolean) => void;
+		kodeInput: string;
+		onKodeChange: (value: string) => void;
 		tujuanInput: string;
 		onTujuanChange: (value: string) => void;
 		onClose: () => void;
 		onSuccess: (payload: { form: HTMLFormElement }) => void;
 	}>();
+
+	let submitting = $state(false);
 </script>
 
 {#if open}
@@ -58,8 +64,13 @@
 			<h3 class="mb-2 text-lg font-bold">{title}</h3>
 			<p class="font-semibold">Pilih Dimensi Profil Lulusan</p>
 
-			<FormEnhance {action} onsuccess={onSuccess}>
-				{#snippet children({ submitting })}
+			<FormEnhance
+				id="form-kokurikuler"
+				{action}
+				onsuccess={onSuccess}
+				submitStateChange={(v) => (submitting = v)}
+			>
+				{#snippet children()}
 					<input name="kelasId" value={kelasId ?? ''} hidden />
 					{#if isEditMode && modalItem}
 						<input name="id" value={modalItem.id} hidden />
@@ -84,6 +95,19 @@
 						{/each}
 					</div>
 
+					<p class="mt-4 font-semibold">Kode</p>
+					<input
+						type="text"
+						class="input bg-base-200 dark:bg-base-300 mt-2 w-full dark:border-none"
+						placeholder="Masukkan kode (contoh: KK-BAKU)"
+						name="kode"
+						value={kodeInput}
+						oninput={(event) => onKodeChange((event.currentTarget as HTMLInputElement).value)}
+						required
+						disabled={!canManage}
+						maxlength={20}
+					/>
+
 					<p class="mt-4 font-semibold">Kegiatan Kokurikuler</p>
 					<textarea
 						class="textarea bg-base-200 dark:bg-base-300 mt-2 h-28 w-full dark:border-none"
@@ -92,32 +116,34 @@
 						value={tujuanInput}
 						oninput={(event) => onTujuanChange((event.currentTarget as HTMLTextAreaElement).value)}
 						required
-						disabled={!canManage}
-					></textarea>
-
-					<div class="modal-action mt-6 flex gap-2">
-						<button class="btn btn-soft shadow-none" type="button" onclick={onClose}>
-							<Icon name="close" />
-							Batal
-						</button>
-						<button
-							class="btn btn-primary shadow-none"
-							disabled={submitting ||
-								!selectedDimensions.length ||
-								!kelasId ||
-								!tableReady ||
-								!tujuanInput.trim()}
-						>
-							{#if submitting}
-								<div class="loading loading-spinner"></div>
-							{:else}
-								<Icon name="save" />
-							{/if}
-							{isEditMode ? 'Simpan Perubahan' : 'Simpan'}
-						</button>
-					</div>
+						disabled={!canManage}></textarea>
 				{/snippet}
 			</FormEnhance>
+
+			<div class="modal-action mt-6 flex gap-2">
+				<button class="btn btn-soft shadow-none" type="button" onclick={onClose}>
+					<Icon name="close" />
+					Batal
+				</button>
+				<button
+					class="btn btn-primary shadow-none"
+					type="submit"
+					form="form-kokurikuler"
+					disabled={submitting ||
+						!selectedDimensions.length ||
+						!kelasId ||
+						!tableReady ||
+						!kodeInput.trim() ||
+						!tujuanInput.trim()}
+				>
+					{#if submitting}
+						<div class="loading loading-spinner"></div>
+					{:else}
+						<Icon name="save" />
+					{/if}
+					{isEditMode ? 'Simpan Perubahan' : 'Simpan'}
+				</button>
+			</div>
 		</dialog>
 		<form method="dialog" class="modal-backdrop">
 			<button

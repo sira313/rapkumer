@@ -39,14 +39,14 @@
 			}
 
 			const blob = await response.blob();
-			let filename = 'raporkumer-backup.sqlite3';
+			let filename = 'rapkumer-backup.sqlite3';
 			const disposition = response.headers.get('content-disposition');
 			const matched = disposition?.match(/filename="?([^";]+)"?/i);
 			if (matched?.[1]) {
 				filename = matched[1];
 			} else {
 				const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-				filename = `raporkumer-backup-${timestamp}.sqlite3`;
+				filename = `rapkumer-backup-${timestamp}.sqlite3`;
 			}
 
 			const blobUrl = URL.createObjectURL(blob);

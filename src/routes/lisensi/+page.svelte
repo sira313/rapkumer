@@ -13,7 +13,7 @@
 		{
 			title: 'Atribusi',
 			description:
-				'Cantumkan nama Raporkumer dan tautan repositori saat membagikan, serta sebutkan jika ada perubahan.'
+				'Cantumkan nama Rapkumer dan tautan repositori saat membagikan, serta sebutkan jika ada perubahan.'
 		}
 	];
 </script>
@@ -23,7 +23,7 @@
 		<div class="space-y-3">
 			<span class="badge badge-outline badge-lg bg-base-100/70 text-primary shadow">Lisensi</span>
 			<h1 class="text-base-content text-3xl font-bold md:text-4xl">
-				Ketentuan Penggunaan Raporkumer
+				Ketentuan Penggunaan Rapkumer
 			</h1>
 			<p class="text-base-content/80 text-base md:text-lg">
 				Repositori ini menggunakan lisensi khas (custom license) yang melindungi hak pengembang
@@ -55,7 +55,7 @@
 					pribadi atau kontribusi ke repositori asli.
 				</li>
 				<li>
-					<span class="text-base-content font-medium">Atribusi:</span> sertakan nama Raporkumer dan tautan
+					<span class="text-base-content font-medium">Atribusi:</span> sertakan nama Rapkumer dan tautan
 					repositori saat membagikan, serta sebutkan jika ada perubahan.
 				</li>
 				<li>

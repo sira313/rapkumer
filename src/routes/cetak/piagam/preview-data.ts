@@ -163,6 +163,7 @@ export async function getPiagamPreviewPayload({ locals, url }: { locals: App.Loc
 				'Semoga prestasi yang diraih menjadi motivasi untuk meraih kesuksesan di masa yang akan datang.'
 		},
 		periode: {
+			namaKelas: kelasMurid.nama,
 			semester: formatSemesterLabel(murid.semester),
 			tahunAjaran: murid.kelas?.tahunAjaran?.nama ?? ''
 		},

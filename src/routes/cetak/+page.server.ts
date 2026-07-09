@@ -1,8 +1,8 @@
 import db from '$lib/server/db';
 import { computeNilaiAkhirRekap } from '$lib/server/nilai-akhir';
 import { buildKelasContext, fetchMuridList } from '$lib/server/route-utils';
-import { tablePegawai } from '$lib/server/db/schema';
-import { eq } from 'drizzle-orm';
+import { tablePegawai, tableSemester, tableTahunAjaran } from '$lib/server/db/schema';
+import { and, eq } from 'drizzle-orm';
 
 export async function load({ locals, url, depends, parent }) {
 	depends('app:cetak');
@@ -15,7 +15,14 @@ export async function load({ locals, url, depends, parent }) {
 	);
 
 	if (!sekolahId || !kelasIds.length) {
-		return { academicContext, kelasId, daftarMurid: [], muridCount: 0 };
+		return {
+			academicContext,
+			kelasId,
+			daftarMurid: [],
+			muridCount: 0,
+			tanggalMasuk: '',
+			tanggalBagiRaport: ''
+		};
 	}
 
 	let daftarMurid = await fetchMuridList(sekolahId, kelasId, kelasIds);
@@ -28,7 +35,9 @@ export async function load({ locals, url, depends, parent }) {
 		});
 		const pegNama = peg?.nama?.trim().toLowerCase();
 		if (pegNama) {
-			daftarMurid = daftarMurid.filter((m) => (m.waliAsuhNama?.trim().toLowerCase() ?? '') === pegNama);
+			daftarMurid = daftarMurid.filter(
+				(m) => (m.waliAsuhNama?.trim().toLowerCase() ?? '') === pegNama
+			);
 		} else {
 			daftarMurid = [];
 		}
@@ -55,11 +64,33 @@ export async function load({ locals, url, depends, parent }) {
 			}));
 	}
 
+	// Default date range for jurnal mengajar
+	let tanggalMasuk = '';
+	let tanggalBagiRaport = '';
+	if (sekolahId) {
+		const activeSemester = await db
+			.select({
+				tanggalMasuk: tableSemester.tanggalMasuk,
+				tanggalBagiRaport: tableSemester.tanggalBagiRaport
+			})
+			.from(tableSemester)
+			.innerJoin(tableTahunAjaran, eq(tableSemester.tahunAjaranId, tableTahunAjaran.id))
+			.where(and(eq(tableTahunAjaran.sekolahId, sekolahId), eq(tableSemester.isAktif, true)))
+			.limit(1)
+			.then((r) => r[0]);
+		if (activeSemester) {
+			tanggalMasuk = activeSemester.tanggalMasuk ?? '';
+			tanggalBagiRaport = activeSemester.tanggalBagiRaport ?? '';
+		}
+	}
+
 	return {
 		academicContext,
 		kelasId,
 		daftarMurid,
 		muridCount: daftarMurid.length,
-		piagamRankingOptions
+		piagamRankingOptions,
+		tanggalMasuk,
+		tanggalBagiRaport
 	};
 }

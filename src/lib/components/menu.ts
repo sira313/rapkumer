@@ -4,19 +4,20 @@ export const appMenuItems: MenuItem[] = [
 		icon: 'chart',
 		subMenu: [
 			{
-				title: 'Data Sekolah',
+				title: 'Sekolah',
 				path: '/sekolah'
 			},
 			{
-				title: 'Data Rapor',
-				path: '/rapor'
+				title: 'Akademik',
+				path: '/akademik',
+				tags: ['jadwal', 'bell', 'sound']
 			},
 			{
-				title: 'Data Kelas',
+				title: 'Kelas',
 				path: '/kelas'
 			},
 			{
-				title: 'Data Murid',
+				title: 'Murid',
 				path: '/murid'
 			}
 		]
@@ -28,7 +29,7 @@ export const appMenuItems: MenuItem[] = [
 			{
 				title: 'Intrakurikuler',
 				path: '/intrakurikuler',
-				tags: ['tujuan pembelajaran', 'lingkup materi', 'tp']
+				tags: ['tujuan pembelajaran', 'lingkup materi', 'tp', 'mapel', 'mata pelajaran']
 			},
 			{
 				title: 'Kokurikuler',
@@ -84,6 +85,10 @@ export const appMenuItems: MenuItem[] = [
 			{
 				title: 'Absen',
 				path: '/absen'
+			},
+			{
+				title: 'Jurnal Mengajar',
+				path: '/jurnal-mengajar'
 			},
 			{
 				title: 'Catatan Wali Kelas',

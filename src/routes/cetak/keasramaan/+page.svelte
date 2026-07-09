@@ -4,7 +4,6 @@
 	import { page } from '$app/state';
 	import PreviewHeader from '$lib/components/cetak/PreviewHeader.svelte';
 	import DocumentMuridSelector from '$lib/components/cetak/DocumentMuridSelector.svelte';
-	import PreviewFooter from '$lib/components/cetak/PreviewFooter.svelte';
 	import PreviewContent from '$lib/components/cetak/PreviewContent.svelte';
 	import { toast } from '$lib/components/toast.svelte';
 	import { onDestroy, tick } from 'svelte';
@@ -30,6 +29,7 @@
 
 	let selectedDocument = $state<DocumentType | ''>('keasramaan');
 	let selectedMuridId = $state('');
+	let searchTerm = $state('');
 	let previewDocument = $state<DocumentType | ''>('');
 	let previewMetaTitle = $state('');
 	let previewData = $state<PreviewPayload | null>(null);
@@ -137,18 +137,9 @@
 
 	let previewAbortController: AbortController | null = null;
 
-	async function handlePreview() {
+	async function handlePreview(murid: MuridData) {
 		const documentType = selectedDocument;
 		if (!documentType || !isPreviewableDocument(documentType)) {
-			return;
-		}
-		if (!hasMurid) {
-			toast('Tidak ada murid yang dapat di-preview untuk kelas ini.', 'warning');
-			return;
-		}
-		const murid = selectedMurid;
-		if (!murid) {
-			toast('Pilih murid yang ingin di-preview.', 'warning');
 			return;
 		}
 
@@ -206,8 +197,8 @@
 		const targetId = list[targetIndex];
 		selectedMuridId = targetId;
 		await tick();
-		if (previewDocument === selectedDocument) {
-			await handlePreview();
+		if (previewDocument === selectedDocument && selectedMurid) {
+			await handlePreview(selectedMurid);
 		}
 	}
 
@@ -355,52 +346,38 @@
 		{headingTitle}
 		kelasAktifLabel={null}
 		academicContext={null}
-		{canNavigateMurid}
-		{hasPrevMurid}
-		{hasNextMurid}
-		onNavigatePrev={() => navigateMurid('prev')}
-		onNavigateNext={() => navigateMurid('next')}
 	/>
 
 	<div class="flex flex-col gap-6 px-4 py-6">
 		<DocumentMuridSelector
 			bind:selectedDocument
-			bind:selectedMuridId
+			bind:searchTerm
 			{daftarMurid}
 			selectedTemplate="1"
 			piagamRankingOptions={[]}
-			onDownload={handlePreview}
+			documentOptions={[{ value: 'keasramaan' as DocumentType, label: 'Rapor Keasramaan' }]}
+			onPreviewMurid={handlePreview}
 			onBulkDownload={handleBulkPreview}
 			downloadDisabled={previewDisabled}
-			downloadButtonTitle={previewButtonTitle}
 			downloadLoading={isPrintLoading}
-		/>
-
-		<PreviewFooter
-			{hasMurid}
-			{muridCount}
-			isPiagamSelected={false}
-			selectedTemplate="1"
+			showTable={false}
+			muridCount={daftarMurid.length ?? 0}
 			isRaporSelected={false}
+			isKeasramaanSelected={true}
+			isBiodataSelected={false}
 			tpMode={fullTP}
 			onToggleFullTP={(value: 'compact' | 'full-desc') => {
 				fullTP = value;
 			}}
 			kelasId={data.kelasId}
-			isBiodataSelected={false}
-			isKeasramaanSelected={true}
 			{showBgLogo}
 			onToggleBgLogo={(value: boolean) => {
 				showBgLogo = value;
 			}}
-			onBgRefresh={() => {
-				// No bg refresh needed for keasramaan
-			}}
+			onBgRefresh={() => {}}
 			kritCukup={85}
 			kritBaik={95}
-			onSetKriteria={() => {
-				// No criteria for keasramaan
-			}}
+			onSetKriteria={() => {}}
 		/>
 
 		<PreviewContent

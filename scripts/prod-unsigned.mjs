@@ -125,15 +125,21 @@ async function main() {
 
 			// Common Windows install paths
 			const candidates = [];
-			const pf = process.env['ProgramFiles(x86)'] || process.env.ProgramFiles;
-			if (pf) {
-				candidates.push(path.join(pf, 'Inno Setup 6', 'ISCC.exe'));
-				candidates.push(path.join(pf, 'Inno Setup 5', 'ISCC.exe'));
+			const dirs = [process.env['ProgramFiles(x86)'], process.env.ProgramFiles].filter(Boolean);
+			const versions = [7, 6, 5];
+			for (const d of dirs) {
+				for (const v of versions) {
+					candidates.push(path.join(d, `Inno Setup ${v}`, 'ISCC.exe'));
+				}
 			}
 			if (process.env.SystemRoot)
 				candidates.push(path.join(process.env.SystemRoot, 'System32', 'iscc.exe'));
 			for (const c of candidates) {
-				if (fs.existsSync(c)) return { cmd: c, args: [] };
+				try {
+					if (fs.existsSync(c)) return { cmd: c, args: [] };
+				} catch {
+					void 0;
+				}
 			}
 
 			// Wine with explicit path to iscc.exe in standard Wine prefix

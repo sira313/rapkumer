@@ -5,6 +5,7 @@ import { getCoverPreviewPayload } from '../../../cetak/cover/preview-data';
 import { getBiodataPreviewPayload } from '../../../cetak/biodata/preview-data';
 import { getKeasramaanPreviewPayload } from '../../../cetak/keasramaan/preview-data';
 import { getPiagamPreviewPayload } from '../../../cetak/piagam/preview-data';
+import { getLogoSrc } from '$lib/server/pdf/preview-utils';
 
 import type { RequestHandler } from './$types';
 

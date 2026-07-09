@@ -19,11 +19,11 @@
 				>Tentang Rapkumer v{appVersion}</span
 			>
 			<h1 class="text-base-content text-3xl font-bold md:text-4xl">
-				Rapkumer — Aplikasi Rapor Kurikulum Merdeka
+				Rapkumer — Aplikasi Administrasi Guru Terpadu
 			</h1>
 			<p class="text-base-content/90 text-base md:text-lg">
-				Rapkumer membantu guru dan operator sekolah mengelola nilai murid secara cepat, rapi, dan
-				siap cetak sesuai kurikulum terbaru.
+				Rapkumer membantu guru dan operator sekolah menyelesaikan administrasi rutin secara efisien
+				dan siap cetak sesuai kurikulum terbaru.
 			</p>
 
 			<div class="grid gap-4 sm:grid-cols-2">
@@ -46,7 +46,7 @@
 			<div class="flex flex-col gap-3 sm:flex-row">
 				<a
 					class="btn btn-outline shadow-none"
-					href="https://kurikulum.kemdikbud.go.id/"
+					href="https://kurikulum.kemendikdasmen.go.id/"
 					target="_blank"
 					rel="noreferrer">Pelajari Kurikulum</a
 				>
@@ -69,18 +69,18 @@
 			<div class="space-y-4">
 				<h2 class="text-base-content text-2xl font-semibold">Mengapa kami membangun Rapkumer?</h2>
 				<p class="text-base-content/90">
-					Aplikasi E-Rapor Kurikulum Merdeka ini dikembangkan untuk memudahkan guru dalam mengelola
-					nilai murid menjadi rapor siap cetak. Input data bisa dilakukan manual atau massal melalui
-					fitur <span class="font-medium">import file Excel</span> yang tersedia.
+					Aplikasi Rapkumer ini kami kembangkan sebagai aplikasi terpadu untuk membantu tugas-tugas
+					administrasi guru seperti: presensi harian murid, jurnal mengajar, nilai harian, nilai
+					STS, dan nilai SAS yang dihitung otomatis untuk dijadikan nilai rapor yang bisa langsung
+					dicetak maupun di-export menjadi file excel yang bisa di-import ke e-rapor kemdikdas.
 				</p>
 				<p class="text-base-content/90">
-					Selain itu, Rapkumer dirancang untuk membantu operator sekolah mempersiapkan data yang
-					diperlukan Dapodik. Fitur <span class="font-medium">ekspor nilai ke Dapodik</span> sedang disempurnakan
-					agar proses validasi dan format sesuai kebutuhan downstream.
+					Selain itu, Rapkumer juga memiliki fitur tambahan seperti jadwal pembelajaran dan bell
+					otomatis.
 				</p>
 				<p class="text-base-content/90">
-					Harapan kami, aplikasi ini menjadi solusi praktis bagi tenaga pendidik dalam menerapkan
-					Kurikulum Merdeka secara efektif dan efisien.
+					Harapan kami, aplikasi ini menjadi solusi praktis bagi pendidik dan tenaga kependidikan
+					dalam menerapkan Kurikulum Merdeka secara efektif dan efisien.
 				</p>
 			</div>
 		</div>

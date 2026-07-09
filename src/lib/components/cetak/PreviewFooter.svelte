@@ -22,7 +22,8 @@
 		isBiodataSelected = false,
 		isKeasramaanSelected = false,
 		showBgLogo = false,
-		onToggleBgLogo = () => {}
+		onToggleBgLogo = () => {},
+		isJurnalMengajar = false
 	}: {
 		hasMurid: boolean;
 		muridCount: number;
@@ -40,6 +41,7 @@
 		isKeasramaanSelected?: boolean;
 		showBgLogo?: boolean;
 		onToggleBgLogo?: (value: boolean) => void;
+		isJurnalMengajar?: boolean;
 	} = $props();
 
 	async function handleDeleteBg() {
@@ -127,7 +129,11 @@
 </script>
 
 <div class="mt-4 flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between">
-	{#if hasMurid}
+	{#if isJurnalMengajar}
+		<p>
+			Default preview satu semester dari tanggal masuk sekolah sampai tanggal bagi rapor.
+		</p>
+	{:else if hasMurid}
 		<p>
 			Terdapat <strong>{muridCount}</strong> murid di kelas ini. Download dokumen dalam bentuk PDF bisa
 			dilakukan per murid atau semuanya dalam satu file.
@@ -209,7 +215,7 @@
 				<label class="sr-only" for="tp-mode-select">TP mode</label>
 				<select
 					id="tp-mode-select"
-					class="select select-sm dark:bg-base-200 w-full sm:w-35 dark:border-none"
+					class="select select-sm dark:bg-base-200 w-full truncate sm:w-35 dark:border-none"
 					value={tpMode}
 					onchange={(e) => {
 						const val = (e.target as HTMLSelectElement).value as 'compact' | 'full-desc';

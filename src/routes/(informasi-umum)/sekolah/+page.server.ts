@@ -86,7 +86,7 @@ export const load: PageServerLoad = async ({ locals, depends }) => {
 	return {
 		sekolahList,
 		sekolah: locals.sekolah,
-		meta: { title: 'Data Sekolah', logoUrl: '/sekolah/logo' }
+		meta: { title: 'Identitas Sekolah', logoUrl: '/sekolah/logo' }
 	};
 };
 

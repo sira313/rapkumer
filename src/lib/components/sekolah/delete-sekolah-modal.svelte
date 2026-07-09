@@ -159,7 +159,7 @@
 							</div>
 						</section>
 						<footer class="border-base-300 bg-base-100 shrink-0 border-t p-4">
-							<div class="flex flex-col gap-2 sm:flex-row sm:justify-end">
+							<div class="modal-action">
 								<button
 									type="button"
 									class="btn btn-ghost shadow-none sm:w-auto"
