@@ -19,7 +19,7 @@ Dokumentasi lengkap aplikasi ini disusun dalam bahasa Indonesia. File README ini
 - Mengelola data sekolah, kelas, dan murid.
 - Input nilai intrakurikuler berdasarkan Tujuan Pembelajaran (TP), meliputi penilaian harian, STS, SAS, dan formatif.
 - Jadwal pembelajaran beserta bell sekolah yang berjalan secara otomatis.
-- Presensi murid menggunakan QR Scan atau input langsung secara massal oleh guru mata pelajaran maupun wali kelas.
+- Presensi murid dengan cara input langsung secara massal oleh guru mata pelajaran maupun wali kelas.
 - Jurnal harian guru.
 - Nilai dan rapor keasramaan khusus Sekolah Rakyat.
 - Pembuatan rapor, piagam, dan berbagai dokumen pendukung yang siap dicetak.
