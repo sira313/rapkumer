@@ -7,7 +7,7 @@ import { and, eq, inArray } from 'drizzle-orm';
 
 const AGAMA_MAPEL_NAME_SET = new Set<string>(agamaMapelNames);
 const PKS_MAPEL_NAME_SET = new Set<string>(pksMapelNames);
-const JENIS_VALUES = ['wajib', 'pilihan', 'mulok', 'kejuruan'] as const;
+const JENIS_VALUES = ['wajib', 'pilihan', 'mulok', 'kejuruan', 'pemberdayaan'] as const;
 function isValidJenis(value: string): value is (typeof JENIS_VALUES)[number] {
 	return (JENIS_VALUES as readonly string[]).includes(value);
 }

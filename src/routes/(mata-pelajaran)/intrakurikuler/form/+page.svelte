@@ -95,6 +95,10 @@
 			if (key === 'kejuruan' && jenjangVariant?.toUpperCase() !== 'SMK') {
 				continue;
 			}
+			// Sembunyikan opsi "pemberdayaan" jika bukan PKBM
+			if (key === 'pemberdayaan' && jenjangVariant?.toUpperCase() !== 'PKBM') {
+				continue;
+			}
 			result[key] = getJenisMapelLabel(key);
 		}
 		return result;

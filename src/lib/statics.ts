@@ -56,7 +56,8 @@ export const jenisMapel: Record<MataPelajaran['jenis'], string> = {
 	wajib: 'Mata Pelajaran Wajib',
 	pilihan: 'Mata Pelajaran Pilihan',
 	mulok: 'Muatan Lokal',
-	kejuruan: 'Kejuruan'
+	kejuruan: 'Kejuruan',
+	pemberdayaan: 'Muatan Pemberdayaan dan Keterampilan'
 };
 
 export const agamaMapelOptions = [

@@ -274,7 +274,9 @@ export async function getRaporPreviewPayload({ locals, url }: RaporContext) {
 	const mapelJenisOrder: Record<string, number> = {
 		wajib: 0,
 		pilihan: 1,
-		mulok: 2
+		kejuruan: 2,
+		pemberdayaan: 3,
+		mulok: 4
 	};
 
 	const normalizeSubjectName = (value: string) => value.trim().toLocaleLowerCase(LOCALE_ID);
@@ -433,7 +435,7 @@ export async function getRaporPreviewPayload({ locals, url }: RaporContext) {
 			mataPelajaran: entry.displayName,
 			nilaiAkhir: entry.nilaiAkhir,
 			deskripsi: entry.deskripsi,
-			jenis: entry.mapel.jenis as 'wajib' | 'pilihan' | 'mulok' | 'kejuruan'
+			jenis: entry.mapel.jenis as 'wajib' | 'pilihan' | 'mulok' | 'kejuruan' | 'pemberdayaan'
 		}));
 
 	const ekstrakurikulerGrouped = new Map<

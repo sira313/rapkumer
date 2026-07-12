@@ -490,7 +490,7 @@ export const tableMataPelajaran = sqliteTable(
 		// optional short code for subjects (e.g. PAPB for Pendidikan Agama dan Budi Pekerti)
 		kode: text(),
 		kkm: int().notNull().default(0),
-		jenis: text({ enum: ['wajib', 'pilihan', 'mulok', 'kejuruan'] }).notNull(),
+		jenis: text({ enum: ['wajib', 'pilihan', 'mulok', 'kejuruan', 'pemberdayaan'] }).notNull(),
 		...audit
 	},
 	(table) => [unique().on(table.kelasId, table.nama)]
