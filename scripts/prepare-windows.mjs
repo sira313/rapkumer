@@ -152,7 +152,8 @@ function main() {
 		'seed-default-admin.mjs',
 		'grant-admin-permissions.mjs',
 		'notify-server-reload.mjs',
-		'start-build.mjs'
+		'start-build.mjs',
+		'playmp3.exe'
 	];
 	for (const s of requiredScripts) {
 		const src = path.join(projectRoot, 'scripts', s);
