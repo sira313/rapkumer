@@ -88,12 +88,22 @@ async function playUnix(soundPath: string) {
 		`aplay "${soundPath}"`
 	];
 	for (const cmd of candidates) {
-		const ok = await new Promise<boolean>((resolve) => {
-			exec(cmd, { timeout: 5000 }, (err) => {
-				resolve(!err);
+		const spawned = await new Promise<boolean>((resolve) => {
+			let resolved = false;
+			const child = exec(cmd, { timeout: 10_000 }, (err) => {
+				if (!resolved) {
+					resolved = true;
+					resolve(!err);
+				}
 			});
+			setTimeout(() => {
+				if (!resolved) {
+					resolved = true;
+					resolve(!child.killed);
+				}
+			}, 200);
 		});
-		if (ok) return;
+		if (spawned) return;
 	}
 	console.error('[bell] No available audio player found');
 }

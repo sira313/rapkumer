@@ -26,6 +26,15 @@
 	let soundFileName = $state(existingKegiatan?.soundFileName ?? '');
 	let hapusSound = $state(false);
 
+	$effect(() => {
+		nama = existingKegiatan?.nama ?? '';
+		kode = existingKegiatan?.kode ?? '';
+		durasi = existingKegiatan?.durasi?.toString() ?? '';
+		soundFileName = existingKegiatan?.soundFileName ?? '';
+		soundFile = null;
+		hapusSound = false;
+	});
+
 	function normalizeKode(e: Event) {
 		const input = e.currentTarget as HTMLInputElement;
 		input.value = input.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -144,9 +153,9 @@
 				maxlength={10}
 				disabled={submitting}
 			/>
-			<label class="label w-full text-wrap"
-				>Kode akan otomatis dikapitalisasi. Maksimal 10 karakter.</label
-			>
+			<p class="label w-full text-wrap">
+				Kode akan otomatis dikapitalisasi. Maksimal 10 karakter.
+			</p>
 		</fieldset>
 		<fieldset class="fieldset min-w-0">
 			<legend class="fieldset-legend">Durasi (menit)</legend>
@@ -158,9 +167,9 @@
 				min="1"
 				disabled={submitting}
 			/>
-			<label class="label w-full text-wrap"
-				>— opsional, kosongkan jika sama dengan 1 jam pelajaran</label
-			>
+			<p class="label w-full text-wrap">
+				— opsional, kosongkan jika sama dengan 1 jam pelajaran
+			</p>
 		</fieldset>
 	</div>
 	<fieldset class="fieldset">
@@ -184,8 +193,8 @@
 				</button>
 			{/if}
 		</div>
-		<label class="label w-full text-wrap">
+		<p class="label w-full text-wrap">
 			MP3/audio, maksimal 2MB. Akan dibunyikan saat kegiatan ini dimulai.
-		</label>
+		</p>
 	</fieldset>
 </div>

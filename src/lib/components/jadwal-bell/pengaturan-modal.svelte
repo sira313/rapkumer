@@ -29,6 +29,13 @@
 	let durasiUpacaraValue = $state(String(durasiUpacara));
 	let jamMulaiValue = $state(jamMulai);
 
+	$effect(() => {
+		jamPelajaranMenitValue = String(jamPelajaranMenit);
+		durasiIstirahatValue = String(durasiIstirahat);
+		durasiUpacaraValue = String(durasiUpacara);
+		jamMulaiValue = jamMulai;
+	});
+
 	let uploadingTipe = $state<string | null>(null);
 	let playingTipe = $state<string | null>(null);
 
