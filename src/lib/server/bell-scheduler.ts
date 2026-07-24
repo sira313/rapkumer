@@ -82,9 +82,14 @@ async function playWin32(soundPath: string) {
 }
 
 async function playUnix(soundPath: string) {
+	await Promise.all([
+		execAsync('alsactl restore', { timeout: 3_000 }),
+		execAsync('amixer set Master unmute', { timeout: 3_000 })
+	]);
 	const candidates = [
-		`ffplay -nodisp -autoexit "${soundPath}"`,
+		`mpg123 "${soundPath}"`,
 		`paplay "${soundPath}"`,
+		`ffplay -nodisp -autoexit "${soundPath}"`,
 		`aplay "${soundPath}"`
 	];
 	for (const cmd of candidates) {
