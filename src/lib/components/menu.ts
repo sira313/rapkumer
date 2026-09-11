@@ -88,6 +88,11 @@ export const appMenuItems: MenuItem[] = [
 				path: '/presensi-murid'
 			},
 			{
+				title: 'RPM',
+				path: '/rpm',
+				tags: ['rpm', 'rencana pembelajaran', 'mendalam', 'deep learning', 'kurikulum merdeka']
+			},
+			{
 				title: 'Jurnal Mengajar',
 				path: '/jurnal-mengajar'
 			},

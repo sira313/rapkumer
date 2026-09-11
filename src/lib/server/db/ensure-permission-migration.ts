@@ -7,7 +7,7 @@ import db from './index.js';
 import { tableAppMeta, tableAuthUser } from './schema';
 
 const MIGRATION_KEY = 'permission_model_version';
-const MIGRATION_VALUE = 'menu-based-v4';
+const MIGRATION_VALUE = 'menu-based-v5';
 
 /**
  * One-time migration dari model permission lama (sekolah_manage/rapor_manage/kelas_manage)
@@ -21,6 +21,7 @@ const MIGRATION_VALUE = 'menu-based-v4';
  *     Untuk wali_kelas & wali_asuh, permission di-**replace** dengan set default (bukan di-merge)
  *     agar akses menu bawaan lama otomatis dicabut.
  * v4: tambah `administrasi_dinas_luar` ke default wali_kelas/wali_asuh/user untuk fitur /dinas-luar.
+ * v5: tambah `administrasi_rpm` ke default wali_kelas/user untuk fitur /rpm.
  *
  * Idempotent: ditandai di tabel `app_meta` sehingga hanya berjalan sekali per versi.
  */
