@@ -64,6 +64,7 @@
 		"@libsql/client": "^0.17.4",
 		"drizzle-orm": "^0.45.2",
 		"exceljs": "^4.4.0",
+		"jsonrepair": "^3.15.0",
 		"pagedjs-cli": "^0.4.3",
 		"pdf-lib": "^1.17.1",
 		"puppeteer-core": "^25.3.0",

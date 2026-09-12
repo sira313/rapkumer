@@ -8,6 +8,8 @@ import { renderRpmHTML, type RpmPrintData } from '$lib/server/pdf/templates/rpm'
 const ALLOWED_USER_TYPES = ['admin', 'kepala_sekolah', 'user', 'wali_kelas'];
 
 type RpmBody = {
+	mapelNama?: unknown;
+	penyusun?: unknown;
 	kelasLabel?: unknown;
 	fase?: unknown;
 	karakteristik?: unknown;
@@ -26,7 +28,6 @@ type RpmBody = {
 	merefleksi?: unknown;
 	penutup?: unknown;
 	asesmen?: unknown;
-	inputCustom?: unknown;
 };
 
 export const POST = async ({ request, locals }) => {
@@ -60,6 +61,8 @@ export const POST = async ({ request, locals }) => {
 
 	const printData: RpmPrintData = {
 		sekolah: { nama: sekolah?.nama ?? '' },
+		mapelNama: str(payload.mapelNama),
+		penyusun: str(payload.penyusun),
 		kelasLabel: str(payload.kelasLabel),
 		fase: str(payload.fase) || null,
 		karakteristik: str(payload.karakteristik),
@@ -77,8 +80,7 @@ export const POST = async ({ request, locals }) => {
 		mengaplikasi: str(payload.mengaplikasi),
 		merefleksi: str(payload.merefleksi),
 		penutup: str(payload.penutup),
-		asesmen: strArray(payload.asesmen),
-		inputCustom: str(payload.inputCustom)
+		asesmen: strArray(payload.asesmen)
 	};
 
 	try {

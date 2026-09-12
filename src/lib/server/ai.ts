@@ -205,14 +205,14 @@ function parseGeneratedPayload(text: string): GeneratedGroup[] {
 }
 
 /** Delays between automatic retries when the provider responds with 429. */
-const RETRY_DELAYS_MS = [5_000, 12_000];
+const RETRY_DELAYS_MS = [8_000, 16_000, 30_000];
 
 function sleep(ms: number) {
 	return new Promise<void>((resolve) => setTimeout(resolve, ms));
 }
 
 /**
- * Run `task`, retrying up to 2 times (with backoff) when the provider signals
+ * Run `task`, retrying up to 3 times (with backoff) when the provider signals
  * rate limiting (HTTP 429). Intended to run inside an `enqueueAi` lane so the
  * backoff also holds the lane's spacing for other waiters.
  */

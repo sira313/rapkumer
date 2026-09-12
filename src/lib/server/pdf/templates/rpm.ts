@@ -4,6 +4,7 @@ export interface RpmPrintData {
 	sekolah: {
 		nama: string;
 	};
+	mapelNama: string;
 	kelasLabel: string;
 	fase: string | null;
 	karakteristik: string;
@@ -22,7 +23,7 @@ export interface RpmPrintData {
 	merefleksi: string;
 	penutup: string;
 	asesmen: string[];
-	inputCustom: string;
+	penyusun: string;
 }
 
 function escNoBr(value: string): string {
@@ -39,6 +40,10 @@ function esc(value: string): string {
 }
 
 /** Escape single-line value; used for short fields (labels, headers). */
+function cssContent(value: string): string {
+	return (value ?? '').replace(/["\\\n\r]/g, '').trim();
+}
+
 function val(value: string): string {
 	const v = (value ?? '').trim();
 	if (!v) return '&nbsp;';
@@ -49,7 +54,7 @@ function val(value: string): string {
  * Render text as HTML with automatic numbered-list detection.
  * - Text that consists of "N. " items becomes a real <ol> — the browser renders
  *   numbers itself and hangs wrapped continuation lines neatly under the text.
- * - Any other text is escaped with <br> newlines preserved.
+ * - Any other text is split into per-paragraph <div> blocks.
  */
 function contentHtml(value: string): string {
 	const v = (value ?? '').trim();
@@ -61,15 +66,53 @@ function contentHtml(value: string): string {
 		.filter(Boolean);
 
 	const isList = blocks.length > 0 && blocks.every((b) => /^\d+\.\s+\S/.test(b));
-	if (!isList) return esc(v);
+	if (!isList) {
+		return v
+			.split('\n')
+			.map((p) => p.trim())
+			.filter(Boolean)
+			.map((p) => `<p>${escNoBr(p)}</p>`)
+			.join('');
+	}
 
 	const items = blocks.map((b) => b.replace(/^\d+\.\s+/, ''));
 	return `<ol class="rp-list">${items.map((it) => `<li>${esc(it)}</li>`).join('')}</ol>`;
 }
 
-/** Force "Langkah:" onto its own line (blank line before, content after). */
+/** Force "Langkah:" onto its own line (content after). */
 function langkahify(value: string): string {
-	return (value ?? '').trim().replace(/\s*Langkah:\s*/i, '\n\nLangkah:\n');
+	return (value ?? '').trim().replace(/\s*Langkah:\s*/i, '\nLangkah:\n');
+}
+
+/**
+ * Assessment text: ensure each labelled block ("Teknik & Instrumen:",
+ * "Aspek yang Dinilai:", "Prinsip Assessment:") starts on its own line.
+ */
+function asesmenHtml(value: string): string {
+	const v = (value ?? '').trim();
+	if (!v) return '&nbsp;';
+	const formatted = v
+		.replace(/\s*(?=(?:Teknik & Instrumen|Aspek yang Dinilai|Prinsip Assessment):)/gi, '\n')
+		.replace(/\n{2,}/g, '\n')
+		.trim();
+	return contentHtml(formatted);
+}
+
+/** Pecah teks langkah menjadi item-item (raw, tanpa nomor awal). */
+function langkahItems(value: string): string[] {
+	const v = (value ?? '').trim();
+	if (!v) return [];
+	return v
+		.split(/(?=\d+\.\s+)/)
+		.map((s) => s.trim())
+		.filter(Boolean)
+		.map((seg) =>
+			seg
+				.replace(/^\d+\.\s+/, '')
+				.replace(/\s+/g, ' ')
+				.trim()
+		)
+		.filter(Boolean);
 }
 
 /** Empty-safe content block (escaped text or auto <ol>). */
@@ -78,102 +121,106 @@ function contentBlock(value: string): string {
 	return v ? contentHtml(v) : '&nbsp;';
 }
 
-/** Render several plain values as stacked lines. */
+/** Daftar bernomor jadi <ol> huruf (a., b., c.) — pakai utk lintas disiplin. */
+function letterList(value: string): string {
+	const items = langkahItems(value);
+	return items.length
+		? `<ol class="stp">${items.map((it) => `<li>${esc(it)}</li>`).join('')}</ol>`
+		: '&nbsp;';
+}
+
+/** Render several plain values as stacked lines, first letter capitalized. */
 function lines(items: string[]): string {
-	const arr = items.map((i) => (i ?? '').trim()).filter(Boolean);
+	const arr = items
+		.map((i) => (i ?? '').trim())
+		.filter(Boolean)
+		.map((i) => i.replace(/^./, (c) => c.toUpperCase()));
 	return arr.length ? arr.map(esc).join('<br>') : '&nbsp;';
 }
 
-/** Append the user's custom note (when present and enabled). */
-function withCustom(inner: string, custom: string, enabled: boolean): string {
-	const c = (custom ?? '').trim();
-	return inner + (enabled && c ? `<div class="ct">${contentHtml(c)}</div>` : '');
+/** Gabungkan item jadi kalimat: "A, B, dan C" (untuk Dimensi Profil Lulusan). */
+function commaItems(items: string[]): string {
+	const arr = items.map((i) => (i ?? '').trim()).filter(Boolean);
+	if (!arr.length) return '&nbsp;';
+	if (arr.length === 1) return esc(arr[0]);
+	if (arr.length === 2) return esc(`${arr[0]} dan ${arr[1]}`);
+	return esc(`${arr.slice(0, -1).join(', ')}, dan ${arr[arr.length - 1]}`);
 }
 
-function row(label: string, inner: string): string {
-	return `<tr>
-		<td class="lbl-cell">${esc(label)}</td>
-		<td>${inner}</td>
-	</tr>`;
+// ── Heading-based layout (h1/h2/h3/h4, penomoran A → 1 → a) ──
+
+/** Seksi top-level: huruf (A, B, C, …) sebagai h2. */
+function sectionHead(letter: string, title: string): string {
+	return `<h2 class="sec-title">${esc(letter)}. ${esc(title)}</h2>`;
 }
 
-/** One bordered section table — borders always close, no rowspan across breaks. */
-function section(title: string, rows: string): string {
-	return `<table class="pdf-table breakable">
-		<tbody>
-			<tr>
-				<td colspan="2" class="section-title">${esc(title)}</td>
-			</tr>
-			${rows}
-		</tbody>
-	</table>`;
+/** Pembungkus field-field seksi: <ol> angka (1., 2., …) via CSS. */
+function fldWrap(nodes: string): string {
+	return `<ol class="fld">${nodes}</ol>`;
+}
+
+/** Field biasa (isi berupa blok teks). */
+function fieldItem(label: string, body: string): string {
+	return `<li><h3 class="fld-name">${esc(label)}</h3>${body}</li>`;
+}
+
+/** Field berisi langkah: isi langkah pakai <ol> huruf (a., b., …) via CSS. */
+function stepsItem(label: string, items: string[]): string {
+	const steps = items.map((it) => `<li>${esc(it)}</li>`).join('');
+	return `<li><h3 class="fld-name">${esc(label)}</h3><ol class="stp">${steps}</ol></li>`;
 }
 
 export function renderRpmHTML(data: RpmPrintData): string {
 	const d = data;
-	const faseText = d.fase ? ` Fase ${d.fase}` : '';
-	const inCustom = d.inputCustom;
+	const faseText = d.fase ? ` Fase ${d.fase.replace(/^Fase\s+/i, '').trim()}` : '';
 
-	const ident = section(
-		'Identifikasi',
-		row(
-			'Peserta Didik:',
-			`Siswa ${val(d.kelasLabel)}${faseText} dengan karakteristik ${val(d.karakteristik)}`
+	// ── Daftar asesmen (jumlah = banyak TP) ──
+	const asesmenItems = (d.asesmen ?? []).map((a) => a.trim()).filter(Boolean);
+
+	// ── Identifikasi (A.) ──
+	const ident = `${sectionHead('A', 'Identifikasi')}${fldWrap(
+		fieldItem(
+			'Peserta Didik',
+			`<p>Siswa ${val(d.kelasLabel)}${faseText} dengan karakteristik ${val(d.karakteristik)}</p>`
 		) +
-			row('Materi Pelajaran:', contentBlock(d.lingkupMateri)) +
-			row('Dimensi Profil Lulusan:', lines(d.profilLulusan))
-	);
+			fieldItem('Materi Pelajaran', contentBlock(d.lingkupMateri)) +
+			fieldItem('Dimensi Profil Lulusan', commaItems(d.profilLulusan))
+	)}`;
 
-	const desain = section(
-		'Desain Pembelajaran',
-		row('Capaian Pembelajaran:', contentBlock(d.capaianPembelajaran)) +
-			row('Lintas Disiplin Ilmu:', withCustom(contentBlock(d.lintasDisiplinIlmu), inCustom, true)) +
-			row('Tujuan Pembelajaran:', lines(d.tujuanPembelajaran)) +
-			row('Topik Pembelajaran:', contentBlock(d.lingkupMateri)) +
-			row(
-				'Praktis Pedagogis (Model/Strategi):',
-				withCustom(contentBlock(langkahify(d.model)), inCustom, true)
-			) +
-			row(
-				'Kemitraan Pembelajaran:',
-				withCustom(contentBlock(d.kemitraanPembelajaran), inCustom, true)
-			) +
-			row(
-				'Lingkungan Pembelajaran:',
-				withCustom(contentBlock(d.lingkunganPembelajaran), inCustom, true)
-			) +
-			row('Pemanfaatan Digital:', withCustom(contentBlock(d.pemanfaatanDigital), inCustom, true))
+	// ── Desain Pembelajaran (B.) ──
+	const desainFields: Array<[string, string]> = [
+		['Capaian Pembelajaran', contentBlock(d.capaianPembelajaran)],
+		['Lintas Disiplin Ilmu', letterList(d.lintasDisiplinIlmu)],
+		['Tujuan Pembelajaran', lines(d.tujuanPembelajaran)],
+		['Topik Pembelajaran', contentBlock(d.lingkupMateri)],
+		['Praktis Pedagogis (Model/Strategi)', contentBlock(langkahify(d.model))]
+	];
+	if (d.kemitraanPembelajaran.trim()) {
+		desainFields.push(['Kemitraan Pembelajaran', contentBlock(d.kemitraanPembelajaran)]);
+	}
+	desainFields.push(
+		['Lingkungan Pembelajaran', contentBlock(d.lingkunganPembelajaran)],
+		['Pemanfaatan Digital', contentBlock(d.pemanfaatanDigital)]
 	);
+	const desain = `${sectionHead('B', 'Desain Pembelajaran')}${fldWrap(
+		desainFields.map(([label, body]) => fieldItem(label, body)).join('')
+	)}`;
 
-	const pengalaman = section(
-		'Pengalaman Belajar',
-		row('Kegiatan Awal:', withCustom(contentBlock(d.kegiatanAwal), inCustom, true)) +
-			row(
-				'Memahami (Berkesadaran, Bermakna):',
-				withCustom(contentBlock(d.memahami), inCustom, true)
-			) +
-			row(
-				'Mengaplikasi (Bermakna, Menyenangkan):',
-				withCustom(contentBlock(d.mengaplikasi), inCustom, true)
-			) +
-			row(
-				'Merefleksi (Berkesadaran, Bermakna):',
-				withCustom(contentBlock(d.merefleksi), inCustom, true)
-			) +
-			row('Penutup Bermakna, Menggembirakan:', withCustom(contentBlock(d.penutup), inCustom, true))
-	);
+	// ── Pengalaman Belajar (C.) — langkah a., b., c. ──
+	const pengalaman = `${sectionHead('C', 'Pengalaman Belajar')}${fldWrap(
+		stepsItem('Kegiatan Awal', langkahItems(d.kegiatanAwal)) +
+			stepsItem('Memahami (Berkesadaran, Bermakna)', langkahItems(d.memahami)) +
+			stepsItem('Mengaplikasi (Bermakna, Menyenangkan)', langkahItems(d.mengaplikasi)) +
+			stepsItem('Merefleksi (Berkesadaran, Bermakna)', langkahItems(d.merefleksi)) +
+			stepsItem('Penutup Bermakna, Menggembirakan', langkahItems(d.penutup))
+	)}`;
 
-	const asesmen = section(
-		'Asesmen Pembelajaran',
-		[0, 1, 2]
-			.map((i) =>
-				row(
-					'Assessment for Learning:',
-					withCustom(contentBlock(d.asesmen[i] ?? ''), inCustom, true)
-				)
-			)
+	// ── Asesmen Pembelajaran (D.) — satu field per assessment ──
+	const asesmen = `${sectionHead('D', 'Asesmen Pembelajaran')}${fldWrap(
+		asesmenItems
+			.map((a, i) => fieldItem(`Assessment for Learning (${i + 1})`, asesmenHtml(a)))
 			.join('')
-	);
+	)}`;
 
 	return `<!DOCTYPE html>
 <html>
@@ -185,10 +232,24 @@ ${sharedStyles()}
 @page {
 	size: A4 portrait;
 	margin: 15mm;
+	@bottom-left {
+		content: "RPM - ${cssContent(d.mapelNama)} | ${cssContent(d.kelasLabel)}";
+		font-size: 9pt;
+		font-family: Helvetica, Arial, sans-serif;
+		color: #555;
+		vertical-align: center;
+	}
+	@bottom-right {
+		content: "Halaman: " counter(page) " / " counter(pages);
+		font-size: 9pt;
+		font-family: Helvetica, Arial, sans-serif;
+		color: #555;
+		vertical-align: center;
+	}
 }
 
 body {
-	font-size: 12pt;
+	font-size: 11pt;
 	font-family: Helvetica, Arial, sans-serif;
 	color: #000;
 	line-height: 1.4;
@@ -198,75 +259,123 @@ body {
 
 .header {
 	text-align: center;
-	margin-bottom: 10px;
+	margin-bottom: 14px;
 }
 
-.header h2 {
-	font-size: 12pt;
-	margin-bottom: 4px;
+.header h1 {
+	font-size: 14pt;
+	margin: 0 0 4px;
 	text-transform: uppercase;
 }
 
 .header p {
-	font-size: 12pt;
+	font-size: 11pt;
 	margin: 2px 0;
 }
 
-/* ── Bordered section tables (mirrors rapor .pdf-table) ── */
-.pdf-table {
-	width: 100%;
-	margin-top: 10pt;
-	/* Collapse: adjacent borders overlap into uniform 1px lines (no doubles).
-	   Rows never split across pages (see tr rule) so breaks stay clean. */
+.header .meta {
+	width: auto;
+	margin: 4px auto 0 0;
 	border-collapse: collapse;
 }
-.pdf-table td {
-	border: 1px solid #000;
-	padding: 5pt 8pt;
-	vertical-align: top;
+.header .meta td {
+	border: 0;
+	padding: 1pt 3pt 1pt 0;
 	text-align: left;
+	font-size: 11pt;
 }
-.pdf-table .section-title {
-	font-weight: bold;
+.header .meta td.k {
+	padding-right: 0;
+}
+.header .meta td.c {
+	width: 8pt;
+	padding: 0;
 	text-align: center;
-	/* Keep title with the first body row; never end a page on the title alone */
+}
+
+/* ── Heading-based body ── */
+h2.sec-title {
+	font-size: 12pt;
+	font-weight: bold;
+	margin: 14pt 0 4pt;
 	page-break-after: avoid;
 	break-after: avoid;
 }
 
-/* Page breaks happen BETWEEN rows, never inside a cell → borders stay intact */
-.pdf-table tr {
-	page-break-inside: avoid;
-	break-inside: avoid;
+ol.fld {
+	margin: 4pt 0 4pt 1.6em;
+	padding: 0;
+	list-style: decimal;
 }
-
-.lbl-cell {
+ol.fld > li {
+	margin: 0 0 8pt;
+}
+ol.fld > li::marker {
 	font-weight: bold;
-	width: 32%;
+}
+.fld-name {
+	font-size: 11pt;
+	font-weight: bold;
+	margin: 0 0 2pt;
 }
 
-.ct {
-	margin-top: 4px;
+ol.stp {
+	margin: 2pt 0 0 1.4em;
+	padding: 0;
+	list-style: lower-alpha;
 }
-
-/* ── Auto-numbered list detection ── */
-ol.rp-list {
-	margin: 0;
-	padding-left: 1.4em;
-}
-ol.rp-list li {
-	margin-bottom: 0.25em;
+ol.stp li {
+	margin: 0.15em 0;
 	text-align: justify;
 }
-ol.rp-list li::marker {
-	font-weight: bold;
+
+p {
+	margin: 2pt 0;
+	text-align: justify;
+}
+
+ol.rp-list {
+	margin: 2pt 0 2pt 1.2em;
+	padding-left: 1em;
+}
+ol.rp-list li {
+	margin-bottom: 0.2em;
+	text-align: justify;
 }
 </style>
 </head>
 <body>
 	<div class="header">
-		<h2>Rencana Pembelajaran Mendalam (RPM)</h2>
-		<p><strong>${val(d.sekolah.nama)}</strong></p>
+		<h1>Rencana Pembelajaran Mendalam</h1>
+		<table class="meta">
+			<tbody>
+				<tr>
+					<td class="k">Sekolah</td>
+					<td class="c">:</td>
+					<td>${val(d.sekolah.nama)}</td>
+				</tr>
+				<tr>
+					<td class="k">Kelas</td>
+					<td class="c">:</td>
+					<td>${val(d.kelasLabel)}</td>
+				</tr>
+				<tr>
+					<td class="k">Mata Pelajaran</td>
+					<td class="c">:</td>
+					<td>${val(d.mapelNama)}</td>
+				</tr>
+				<tr>
+					<td class="k">Materi</td>
+					<td class="c">:</td>
+					<td>${val(d.lingkupMateri)}</td>
+				</tr>
+				<tr>
+					<td class="k">Penyusun</td>
+					<td class="c">:</td>
+					<td>${val(d.penyusun)}</td>
+				</tr>
+			</tbody>
+		</table>
 	</div>
 
 	${ident}
