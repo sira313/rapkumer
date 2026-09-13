@@ -345,3 +345,36 @@ Paged.registerHandlers(RepeatTableHeadersHandler);
 		await page.close();
 	}
 }
+
+/**
+ * Plain browser PDF render WITHOUT PagedJS pagination. Use for layouts that
+ * don't need PagedJS features (fixed watermarks, cross-element page control)
+ * — notably single logical tables with `rowspan` cells, which PagedJS's
+ * chunker can mangle. Native Chrome handles page splits of such tables fine.
+ */
+export async function renderSimplePDF(html: string): Promise<Uint8Array> {
+	const key = htmlHash(html);
+	const cached = cacheGet(key);
+	if (cached) return cached;
+
+	const b = await getBrowser();
+	const page = await b.newPage();
+
+	try {
+		await page.emulateMediaType('print');
+		await page.setContent(html, { waitUntil: 'load' });
+		await page.evaluate(() => document.fonts.ready);
+
+		const pdf = await page.pdf({
+			printBackground: true,
+			preferCSSPageSize: true,
+			margin: { top: '0', right: '0', bottom: '0', left: '0' }
+		});
+
+		const result = new Uint8Array(pdf);
+		cacheSet(key, result);
+		return result;
+	} finally {
+		await page.close();
+	}
+}
