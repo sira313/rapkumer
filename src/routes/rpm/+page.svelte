@@ -66,6 +66,15 @@
 	let importOpen = $state(false);
 	let importError = $state('');
 
+	type RubrikRow = { aspek: string; indikator: string; skor: string; kriteria: string };
+	type AsesmenLampiran = { uraian: string; instrumen: string; rubrik: RubrikRow[] };
+	type Lampiran = { formatif: AsesmenLampiran; sumatif: AsesmenLampiran; lkpd: string };
+	let lampiran = $state<Lampiran | null>(null);
+	let lampiranGenerating = $state(false);
+	let lampiranError = $state('');
+	let combiningPdf = $state(false);
+	let lampiranCustom = $state('');
+
 	const kelasAktif = $derived(data.kelasAktif);
 	const selectedMapel = $derived(data.mapelList.find((m) => m.id === mapelId));
 	const isAgamaFamily = $derived(
@@ -211,41 +220,62 @@
 		generated = { ...generated, [key]: value };
 	}
 
+	function rpmPdfPayload() {
+		if (!generated || !kelasAktif) return null;
+		return {
+			mapelNama,
+			penyusun:
+				data.user?.type === 'admin'
+					? '-'
+					: ((data.user as { pegawaiName?: string | null } | undefined)?.pegawaiName ?? '-'),
+			kelasLabel: kelasAktif.nama,
+			fase: kelasAktif.fase ?? null,
+			karakteristik: generated.karakteristik,
+			lingkupMateri: lingkupMateri.trim(),
+			profilLulusan: profilLulusanLabels,
+			capaianPembelajaran: capaianPembelajaran.trim(),
+			lintasDisiplinIlmu: generated.lintasDisiplinIlmu,
+			tujuanPembelajaran: generated.tujuanPembelajaran.length
+				? generated.tujuanPembelajaran
+				: selectedTps.map((tp) => tp.deskripsi),
+			model: generated.model,
+			kemitraanPembelajaran: generated.kemitraanPembelajaran,
+			lingkunganPembelajaran: generated.lingkunganPembelajaran,
+			pemanfaatanDigital: generated.pemanfaatanDigital,
+			kegiatanAwal: generated.kegiatanAwal,
+			memahami: generated.memahami,
+			mengaplikasi: generated.mengaplikasi,
+			merefleksi: generated.merefleksi,
+			penutup: generated.penutup,
+			asesmen: generated.asesmen
+		};
+	}
+
+	function lampiranPdfPayload() {
+		if (!generated || !kelasAktif || !lampiran) return null;
+		return {
+			mapelNama,
+			kelasLabel: kelasAktif.nama,
+			penyusun:
+				data.user?.type === 'admin'
+					? '-'
+					: ((data.user as { pegawaiName?: string | null } | undefined)?.pegawaiName ?? '-'),
+			formatif: lampiran.formatif,
+			sumatif: lampiran.sumatif,
+			lkpd: lampiran.lkpd
+		};
+	}
+
 	async function handlePrintPdf() {
-		if (!generated || !kelasAktif) return;
+		const payload = rpmPdfPayload();
+		if (!payload || !kelasAktif) return;
 		printing = true;
 		resetError();
 		try {
 			const response = await fetch('/api/pdf/rpm', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					mapelNama: mapelNama,
-					penyusun:
-						data.user?.type === 'admin'
-							? '-'
-							: ((data.user as { pegawaiName?: string | null } | undefined)?.pegawaiName ?? '-'),
-					kelasLabel: kelasAktif.nama,
-					fase: kelasAktif.fase ?? null,
-					karakteristik: generated.karakteristik,
-					lingkupMateri: lingkupMateri.trim(),
-					profilLulusan: profilLulusanLabels,
-					capaianPembelajaran: capaianPembelajaran.trim(),
-					lintasDisiplinIlmu: generated.lintasDisiplinIlmu,
-					tujuanPembelajaran: generated.tujuanPembelajaran.length
-						? generated.tujuanPembelajaran
-						: selectedTps.map((tp) => tp.deskripsi),
-					model: generated.model,
-					kemitraanPembelajaran: generated.kemitraanPembelajaran,
-					lingkunganPembelajaran: generated.lingkunganPembelajaran,
-					pemanfaatanDigital: generated.pemanfaatanDigital,
-					kegiatanAwal: generated.kegiatanAwal,
-					memahami: generated.memahami,
-					mengaplikasi: generated.mengaplikasi,
-					merefleksi: generated.merefleksi,
-					penutup: generated.penutup,
-					asesmen: generated.asesmen
-				})
+				body: JSON.stringify(payload)
 			});
 			if (!response.ok) {
 				const body = await response.json().catch(() => ({}));
@@ -310,6 +340,218 @@
 	function handleBack() {
 		generated = null;
 		resetError();
+	}
+
+	function handleLampiranBack() {
+		lampiran = null;
+		lampiranError = '';
+	}
+
+	function lampiranPayload() {
+		if (!generated || !kelasAktif) return null;
+		return {
+			mapelNama,
+			kelasLabel: kelasAktif.nama,
+			kelasId: kelasAktif.id,
+			fase: kelasAktif.fase ?? null,
+			lingkupMateri: lingkupMateri.trim(),
+			capaianPembelajaran: capaianPembelajaran.trim(),
+			tujuanPembelajaran: generated.tujuanPembelajaran.length
+				? generated.tujuanPembelajaran
+				: selectedTps.map((tp) => tp.deskripsi),
+			asesmen: generated.asesmen,
+			karakteristik: generated.karakteristik,
+			profilLulusan: profilLulusanLabels,
+			model: generated.model,
+			inputCustom: lampiranCustom.trim(),
+			kegiatanAwal: generated.kegiatanAwal,
+			memahami: generated.memahami,
+			mengaplikasi: generated.mengaplikasi,
+			merefleksi: generated.merefleksi,
+			penutup: generated.penutup
+		};
+	}
+
+	function lampiranAsesmen(value: unknown): AsesmenLampiran {
+		if (!value || typeof value !== 'object') {
+			const flat = typeof value === 'string' ? value.trim() : '';
+			return flat
+				? { uraian: flat, instrumen: '', rubrik: [] }
+				: { uraian: '', instrumen: '', rubrik: [] };
+		}
+		const o = value as Record<string, unknown>;
+		const t = (x: unknown): string => (typeof x === 'string' ? x.trim() : '');
+		const rowOf = (r: unknown): RubrikRow => {
+			if (r && typeof r === 'object') {
+				const row = r as Record<string, unknown>;
+				return {
+					aspek: t(row?.aspek),
+					indikator: t(row?.indikator),
+					skor: t(row?.skor),
+					kriteria: t(row?.kriteria)
+				};
+			}
+			return { aspek: String(r ?? '').trim(), indikator: '', skor: '', kriteria: '' };
+		};
+		const rubrik = Array.isArray(o.rubrik)
+			? (o.rubrik as unknown[])
+					.map(rowOf)
+					.filter((r) => r.aspek || r.kriteria || r.indikator || r.skor)
+			: typeof o.rubrik === 'string'
+				? o.rubrik
+						.split(/\n+/)
+						.map((line) => line.trim())
+						.filter((line) => /^\d+\.|^[-*]/.test(line))
+						.map((line) => rowOf(line.replace(/^(\d+\.|[-*])\s*/, '')))
+						.filter((r) => r.aspek)
+				: [];
+		return { uraian: t(o.uraian), instrumen: t(o.instrumen), rubrik };
+	}
+
+	function handleLampiranImport() {
+		const input = document.createElement('input');
+		input.type = 'file';
+		input.accept = 'application/json,.json';
+		input.onchange = async () => {
+			const file = input.files?.[0];
+			if (!file) return;
+			try {
+				const data = JSON.parse(await file.text()) as Record<string, unknown>;
+				const formatif = lampiranAsesmen(data.formatif);
+				const sumatif = lampiranAsesmen(data.sumatif);
+				const lkpd = typeof data.lkpd === 'string' ? data.lkpd.trim() : '';
+				if (
+					(!formatif.uraian && !formatif.instrumen) ||
+					(!sumatif.uraian && !sumatif.instrumen) ||
+					!lkpd
+				) {
+					throw new Error('invalid');
+				}
+				lampiran = { formatif, sumatif, lkpd };
+				lampiranError = '';
+				toast('Lampiran RPM berhasil diimpor.', 'success');
+			} catch {
+				lampiranError = 'Berkas bukan JSON lampiran RPM yang valid.';
+			}
+		};
+		input.click();
+	}
+
+	async function handleGenerateLampiran() {
+		const payload = lampiranPayload();
+		if (!payload || !generated) return;
+		lampiranError = '';
+		lampiranGenerating = true;
+		try {
+			const response = await fetch('/api/ai/lampiran', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(payload)
+			});
+			const body = await response.json().catch(() => ({}));
+			if (!response.ok) {
+				lampiranError = body?.message || 'Gagal generate lampiran.';
+				return;
+			}
+			const g = body?.data?.generated as Lampiran | null;
+			if (!g) {
+				lampiranError = 'AI tidak menghasilkan lampiran. Coba lagi.';
+				return;
+			}
+			lampiran = g;
+		} catch {
+			lampiranError = 'Terjadi kesalahan saat menghubungi layanan AI. Coba lagi.';
+		} finally {
+			lampiranGenerating = false;
+		}
+	}
+
+	async function handleLampiranPdf() {
+		const payload = lampiranPdfPayload();
+		if (!payload) return;
+		printing = true;
+		resetError();
+		try {
+			const response = await fetch('/api/pdf/lampiran', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(payload)
+			});
+			if (!response.ok) {
+				const body = await response.json().catch(() => ({}));
+				errorMessage = body?.message || 'Gagal membuat PDF lampiran.';
+				return;
+			}
+			const blob = await response.blob();
+			if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+			pdfUrl = URL.createObjectURL(blob);
+			pdfTitle = 'Lampiran RPM';
+			pdfOpen = true;
+		} catch {
+			errorMessage = 'Terjadi kesalahan saat membuat PDF lampiran.';
+		} finally {
+			printing = false;
+		}
+	}
+
+	async function handleCombinePdf() {
+		const rpm = rpmPdfPayload();
+		const lampiran = lampiranPdfPayload();
+		if (!rpm || !lampiran) return;
+		combiningPdf = true;
+		resetError();
+		try {
+			const response = await fetch('/api/pdf/combine', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ rpm, lampiran })
+			});
+			if (!response.ok) {
+				const body = await response.json().catch(() => ({}));
+				errorMessage = body?.message || 'Gagal menggabungkan PDF.';
+				return;
+			}
+			const blob = await response.blob();
+			const url = URL.createObjectURL(blob);
+			const anchor = document.createElement('a');
+			anchor.href = url;
+			anchor.download = 'rpm-dan-lampiran.pdf';
+			document.body.appendChild(anchor);
+			anchor.click();
+			document.body.removeChild(anchor);
+			window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+			toast('PDF RPM + Lampiran diunduh.', 'success');
+		} catch {
+			errorMessage = 'Terjadi kesalahan saat menggabungkan PDF.';
+		} finally {
+			combiningPdf = false;
+		}
+	}
+
+	function handleLampiranJson() {
+		if (!generated || !kelasAktif || !lampiran) return;
+		const payload = {
+			mapelNama,
+			kelas: kelasAktif.nama,
+			fase: kelasAktif.fase ?? null,
+			lingkupMateri: lingkupMateri.trim(),
+			tujuanPembelajaran: generated.tujuanPembelajaran.length
+				? generated.tujuanPembelajaran
+				: selectedTps.map((tp) => tp.deskripsi),
+			formatif: lampiran.formatif,
+			sumatif: lampiran.sumatif,
+			lkpd: lampiran.lkpd
+		};
+		const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+		const url = URL.createObjectURL(blob);
+		const anchor = document.createElement('a');
+		anchor.href = url;
+		anchor.download = 'lampiran-rpm.json';
+		document.body.appendChild(anchor);
+		anchor.click();
+		document.body.removeChild(anchor);
+		URL.revokeObjectURL(url);
+		toast('Lampiran RPM diunduh.', 'success');
 	}
 
 	function strOrEmpty(v: unknown): string {
@@ -810,33 +1052,250 @@
 				</div>
 			{/if}
 
-			<div class="mt-4 flex flex-wrap items-center justify-between gap-2">
-				<button class="btn btn-soft shadow-none" type="button" onclick={handleBack}>
-					Kembali ke Form
-				</button>
-				<div class="flex flex-wrap gap-2">
-					<button class="btn btn-soft shadow-none" type="button" onclick={handleDownloadJson}>
+			<div
+				class="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between"
+			>
+				<div class="grid w-full grid-cols-2 gap-2 sm:w-auto sm:flex sm:flex-wrap">
+					<button
+						class="btn btn-soft btn-sm w-full shadow-none sm:btn-md sm:w-auto"
+						type="button"
+						onclick={handleBack}
+					>
+						Kembali ke Form
+					</button>
+					<button
+						class="btn btn-soft btn-sm w-full shadow-none sm:btn-md sm:w-auto"
+						type="button"
+						onclick={handleDownloadJson}
+					>
 						<Icon name="download" />
 						Unduh JSON
 					</button>
-					<button
-						class="btn btn-primary shadow-none"
-						type="button"
-						onclick={handlePrintPdf}
-						disabled={printing}
-						aria-busy={printing}
-					>
-						{#if printing}
-							<span class="loading loading-spinner loading-sm"></span>
-						{:else}
-							<Icon name="print" />
-						{/if}
-						Cetak PDF
-					</button>
 				</div>
+				<button
+					class="btn btn-primary btn-sm w-full shadow-none sm:btn-md sm:w-auto"
+					type="button"
+					onclick={handlePrintPdf}
+					disabled={printing}
+					aria-busy={printing}
+				>
+					{#if printing}
+						<span class="loading loading-spinner loading-sm"></span>
+					{:else}
+						<Icon name="print" />
+					{/if}
+					Cetak PDF
+				</button>
 			</div>
 		{/if}
 	</div>
+
+	{#if generated}
+		{#if !lampiran}
+			<div class="card bg-base-100 rounded-box w-full border border-none p-4 shadow-md">
+				<div
+					class="mb-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between"
+				>
+					<h2 class="text-lg font-bold">Lampiran RPM</h2>
+					<div class="flex flex-wrap gap-2 sm:justify-end">
+						<button
+							class="btn btn-primary btn-sm shadow-none"
+							type="button"
+							onclick={handleGenerateLampiran}
+							disabled={lampiranGenerating}
+							aria-busy={lampiranGenerating}
+						>
+							{#if lampiranGenerating}
+								<span class="loading loading-spinner loading-sm"></span>
+							{:else}
+								<Icon name="sparkles" />
+							{/if}
+							Generate Lampiran
+						</button>
+						<button
+							class="btn btn-soft btn-sm shadow-none"
+							type="button"
+							onclick={handleLampiranImport}
+						>
+							<Icon name="import" />
+							Import JSON
+						</button>
+					</div>
+				</div>
+				<p class="mb-3 text-sm opacity-70">
+					Penilaian Formatif &amp; Sumatif (beserta rubrik) serta Lembar Kerja Murid — disusun
+					terkait tujuan pembelajaran dan langkah kegiatan pada RPM.
+				</p>
+
+				{#if lampiranError}
+					<div class="alert alert-error alert-soft mb-4" role="alert">
+						<Icon name="error" />
+						<span>{lampiranError}</span>
+					</div>
+				{/if}
+
+				<fieldset class="fieldset mb-3">
+					<legend class="fieldset-legend font-semibold">Prompt Tambahan untuk AI (opsional)</legend>
+					<textarea
+						class="textarea validator bg-base-200 dark:bg-base-300 w-full dark:border-none"
+						rows="2"
+						placeholder="contoh: instrumen sumatif menggunakan soal jawaban ganda sebanyak 10 soal"
+						value={lampiranCustom}
+						oninput={(event) =>
+							(lampiranCustom = (event.currentTarget as HTMLTextAreaElement).value)}></textarea>
+				</fieldset>
+			</div>
+		{/if}
+
+		{#if lampiran}
+			<div class="card bg-base-100 rounded-box w-full border border-none p-4 shadow-md">
+				<h2 class="mb-3 text-lg font-bold">Hasil Lampiran</h2>
+				<p class="mb-3 text-sm opacity-70">
+					Hasil lampiran dapat disunting sebelum dicetak. Rubrik otomatis menjadi tabel di PDF.
+				</p>
+				<div class="flex flex-col gap-4">
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend font-semibold">Penilaian Formatif</legend>
+						<span class="fieldset-label">Uraian Teknik &amp; Pelaksanaan</span>
+						<textarea
+							class="textarea validator bg-base-200 dark:bg-base-300 w-full dark:border-none"
+							rows="3"
+							value={lampiran.formatif.uraian}
+							oninput={(event) => {
+								const cur = lampiran as Lampiran;
+								lampiran = {
+									...cur,
+									formatif: {
+										...cur.formatif,
+										uraian: (event.currentTarget as HTMLTextAreaElement).value
+									}
+								};
+							}}></textarea>
+						<span class="fieldset-label">Instrumen Asesmen</span>
+						<textarea
+							class="textarea validator bg-base-200 dark:bg-base-300 w-full dark:border-none"
+							rows="6"
+							value={lampiran.formatif.instrumen}
+							oninput={(event) => {
+								const cur = lampiran as Lampiran;
+								lampiran = {
+									...cur,
+									formatif: {
+										...cur.formatif,
+										instrumen: (event.currentTarget as HTMLTextAreaElement).value
+									}
+								};
+							}}></textarea>
+						{#if lampiran.formatif.rubrik.length}
+							<p class="ml-1 text-xs opacity-60">
+								Rubrik ({lampiran.formatif.rubrik.length} aspek) ditampilkan sebagai tabel di PDF.
+							</p>
+						{/if}
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend font-semibold">Penilaian Sumatif</legend>
+						<span class="fieldset-label">Uraian Teknik &amp; Pelaksanaan</span>
+						<textarea
+							class="textarea validator bg-base-200 dark:bg-base-300 w-full dark:border-none"
+							rows="3"
+							value={lampiran.sumatif.uraian}
+							oninput={(event) => {
+								const cur = lampiran as Lampiran;
+								lampiran = {
+									...cur,
+									sumatif: {
+										...cur.sumatif,
+										uraian: (event.currentTarget as HTMLTextAreaElement).value
+									}
+								};
+							}}></textarea>
+						<span class="fieldset-label">Instrumen Asesmen</span>
+						<textarea
+							class="textarea validator bg-base-200 dark:bg-base-300 w-full dark:border-none"
+							rows="6"
+							value={lampiran.sumatif.instrumen}
+							oninput={(event) => {
+								const cur = lampiran as Lampiran;
+								lampiran = {
+									...cur,
+									sumatif: {
+										...cur.sumatif,
+										instrumen: (event.currentTarget as HTMLTextAreaElement).value
+									}
+								};
+							}}></textarea>
+						{#if lampiran.sumatif.rubrik.length}
+							<p class="ml-1 text-xs opacity-60">
+								Rubrik ({lampiran.sumatif.rubrik.length} aspek) ditampilkan sebagai tabel di PDF.
+							</p>
+						{/if}
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend font-semibold">Lembar Kerja Murid (LKPD)</legend>
+						<textarea
+							class="textarea validator bg-base-200 dark:bg-base-300 w-full dark:border-none"
+							rows="8"
+							value={lampiran.lkpd}
+							oninput={(event) => {
+								const cur = lampiran as Lampiran;
+								lampiran = { ...cur, lkpd: (event.currentTarget as HTMLTextAreaElement).value };
+							}}></textarea>
+					</fieldset>
+				</div>
+				<div
+					class="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between"
+				>
+					<div class="grid w-full grid-cols-2 gap-2 sm:w-auto sm:flex sm:flex-wrap">
+						<button
+							class="btn btn-soft btn-sm w-full shadow-none sm:btn-md sm:w-auto"
+							type="button"
+							onclick={handleLampiranBack}
+						>
+							Kembali ke Form
+						</button>
+						<button
+							class="btn btn-soft btn-sm w-full shadow-none sm:btn-md sm:w-auto"
+							type="button"
+							onclick={handleLampiranJson}
+						>
+							<Icon name="download" />
+							Unduh JSON
+						</button>
+					</div>
+					<div class="grid w-full grid-cols-2 gap-2 sm:w-auto sm:flex sm:flex-wrap">
+						<button
+							class="btn btn-primary btn-sm w-full shadow-none sm:btn-md sm:w-auto"
+							type="button"
+							onclick={handleLampiranPdf}
+							disabled={printing}
+							aria-busy={printing}
+						>
+							{#if printing}
+								<span class="loading loading-spinner loading-sm"></span>
+							{:else}
+								<Icon name="print" />
+							{/if}
+							Cetak PDF
+						</button>
+						<button
+							class="btn btn-soft btn-sm w-full shadow-none sm:btn-md sm:w-auto"
+							type="button"
+							onclick={handleCombinePdf}
+							disabled={combiningPdf}
+							aria-busy={combiningPdf}
+						>
+							{#if combiningPdf}
+								<span class="loading loading-spinner loading-sm"></span>
+							{:else}
+								<Icon name="download" />
+							{/if}
+							Combine PDF
+						</button>
+					</div>
+				</div>
+			</div>
+		{/if}
+	{/if}
 </div>
 
 <dialog class="modal" open={importOpen} onclose={() => (importOpen = false)}>

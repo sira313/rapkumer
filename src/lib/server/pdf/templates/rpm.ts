@@ -279,15 +279,15 @@ body {
 }
 .header .meta td {
 	border: 0;
-	padding: 1pt 3pt 1pt 0;
+	padding: 1pt 0;
 	text-align: left;
 	font-size: 11pt;
 }
 .header .meta td.k {
-	padding-right: 0;
+	width: 120pt;
 }
 .header .meta td.c {
-	width: 8pt;
+	width: 10pt;
 	padding: 0;
 	text-align: center;
 }
