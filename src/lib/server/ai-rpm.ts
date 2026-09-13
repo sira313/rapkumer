@@ -28,6 +28,7 @@ export type RpmGenerated = {
 	merefleksi: string;
 	penutup: string;
 	asesmen: string[];
+	tujuanPembelajaran: string[];
 };
 
 const REQUEST_TIMEOUT_MS = 300_000;
@@ -46,17 +47,18 @@ export async function generateRpm(input: RpmGenerateInput): Promise<RpmGenerated
 	const isGeminiNative = resolveBaseUrl(input.baseUrl).includes(
 		'generativelanguage.googleapis.com'
 	);
+	const nAsesmen = Math.max(input.tujuanPembelajaran?.length ?? 0, 1);
+	const nTP = input.tujuanPembelajaran?.length ?? 0;
 	const text = await requestAiText(
 		input,
 		userPrompt,
-		isGeminiNative ? buildGeminiSchema(input.tujuanPembelajaran?.length ?? 0) : null
+		isGeminiNative ? buildGeminiSchema(nAsesmen, nTP) : null
 	);
-	return parseGeneratedPayload(text);
+	return parseGeneratedPayload(text, true, nAsesmen, nTP);
 }
 
-/** Gemini structured-output schema (manual REST call) — kunci k1..k14(+) sebanyak TP. */
-function buildGeminiSchema(tpCount: number): Record<string, unknown> {
-	const n = Math.max(tpCount, 1);
+/** Gemini structured-output schema (manual REST call) — k1..k11 + asesmen + TP(ABCD). */
+function buildGeminiSchema(nAsesmen: number, nTP: number): Record<string, unknown> {
 	const properties: Record<string, { type: 'string' }> = {};
 	const required: string[] = [];
 	for (let i = 1; i <= 11; i++) {
@@ -64,8 +66,13 @@ function buildGeminiSchema(tpCount: number): Record<string, unknown> {
 		properties[k] = { type: 'string' };
 		required.push(k);
 	}
-	for (let i = 0; i < n; i++) {
+	for (let i = 0; i < nAsesmen; i++) {
 		const k = `k${12 + i}`;
+		properties[k] = { type: 'string' };
+		required.push(k);
+	}
+	for (let i = 0; i < nTP; i++) {
+		const k = `k${12 + nAsesmen + i}`;
 		properties[k] = { type: 'string' };
 		required.push(k);
 	}
@@ -97,22 +104,27 @@ function buildRpmPrompt(input: RpmGenerateInput, chunk: keyof typeof CHUNK_MAP):
 	const spec = CHUNK_MAP[chunk];
 	// Asesmen disesuaikan dengan jumlah Tujuan Pembelajaran yang dipilih.
 	const nAsesmen = Math.max(input.tujuanPembelajaran?.length ?? 0, 1);
+	const nTP = input.tujuanPembelajaran?.length ?? 0;
 	const baseKeys: string[] = [];
 	for (let i = 1; i <= 11; i++) baseKeys.push(`k${i}`);
 	for (let i = 0; i < nAsesmen; i++) baseKeys.push(`k${12 + i}`);
+	for (let i = 0; i < nTP; i++) baseKeys.push(`k${12 + nAsesmen + i}`);
 	const keys: readonly string[] =
 		chunk === 'all' || (spec.keys[0] ?? '').startsWith('k12') ? baseKeys : spec.keys;
+	const itTp = `0. TUJUAN PEMBELAJARAN — TULIS ULANG dalam RUMUSAN ABCD untuk setiap TP yang dipilih (jangan mengubah makna): berbentuk "(condition), murid dapat (behavior) (degree)". Condition diawali "melalui/by/…" (mis. "Melalui diskusi kelompok", "Dengan mengamati tayangan video", "Melalui proyek"), degree memakai kata TERUKUR/dinilai (mis. "dengan tepat", "secara runtut", "sesuai kriteria"). Contoh: TP "menyebutkan contoh keberagaman budaya di lingkungan tempat tinggal" → "Melalui diskusi kelompok, murid dapat menyebutkan contoh keberagaman budaya di lingkungan tempat tinggal dengan tepat". JUMLAH sesuai TP yang dipilih (${nTP}). CONDITION yang kamu tulis pada tiap rumusan WAJIB konsisten muncul di "Metode Pembelajaran:" pada bagian "model" (mis. condition "melalui diskusi" ⇒ Metode memuat "diskusi") DAN benar-benar dilaksanakan di langkah-langkah kegiatan pembelajaran.`;
 
 	const it1 = `1. "karakteristik": ${
 		karakteristik
 			? `gunakan persis teks berikut: "${karakteristik}"`
 			: `deskripsi singkat karakteristik umum peserta didik kelas ${kelasLabel} yang menjadi dasar pembelajaran (mis. keragaman gaya belajar, tingkat keingintahuan, kemampuan berinkuiri), maksimal 1–2 kalimat. JANGAN mulai dengan frasa "Peserta didik kelas …", langsung tulis karakteristiknya saja (mis. "memiliki rasa ingin tahu tinggi terhadap lingkungan sekitar dan menyukai belajar berbasis pengalaman langsung").`
 	}`;
-	const it2 = `2. "model": nama dan strategi model pembelajaran yang paling cocok untuk tujuan pembelajaran di baris pertama, lalu baris berikutnya adalah "Langkah:", dan baris berikutnya deretan tahapan utamanya dengan tanda panah (→). Format persis seperti ini:
+	const it2 = `2. "model": nama dan strategi model pembelajaran yang paling cocok untuk tujuan pembelajaran di baris pertama, lalu baris berikutnya adalah "Langkah:", baris berikutnya deretan tahapan utamanya dengan tanda panah (→), lalu baris berikutnya "Metode Pembelajaran:" diikuti daftar metode yang digunakan (dipisah koma, mis. diskusi kelompok kecil, presentasi, tanya jawab, demonstrasi). Format persis seperti ini:
 Model Pembelajaran Inkuiri (Inquiry Learning) dengan integrasi kegiatan role playing dan pembuatan poster.
 Langkah:
 Orientasi → Merumuskan masalah → Mengumpulkan data → Menganalisis data → Menyimpulkan → Refleksi
-Urutan tahapan pada "Langkah:" ini WAJIB dipakai persis (dengan urutan yang sama) sebagai penanda langkah-langkah pada fase memahami dan mengaplikasi.`;
+Metode Pembelajaran:
+Diskusi kelompok kecil, presentasi, dan tanya jawab
+Urutan tahapan pada "Langkah:" ini WAJIB dipakai persis (dengan urutan yang sama) sebagai penanda langkah-langkah pada fase memahami dan mengaplikasi. Seluruh metode pada "Metode Pembelajaran:" ini WAJIB benar-benar muncul dan diterapkan di dalam langkah-langkah kegiatan pembelajaran (mis. diskusi kelompok kecil tampak pada salah satu langkah, presentasi tampak pada langkah lain).`;
 	const it3 = `3. "lintasDisiplinIlmu": keterkaitan lintas disiplin ilmu dengan 2–3 mata pelajaran lain beserta aktivitas konkretnya, sebagai daftar bernomor, contoh: "1. Bahasa Indonesia (membaca dan menulis laporan hasil observasi)" lalu "2. Seni Budaya (membuat poster pelestarian)". Setiap aktivitas lintas disiplin ini WAJIB diwujudkan sebagai langkah kegiatan nyata di fase "memahami" dan/atau "mengaplikasi".`;
 	const it4 = `4. "kemitraanPembelajaran": TIDAK WAJIB. Hanya isi bila materi pembelajaran memang memerlukan kemitraan dengan pihak luar, misalnya penanggulangan bencana, kunjungan industri, praktik lapangan, atau materi yang menuntut narasumber/masyarakat/profesi lain. ANALISA tujuan pembelajaran yang dipilih: bila TIDAK memerlukan pihak luar, isi kunci ini dengan STRING KOSONG "". Bila diisi, tulis mitra + bentuk kolaborasinya (1–2 kalimat) dan mitra itu HARUS benar-benar dilibatkan di langkah "memahami" dan/atau "mengaplikasi".`;
 	const it5 = `5. "lingkunganPembelajaran": pengaturan lingkungan belajar yang mendukung ketercapaian tujuan (tempat, penataan, suasana), 1–2 kalimat.`;
@@ -145,6 +157,7 @@ Menilai proses dan keterlibatan murid selama pembelajaran.`;
 		12: it12
 	};
 	const selectedItems = spec.items.map((n) => ITEMS[n]).join('\n');
+	const introBlock = chunk === 'all' || chunk === 'desain' ? itTp : '';
 
 	const KEY_USAGE: Record<string, string> = {
 		k1: 'karakteristik murid',
@@ -160,6 +173,8 @@ Menilai proses dan keterlibatan murid selama pembelajaran.`;
 		k11: 'penutup'
 	};
 	for (let i = 0; i < nAsesmen; i++) KEY_USAGE[`k${12 + i}`] = `asesmen for learning #${i + 1}`;
+	for (let i = 0; i < nTP; i++)
+		KEY_USAGE[`k${12 + nAsesmen + i}`] = `tujuan pembelajaran ABCD #${i + 1}`;
 	const formatJson = `{${keys.map((k) => `"${k}":"${KEY_USAGE[k]}"`).join(',')}}`;
 
 	const pentingBlock = `Berdasarkan data di atas, buatlah elemen-elemen yang diminta berikut. PENTING: seluruh langkah kegiatan pembelajaran (kegiatan awal, memahami, mengaplikasi, merefleksi, penutup) dan asesmen HARUS menerapkan Dimensi Profil Lulusan yang dipilih di atas secara KONKRET di dalam aktivitasnya, tetapi JANGAN menyebutkan nama dimensi di dalam teks langkah — wujudkan nilai dimensinya lewat aktivitas (mis. kerja sama kelompok, berpikir kritis melalui pertanyaan pemantik, menghargai perbedaan), tanpa menulis "(Dimensi …)". Sesuaikan pula cara, media, ritme, dan tingkat pendampingan dengan karakteristik peserta didik (diferensiasi bila relevan). Media digital yang kamu tulis di "pemanfaatanDigital" WAJIB benar-benar DIPAKAI di dalam langkah-langkah kegiatan pembelajaran: sebutkan kembali penggunaan media digital tersebut secara konkret pada langkah fase "memahami" dan/atau "mengaplikasi" (mis. "guru menayangkan video animasi…", "murid menggunakan aplikasi…"), sehingga isi bagian Pemanfaatan Digital konsisten dengan langkah-langkahnya. Kegiatan lintas disiplin ilmu di "lintasDisiplinIlmu" WAJIB juga benar-benar DIPAKAI di dalam langkah "memahami" dan/atau "mengaplikasi": setiap aktivitas lintas disiplin muncul sebagai langkah kongkret dengan penanda nama mata pelajarannya, mis. "…(Bahasa Indonesia: menyusun teks deskripsi)", "…(Seni Budaya dan Prakarya: mengidentifikasi motif kain tradisional)". Mitra pembelajaran: bila "kemitraanPembelajaran" terisi (hanya untuk materi yang memang memerlukan mitra), mitra itu WAJIB benar-benar DILIBATKAN di dalam langkah kegiatan. Tampilkan keterlibatannya (mis. narasumber, budayawan, masyarakat sekitar, atau profesi lain) sebagai aktivitas nyata di langkah "memahami" dan/atau "mengaplikasi" lengkap dengan penandanya, mis. "…(bersama narasumber budayawan)", "…(kunjungan ke pelaku UMKM setempat)". Bila kunci kemitraan KOSONG, jangan memaksakan mitra di langkah kegiatan.`;
@@ -167,7 +182,7 @@ Menilai proses dan keterlibatan murid selama pembelajaran.`;
 	// Output harus PADAT. Tanpa batas ini gpt-5.x menulis sangat panjang sehingga
 	// RPM butuh puluhan ribu token → lambat & rawan truncation/502.
 	const brevityBlock = `ATURAN KERINGKASAN (WAJIB):
-- Karakteristik maksimal 1 kalimat; model maksimal 3 baris; lintas disiplin 2 butir singkat; kemitraan/lingkungan/pemanfaatan digital masing-masing maksimal 1 kalimat.
+- Karakteristik maksimal 1 kalimat; model maksimal 5 baris; lintas disiplin 2 butir singkat; kemitraan/lingkungan/pemanfaatan digital masing-masing maksimal 1 kalimat.
 - Kegiatan awal 3 langkah; memahami 3-6 langkah (fleksibel sesuai kebutuhan); mengaplikasi 3-6 langkah; merefleksi 2-3 langkah; penutup 2-3 langkah; tiap asesmen maksimal 3 kalimat.
 - Setiap langkah TEPAT SATU kalimat langsung ke aktivitas, ditutup penanda "(tahapan - N menit)".
 - JANGAN menulis narasi panjang atau penjelasan berlebihan. Tulis langsung aktivitas singkat.`;
@@ -219,6 +234,8 @@ ${inputCustom ? `\nPERMINTAAN TAMBAHAN DARI GURU (WAJIB diterapkan pada hasil ge
 ${showPentling ? `\n${pentingBlock}\n` : ''}
 ${brevityBlock}
 ${showAturan ? `\n${aturanBlock}\n` : ''}
+${introBlock}
+
 ${selectedItems}
 
 ${closingBlock}
@@ -391,7 +408,12 @@ async function requestAiText(
 	return text;
 }
 
-function parseGeneratedPayload(text: string, requireComplete = true): RpmGenerated {
+function parseGeneratedPayload(
+	text: string,
+	requireComplete = true,
+	nAsesmen = 3,
+	nTP = 0
+): RpmGenerated {
 	const cleaned = text
 		.trim()
 		.replace(/^```(?:json)?/i, '')
@@ -595,11 +617,11 @@ function parseGeneratedPayload(text: string, requireComplete = true): RpmGenerat
 			const a = (arr as unknown[]).map((x) => toText(x)).filter(Boolean);
 			if (a.length) return a;
 		}
-		// Diutamakan kunci numerik k12..k1N (jumlahnya mengikuti banyaknya TP).
+		// Kunci numerik k12..k(11+nAs) — hanya rentang asesmen, bukan TP.
 		const numeric: string[] = [];
-		for (const [nk, v] of normalized.entries()) {
-			const m = /^k(\d+)$/.exec(nk);
-			if (m && Number(m[1]) >= 12) {
+		for (let i = 0; i < nAsesmen; i++) {
+			const v = normalized.get(`k${12 + i}`);
+			if (v !== undefined) {
 				const t = toText(v);
 				if (t) numeric.push(t);
 			}
@@ -642,7 +664,21 @@ function parseGeneratedPayload(text: string, requireComplete = true): RpmGenerat
 		return out;
 	};
 
+	// Tujuan Pembelajaran rumusan ABCD: k(12+nAs)..k(11+nAs+nTP).
+	const getTujuanPembelajaran = (): string[] => {
+		const out: string[] = [];
+		for (let i = 0; i < nTP; i++) {
+			const v = normalized.get(`k${12 + nAsesmen + i}`);
+			if (v !== undefined) {
+				const t = toText(v);
+				if (t) out.push(t);
+			}
+		}
+		return out;
+	};
+
 	const asesmen = getAsesmen();
+	const tujuan = getTujuanPembelajaran();
 	const result: RpmGenerated = {
 		karakteristik: getField('karakteristik'),
 		model: getField('model'),
@@ -655,7 +691,8 @@ function parseGeneratedPayload(text: string, requireComplete = true): RpmGenerat
 		mengaplikasi: getField('mengaplikasi'),
 		merefleksi: getField('merefleksi'),
 		penutup: getField('penutup'),
-		asesmen
+		asesmen,
+		tujuanPembelajaran: tujuan
 	};
 
 	const missing: string[] = [];

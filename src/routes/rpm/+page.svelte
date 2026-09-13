@@ -22,6 +22,7 @@
 		merefleksi: string;
 		penutup: string;
 		asesmen: string[];
+		tujuanPembelajaran: string[];
 	};
 
 	type StringFieldKey = {
@@ -231,7 +232,9 @@
 					profilLulusan: profilLulusanLabels,
 					capaianPembelajaran: capaianPembelajaran.trim(),
 					lintasDisiplinIlmu: generated.lintasDisiplinIlmu,
-					tujuanPembelajaran: selectedTps.map((tp) => tp.deskripsi),
+					tujuanPembelajaran: generated.tujuanPembelajaran.length
+						? generated.tujuanPembelajaran
+						: selectedTps.map((tp) => tp.deskripsi),
 					model: generated.model,
 					kemitraanPembelajaran: generated.kemitraanPembelajaran,
 					lingkunganPembelajaran: generated.lingkunganPembelajaran,
@@ -286,9 +289,11 @@
 			fase: kelasAktif.fase ?? null,
 			lingkupMateri: lingkupMateri.trim(),
 			capaianPembelajaran: capaianPembelajaran.trim(),
-			tujuanPembelajaran: selectedTps.map((tp) => tp.deskripsi),
 			dimensiProfilLulusan: profilLulusanLabels,
-			...generated
+			...generated,
+			tujuanPembelajaran: generated.tujuanPembelajaran.length
+				? generated.tujuanPembelajaran
+				: selectedTps.map((tp) => tp.deskripsi)
 		};
 		const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
 		const url = URL.createObjectURL(blob);
@@ -353,7 +358,10 @@
 			mengaplikasi: strOrEmpty(g.mengaplikasi),
 			merefleksi: strOrEmpty(g.merefleksi),
 			penutup: strOrEmpty(g.penutup),
-			asesmen: Array.isArray(g.asesmen) ? (g.asesmen as unknown[]).map(String).filter(Boolean) : []
+			asesmen: Array.isArray(g.asesmen) ? (g.asesmen as unknown[]).map(String).filter(Boolean) : [],
+			tujuanPembelajaran: Array.isArray(g.tujuanPembelajaran)
+				? (g.tujuanPembelajaran as unknown[]).map(String).filter(Boolean)
+				: []
 		};
 		generated = next;
 
@@ -733,13 +741,19 @@
 						<div class="grid gap-1 sm:grid-cols-[10rem_1fr] sm:items-start">
 							<span class="text-sm font-semibold sm:pt-2">Tujuan Pembelajaran</span>
 							<div class="flex flex-col gap-1 pt-1">
-								{#each selectedTps as tp, idx (tp.id)}
-									<span class="text-sm">{idx + 1}. {tp.deskripsi}</span>
+								{#if g.tujuanPembelajaran?.length}
+									{#each g.tujuanPembelajaran as tp, idx (idx)}
+										<span class="text-sm">{idx + 1}. {tp}</span>
+									{/each}
 								{:else}
-									<span class="text-sm italic opacity-60"
-										>Belum ada tujuan pembelajaran dipilih.</span
-									>
-								{/each}
+									{#each selectedTps as tp, idx (tp.id)}
+										<span class="text-sm">{idx + 1}. {tp.deskripsi}</span>
+									{:else}
+										<span class="text-sm italic opacity-60"
+											>Belum ada tujuan pembelajaran dipilih.</span
+										>
+									{/each}
+								{/if}
 							</div>
 						</div>
 

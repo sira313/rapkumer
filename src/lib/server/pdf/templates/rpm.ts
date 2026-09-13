@@ -129,13 +129,12 @@ function letterList(value: string): string {
 		: '&nbsp;';
 }
 
-/** Render several plain values as stacked lines, first letter capitalized. */
-function lines(items: string[]): string {
-	const arr = items
-		.map((i) => (i ?? '').trim())
-		.filter(Boolean)
-		.map((i) => i.replace(/^./, (c) => c.toUpperCase()));
-	return arr.length ? arr.map(esc).join('<br>') : '&nbsp;';
+/** Daftar Tujuan Pembelajaran (rumusan ABCD) sebagai <ol> huruf. */
+function tpList(items: string[]): string {
+	const arr = items.map((i) => (i ?? '').trim()).filter(Boolean);
+	return arr.length
+		? `<ol class="stp">${arr.map((t) => `<li>${esc(t)}</li>`).join('')}</ol>`
+		: '&nbsp;';
 }
 
 /** Gabungkan item jadi kalimat: "A, B, dan C" (untuk Dimensi Profil Lulusan). */
@@ -191,7 +190,7 @@ export function renderRpmHTML(data: RpmPrintData): string {
 	const desainFields: Array<[string, string]> = [
 		['Capaian Pembelajaran', contentBlock(d.capaianPembelajaran)],
 		['Lintas Disiplin Ilmu', letterList(d.lintasDisiplinIlmu)],
-		['Tujuan Pembelajaran', lines(d.tujuanPembelajaran)],
+		['Tujuan Pembelajaran', tpList(d.tujuanPembelajaran)],
 		['Topik Pembelajaran', contentBlock(d.lingkupMateri)],
 		['Praktis Pedagogis (Model/Strategi)', contentBlock(langkahify(d.model))]
 	];
