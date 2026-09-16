@@ -34,9 +34,7 @@ import { buildCapaianKompetensi, type TujuanScoreEntry } from '$lib/rapor-modes'
 const keyByName = new Map<string, string>(agamaMapelOptions.map((o) => [o.name, o.key]));
 
 /** Normalisasi nama → nama canonical agama. Cocok "Katholik" → "Katolik", dll. */
-const canonicalAgamaByNorm = new Map(
-	agamaMapelOptions.map((o) => [normMapelName(o.name), o.name])
-);
+const canonicalAgamaByNorm = new Map(agamaMapelOptions.map((o) => [normMapelName(o.name), o.name]));
 function resolveCanonicalAgamaName(dapodikName: string): string | null {
 	return canonicalAgamaByNorm.get(normMapelName(dapodikName)) ?? null;
 }
@@ -860,10 +858,7 @@ async function buildPegawaiIndex(sekolahId: number): Promise<PegawaiIndex> {
 			return null;
 		}
 	};
-	const rows = await db
-		.select()
-		.from(tablePegawai)
-		.where(eq(tablePegawai.sekolahId, sekolahId));
+	const rows = await db.select().from(tablePegawai).where(eq(tablePegawai.sekolahId, sekolahId));
 	for (const row of rows) {
 		if (row.dapodikPtkId) index.byDapodik.set(row.dapodikPtkId, row.id);
 		if (row.nip) index.byNip.set(row.nip, row.id);
@@ -1074,7 +1069,7 @@ async function ensureGuruAccounts(sekolahId: number, sections: DapodikSectionLog
 		// --- Mapel + kelas + permission linking ---
 		// Build lookup: pegawai.id → auth_user.id
 		const allAccounts = await db.query.tableAuthUser.findMany({
-			columns: { id: true, pegawaiId: true, permissions: true }
+			columns: { id: true, pegawaiId: true, permissions: true, kelasId: true }
 		});
 		const accountByPegawaiAll = new Map<number, number>();
 		for (const acc of allAccounts) {
@@ -1252,6 +1247,13 @@ async function ensureGuruAccounts(sekolahId: number, sections: DapodikSectionLog
 		let kelasLinked = 0;
 		for (const userId of allLinkedUserIds) {
 			const userKelas = new Set<number>();
+			const userAccount = allAccounts.find((a) => a.id === userId);
+			// Include own wali class
+			if (userAccount?.pegawaiId != null) {
+				for (const kelasId of kelasIdsByWali.get(userAccount.pegawaiId) ?? []) {
+					userKelas.add(kelasId);
+				}
+			}
 			const userLinks = await db
 				.select({ mataPelajaranId: tableAuthUserMataPelajaran.mataPelajaranId })
 				.from(tableAuthUserMataPelajaran)
@@ -1268,9 +1270,11 @@ async function ensureGuruAccounts(sekolahId: number, sections: DapodikSectionLog
 				kelasLinked++;
 			}
 			if (userKelas.size > 1) {
-				const user = allAccounts.find((a) => a.id === userId);
-				if (user && !(user.permissions as string[]).includes('kelas_pindah')) {
-					const updated = [...(user.permissions as string[]), 'kelas_pindah'] as UserPermission[];
+				if (userAccount && !(userAccount.permissions as string[]).includes('kelas_pindah')) {
+					const updated = [
+						...(userAccount.permissions as string[]),
+						'kelas_pindah'
+					] as UserPermission[];
 					await db
 						.update(tableAuthUser)
 						.set({ permissions: updated })
@@ -1967,9 +1971,7 @@ async function upsertPembelajaran(
 								...(pengampuId ? { pengampuId } : {})
 							})
 							.where(eq(tableMataPelajaran.id, canonicalRow.id));
-						await db
-							.delete(tableMataPelajaran)
-							.where(eq(tableMataPelajaran.id, existing.id));
+						await db.delete(tableMataPelajaran).where(eq(tableMataPelajaran.id, existing.id));
 						updated++;
 						continue;
 					}

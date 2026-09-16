@@ -1,10 +1,11 @@
 import db from '$lib/server/db';
+import { isWaliOfKelas, ownedKelasIdSet } from '$lib/server/kelas-akses';
 import {
 	tableEkstrakurikuler,
 	tableEkstrakurikulerTujuan,
 	tableKelas
 } from '$lib/server/db/schema';
-import { fail, redirect } from '@sveltejs/kit';
+import { fail } from '@sveltejs/kit';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import { readBufferToAoA } from '$lib/utils/excel.js';
 import { cookieNames } from '$lib/utils';
@@ -77,25 +78,18 @@ export const actions = {
 
 		// Server-side permission: wali_kelas may only add for their own kelas
 		if (locals?.user && (locals.user as unknown as { type?: string }).type === 'wali_kelas') {
-			const u = locals.user as { kelasId?: number; permissions?: string[]; pegawaiId?: number };
-			const hasAccessOther = Array.isArray(u.permissions)
-				? u.permissions.includes('kelas_pindah')
-				: false;
+			const u = locals.user as { pegawaiId?: number | null };
 
-			let isOwnClass = false;
-			const userKelasId = u.kelasId;
-			if (userKelasId != null && Number.isInteger(Number(userKelasId))) {
-				isOwnClass = Number(userKelasId) === kelasId;
-			} else if (u.pegawaiId) {
-				const owned = await db.query.tableKelas.findFirst({
-					columns: { id: true },
-					where: and(eq(tableKelas.id, kelasId), eq(tableKelas.waliKelasId, u.pegawaiId))
+			const owned = u.pegawaiId
+				? await db.query.tableKelas.findFirst({
+						columns: { id: true },
+						where: and(eq(tableKelas.id, kelasId), eq(tableKelas.waliKelasId, u.pegawaiId))
+					})
+				: null;
+			if (!owned) {
+				return fail(403, {
+					fail: 'Anda tidak memiliki izin untuk menambah ekstrakurikuler di kelas ini.'
 				});
-				isOwnClass = !!owned;
-			}
-
-			if (!isOwnClass && !hasAccessOther) {
-				throw redirect(303, `/forbidden?required=kelas_id`);
 			}
 		}
 
@@ -142,27 +136,9 @@ export const actions = {
 		}
 
 		// Server-side permission: wali_kelas may only update for their own kelas
-		if (locals?.user && (locals.user as unknown as { type?: string }).type === 'wali_kelas') {
-			const u = locals.user as { kelasId?: number; permissions?: string[]; pegawaiId?: number };
-			const hasAccessOther = Array.isArray(u.permissions)
-				? u.permissions.includes('kelas_pindah')
-				: false;
-
-			let isOwnClass = false;
-			const userKelasId = u.kelasId;
-			if (userKelasId != null && Number.isInteger(Number(userKelasId))) {
-				isOwnClass = Number(userKelasId) === kelasId;
-			} else if (u.pegawaiId) {
-				const owned = await db.query.tableKelas.findFirst({
-					columns: { id: true },
-					where: and(eq(tableKelas.id, kelasId), eq(tableKelas.waliKelasId, u.pegawaiId))
-				});
-				isOwnClass = !!owned;
-			}
-
-			if (!isOwnClass && !hasAccessOther) {
-				throw redirect(303, `/forbidden?required=kelas_id`);
-			}
+		const updateUser = locals.user as { type?: string; pegawaiId?: number | null } | null;
+		if (updateUser?.type === 'wali_kelas' && !(await isWaliOfKelas(updateUser, kelasId))) {
+			return fail(403, { fail: 'Anda tidak memiliki izin untuk mengubah di kelas ini.' });
 		}
 
 		if (!nama) {
@@ -213,35 +189,18 @@ export const actions = {
 		}
 
 		try {
-			// If caller is wali_kelas without akses_lain, ensure all target rows belong to their kelas
-			if (locals?.user && (locals.user as unknown as { type?: string }).type === 'wali_kelas') {
-				const u = locals.user as { kelasId?: number; permissions?: string[]; pegawaiId?: number };
-				const hasAccessOther = Array.isArray(u.permissions)
-					? u.permissions.includes('kelas_pindah')
-					: false;
-
-				if (!hasAccessOther) {
-					let allowedKelasId: number | null = null;
-					const userKelasId = u.kelasId;
-					if (userKelasId != null && Number.isInteger(Number(userKelasId))) {
-						allowedKelasId = Number(userKelasId);
-					} else if (u.pegawaiId) {
-						const owned = await db.query.tableKelas.findFirst({
-							columns: { id: true },
-							where: eq(tableKelas.waliKelasId, u.pegawaiId),
-							orderBy: asc(tableKelas.id)
-						});
-						allowedKelasId = owned?.id ?? null;
-					}
-
-					if (allowedKelasId != null) {
-						const rows = await db.query.tableEkstrakurikuler.findMany({
-							columns: { id: true, kelasId: true },
-							where: inArray(tableEkstrakurikuler.id, ids)
-						});
-						const other = rows.some((r) => r.kelasId !== allowedKelasId);
-						if (other) throw redirect(303, `/forbidden?required=kelas_id`);
-					}
+			// wali_kelas hanya boleh menghapus data di kelas yang dia wali
+			const deleteUser = locals.user as { type?: string; pegawaiId?: number | null } | null;
+			if (deleteUser?.type === 'wali_kelas') {
+				const ownedIds = await ownedKelasIdSet(deleteUser);
+				const rows = await db.query.tableEkstrakurikuler.findMany({
+					columns: { id: true, kelasId: true },
+					where: inArray(tableEkstrakurikuler.id, ids)
+				});
+				if (rows.some((r) => !ownedIds.has(r.kelasId))) {
+					return fail(403, {
+						fail: 'Anda tidak memiliki izin untuk menghapus di kelas ini.'
+					});
 				}
 			}
 			await db.delete(tableEkstrakurikuler).where(inArray(tableEkstrakurikuler.id, ids));
@@ -262,27 +221,9 @@ export const actions = {
 		}
 
 		// Server-side permission: wali_kelas may only import for their own kelas
-		if (locals?.user && (locals.user as unknown as { type?: string }).type === 'wali_kelas') {
-			const u = locals.user as { kelasId?: number; permissions?: string[]; pegawaiId?: number };
-			const hasAccessOther = Array.isArray(u.permissions)
-				? u.permissions.includes('kelas_pindah')
-				: false;
-
-			let isOwnClass = false;
-			const userKelasId = u.kelasId;
-			if (userKelasId != null && Number.isInteger(Number(userKelasId))) {
-				isOwnClass = Number(userKelasId) === kelasId;
-			} else if (u.pegawaiId) {
-				const owned = await db.query.tableKelas.findFirst({
-					columns: { id: true },
-					where: and(eq(tableKelas.id, kelasId), eq(tableKelas.waliKelasId, u.pegawaiId))
-				});
-				isOwnClass = !!owned;
-			}
-
-			if (!isOwnClass && !hasAccessOther) {
-				throw redirect(303, `/forbidden?required=kelas_id`);
-			}
+		const importUser = locals.user as { type?: string; pegawaiId?: number | null } | null;
+		if (importUser?.type === 'wali_kelas' && !(await isWaliOfKelas(importUser, kelasId))) {
+			return fail(403, { fail: 'Anda tidak memiliki izin untuk mengimpor di kelas ini.' });
 		}
 
 		const MAX_IMPORT_FILE_SIZE = 2 * 1024 * 1024; // 2MB

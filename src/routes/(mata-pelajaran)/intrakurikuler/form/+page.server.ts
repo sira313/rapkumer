@@ -2,6 +2,7 @@ import db from '$lib/server/db/index.js';
 import { normMapelName, resolveReferensiMapelId } from '$lib/server/dapodik';
 import { opsiMapelDapodik } from '$lib/server/dapodik-mapel-options';
 import { tableDapodikPembelajaran, tableKelas, tableMataPelajaran } from '$lib/server/db/schema';
+import { isWaliOfKelas } from '$lib/server/kelas-akses';
 import { cookieNames, unflattenFormData } from '$lib/utils';
 import { fail } from '@sveltejs/kit';
 import { and, eq, sql } from 'drizzle-orm';
@@ -51,6 +52,12 @@ export const actions = {
 		});
 		if (!kelasAktif) {
 			return fail(400, { fail: 'Kelas aktif tidak ditemukan.' });
+		}
+
+		// Wali kelas hanya boleh menambah mapel di kelas miliknya
+		const addUser = locals.user as { type?: string; pegawaiId?: number | null } | null;
+		if (addUser?.type === 'wali_kelas' && !(await isWaliOfKelas(addUser, kelasId))) {
+			return fail(403, { fail: 'Anda tidak memiliki izin untuk menambah di kelas ini.' });
 		}
 
 		const nama = formMapel.nama?.trim();

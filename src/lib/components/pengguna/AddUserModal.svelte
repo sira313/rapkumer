@@ -23,6 +23,7 @@
 			sekolahId?: number | null;
 			mataPelajaranIds?: number[];
 			kelasIds?: number[];
+			waliKelasIds?: number[];
 		} | null;
 	}>();
 
@@ -64,6 +65,26 @@
 		return (kelasList ?? []).filter((k: { sekolahId?: number | null }) => k.sekolahId === sId);
 	});
 
+	// Kelas wali milik user (edit mode) — dipakai untuk badge 'wali' + ringkasan peran gabungan.
+	const waliKelasIdSet = $derived(new Set(editUser?.waliKelasIds ?? []));
+	const roleHint = $derived.by(() => {
+		if (!isEditMode || type !== 'wali_kelas') return '';
+		const list = (kelasList ?? []) as {
+			id: number;
+			nama: string;
+			fase?: string | null;
+			sekolahId: number;
+		}[];
+		const waliNames = list.filter((k) => waliKelasIdSet.has(k.id)).map((k) => k.nama);
+		const guruNames = list
+			.filter((k) => !waliKelasIdSet.has(k.id) && kelasIds.has(k.id))
+			.map((k) => k.nama);
+		const parts: string[] = [];
+		if (waliNames.length) parts.push(`Wali Kelas ${waliNames.join(', ')}`);
+		if (guruNames.length) parts.push(`Guru di ${guruNames.join(', ')}`);
+		return parts.join(' · ');
+	});
+
 	// Validasi: semua field wajib terisi (password optional saat edit, mapel optional untuk non-guru)
 	let isValid = $derived.by(() => {
 		const hasNama = nama.trim().length > 0;
@@ -102,7 +123,6 @@
 			}
 			password = '';
 			initialized = true;
-			if (type === 'wali_kelas') selectAllMapelAndKelas();
 		}
 	});
 
@@ -115,15 +135,6 @@
 			kelasIds.clear();
 		}
 	});
-
-	function selectAllMapelAndKelas() {
-		mataPelajaranIds = new Set(filteredMataPelajaran.map((m) => m.id));
-		for (const k of filteredKelasList) {
-			kelasIds.add(k.id);
-		}
-		kelasIds = new Set(kelasIds);
-		selectAllKelas = filteredKelasList.length > 0;
-	}
 
 	function toggleSelectAllKelas() {
 		selectAllKelas = !selectAllKelas;
@@ -346,7 +357,10 @@
 											/>
 											<span class="text-sm"
 												>{k.nama}
-												{#if k.fase}({k.fase}){/if}</span
+												{#if k.fase}({k.fase}){/if}
+												{#if waliKelasIdSet.has(k.id)}
+													<span class="badge badge-sm badge-primary ml-1">wali</span>
+												{/if}</span
 											>
 										</label>
 									{/each}
@@ -378,9 +392,6 @@
 						id="add-user-role"
 						class="select dark:bg-base-200 w-full dark:border-none"
 						bind:value={type}
-						onchange={() => {
-							if (type === 'wali_kelas') selectAllMapelAndKelas();
-						}}
 					>
 						<option value="admin">Admin</option>
 						<option value="kepala_sekolah">Kepala Sekolah</option>
@@ -389,6 +400,9 @@
 						<option value="user">Guru</option>
 					</select>
 					<p class="label text-wrap">Tentukan peran pengguna dalam sistem</p>
+					{#if roleHint}
+						<p class="label text-wrap font-medium text-info">{roleHint}</p>
+					{/if}
 				</fieldset>
 
 				<fieldset class="fieldset">
@@ -439,8 +453,7 @@
 					class="btn btn-soft shadow-none mr-auto"
 					type="button"
 					onclick={close}
-					disabled={saving}
-					><Icon name="close" /> Batal</button
+					disabled={saving}><Icon name="close" /> Batal</button
 				>
 				<button
 					class="btn btn-primary shadow-none"

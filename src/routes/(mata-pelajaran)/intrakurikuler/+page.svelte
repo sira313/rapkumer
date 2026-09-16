@@ -28,8 +28,13 @@
 	};
 	let {
 		data
-	}: { data: { mapel: { daftarMapel: MapelWithIndicator[] }; adaDataDapodik?: boolean } } =
-		$props();
+	}: {
+		data: {
+			mapel: { daftarMapel: MapelWithIndicator[] };
+			kelasId?: number | null;
+			adaDataDapodik?: boolean;
+		};
+	} = $props();
 
 	let importMapelOpen = $state(false);
 
@@ -51,14 +56,26 @@
 		// default to true for backwards compatibility
 		return u?.canManageMapel ?? true;
 	});
-	const canEditUrutan = $derived.by(() => {
+	const baseCanEditUrutan = $derived.by(() => {
 		const u = page.data.user as { canEditUrutan?: boolean } | null | undefined;
 		return u?.canEditUrutan ?? false;
 	});
-	const canAddImportMapel = $derived.by(() => {
+	const baseCanAddImportMapel = $derived.by(() => {
 		const u = page.data.user as { canAddImportMapel?: boolean } | null | undefined;
 		return u?.canAddImportMapel ?? false;
 	});
+
+	// Wali kelas sedang melihat kelas bukan miliknya (mis. kelas tempat ia hanya
+	// jadi guru mapel) → hak turun ke level guru: tak bisa tambah/impor/urutan.
+	const isNonOwnClass = $derived.by(() => {
+		const u = page.data.user as
+			{ type?: string; kelasId?: number | null; ownKelasIds?: number[] | null } | null | undefined;
+		if (u?.type !== 'wali_kelas' || data.kelasId == null) return false;
+		const ownIds = u.ownKelasIds?.length ? u.ownKelasIds : u.kelasId != null ? [u.kelasId] : [];
+		return ownIds.length > 0 && !ownIds.includes(data.kelasId);
+	});
+	const canEditUrutan = $derived(baseCanEditUrutan && !isNonOwnClass);
+	const canAddImportMapel = $derived(baseCanAddImportMapel && !isNonOwnClass);
 
 	// Dapatkan jenjang varian dari sekolah (misalnya 'SMK')
 	const jenjangVariant = $derived.by(() => {

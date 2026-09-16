@@ -3,6 +3,35 @@ import db from './db';
 import { tableAuthUserKelas, tableKelas, tableMurid, tablePegawai } from './db/schema';
 
 /**
+ * True bila `user` adalah wali kelas dari `kelasId` (lewat relasi waliKelasId).
+ * Selalu dibaca dari DB agar tidak bergantung pada kolom `auth_user.kelasId`
+ * yang bisa basi saat wali pindah kelas.
+ */
+export async function isWaliOfKelas(
+	user: { type?: string; pegawaiId?: number | null } | null | undefined,
+	kelasId: number
+): Promise<boolean> {
+	if (!user || user.type !== 'wali_kelas' || !user.pegawaiId) return false;
+	const own = await db.query.tableKelas.findFirst({
+		columns: { id: true },
+		where: and(eq(tableKelas.id, kelasId), eq(tableKelas.waliKelasId, user.pegawaiId))
+	});
+	return !!own;
+}
+
+/** Set semua kelas yang diwali seseorang (lewat relasi waliKelasId). */
+export async function ownedKelasIdSet(
+	user: { pegawaiId?: number | null } | null | undefined
+): Promise<Set<number>> {
+	if (!user?.pegawaiId) return new Set();
+	const rows = await db.query.tableKelas.findMany({
+		columns: { id: true },
+		where: eq(tableKelas.waliKelasId, user.pegawaiId)
+	});
+	return new Set(rows.map((r) => r.id));
+}
+
+/**
  * Whether `user` may access `kelasId` in the active `sekolahId`. Mirrors the
  * per-role class scoping in src/routes/+layout.server.ts so API handlers that
  * select the class from the client-controlled active-kelas-id cookie cannot

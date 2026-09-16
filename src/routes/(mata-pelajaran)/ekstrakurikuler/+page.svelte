@@ -50,7 +50,18 @@
 	// Restrict editing for wali_asuh and user (guru mapel)
 	const canEdit = $derived.by(() => {
 		const u = page.data.user as { type?: string } | null | undefined;
-		return u?.type !== 'wali_asuh' && u?.type !== 'user';
+		if (u?.type === 'wali_asuh' || u?.type === 'user') return false;
+		// Wali kelas di kelas bukan miliknya: turun ke level guru (tidak bisa menambah).
+		if (u?.type === 'wali_kelas' && data.kelasId != null) {
+			const cuid = u as unknown as { kelasId?: number | null; ownKelasIds?: number[] | null };
+			const ownIds = cuid.ownKelasIds?.length
+				? cuid.ownKelasIds
+				: cuid.kelasId != null
+					? [cuid.kelasId]
+					: [];
+			if (ownIds.length > 0 && !ownIds.includes(data.kelasId)) return false;
+		}
+		return true;
 	});
 	const addSaveDisabled = $derived.by(
 		() => addSubmitting || !addNamaInput.trim() || !data.kelasId || !data.tableReady

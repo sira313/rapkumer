@@ -495,7 +495,7 @@ export async function load({ url, locals }) {
 	const sekolahFilter = locals.sekolah?.id ? sql` AND sekolah_id = ${locals.sekolah.id}` : sql``;
 	const [kelasBerwali, sekolahBerkepala, asuhCounts] = await Promise.all([
 		db.query.tableKelas.findMany({
-			columns: { nama: true, waliKelasId: true },
+			columns: { id: true, nama: true, waliKelasId: true },
 			where: sql`${tableKelas.waliKelasId} IS NOT NULL${sekolahFilter}`
 		}),
 		db
@@ -514,11 +514,15 @@ export async function load({ url, locals }) {
 	]);
 
 	const waliKelasByPegawai = new Map<number, string[]>();
+	const waliKelasIdsByPegawai = new Map<number, number[]>();
 	for (const k of kelasBerwali) {
 		if (!k.waliKelasId) continue;
 		const arr = waliKelasByPegawai.get(k.waliKelasId) ?? [];
 		arr.push(k.nama);
 		waliKelasByPegawai.set(k.waliKelasId, arr);
+		const idArr = waliKelasIdsByPegawai.get(k.waliKelasId) ?? [];
+		idArr.push(k.id);
+		waliKelasIdsByPegawai.set(k.waliKelasId, idArr);
 	}
 	const kepalaPegawaiIds = new Set(
 		sekolahBerkepala.map((s) => s.pegawaiId).filter((id): id is number => id != null)
@@ -538,53 +542,43 @@ export async function load({ url, locals }) {
 		user: 'Guru'
 	};
 
-	const users = dedupedUsers.map((row) => {
-		const roles: string[] = [];
-		if (row.pegawaiId && kepalaPegawaiIds.has(row.pegawaiId)) roles.push('Kepala Sekolah');
-		if (row.pegawaiId) {
-			for (const nama of waliKelasByPegawai.get(row.pegawaiId) ?? []) roles.push(`Wali ${nama}`);
-		}
-		const asuhCount = asuhCountByName.get((row.pegawaiName ?? '').trim().toLowerCase()) ?? 0;
-		if (asuhCount > 0 || row.type === 'wali_asuh') {
-			roles.push(asuhCount > 0 ? `Wali Asuh (${asuhCount} murid)` : 'Wali Asuh');
-		}
-		if (!roles.length) roles.push(typeLabel[row.type] ?? row.type);
-		return { ...row, roles };
-	});
-
-	// fetch mata pelajaran to populate select in the inline-add row
-	const mataPelajaran = await db
-		.select({
-			id: tableMataPelajaran.id,
-			nama: tableMataPelajaran.nama,
-			kelasId: tableMataPelajaran.kelasId
-		})
-		.from(tableMataPelajaran)
-		.limit(1000);
-
-	// Fetch many-to-many mapel & kelas assignments for each user (for edit modal pre-fill)
-	const allUserIds = users
+	// fetch mata pelajaran + many-to-many mapel/kelas assignments per user
+	const allUserIds = dedupedUsers
 		.map((r) => r.id)
 		.filter((id): id is number => typeof id === 'number' && id > 0);
-	const [userMapelRows, userKelasRows] = allUserIds.length
-		? await Promise.all([
-				db
+	const [mataPelajaran, userMapelRows, userKelasRows] = await Promise.all([
+		db
+			.select({
+				id: tableMataPelajaran.id,
+				nama: tableMataPelajaran.nama,
+				kelasId: tableMataPelajaran.kelasId
+			})
+			.from(tableMataPelajaran)
+			.limit(1000),
+		allUserIds.length
+			? db
 					.select({
 						userId: tableAuthUserMataPelajaran.authUserId,
 						mataPelajaranId: tableAuthUserMataPelajaran.mataPelajaranId
 					})
 					.from(tableAuthUserMataPelajaran)
-					.where(inArray(tableAuthUserMataPelajaran.authUserId, allUserIds)),
-				db
+					.where(inArray(tableAuthUserMataPelajaran.authUserId, allUserIds))
+			: [],
+		allUserIds.length
+			? db
 					.select({
 						userId: tableAuthUserKelas.authUserId,
 						kelasId: tableAuthUserKelas.kelasId
 					})
 					.from(tableAuthUserKelas)
 					.where(inArray(tableAuthUserKelas.authUserId, allUserIds))
-			])
-		: [[], []];
+			: []
+	]);
 
+	const mapelKelasMap = new Map<number, number>();
+	for (const m of mataPelajaran) {
+		if (m.kelasId != null) mapelKelasMap.set(m.id, m.kelasId);
+	}
 	const userMapelMap = new Map<number, number[]>();
 	for (const row of userMapelRows) {
 		const arr = userMapelMap.get(row.userId) ?? [];
@@ -598,12 +592,45 @@ export async function load({ url, locals }) {
 		userKelasMap.set(row.userId, arr);
 	}
 
-	// Attach mapelIds/kelasIds to each user for edit modal
+	const users = dedupedUsers.map((row) => {
+		const roles: string[] = [];
+		if (row.pegawaiId && kepalaPegawaiIds.has(row.pegawaiId)) roles.push('Kepala Sekolah');
+		if (row.pegawaiId) {
+			for (const nama of waliKelasByPegawai.get(row.pegawaiId) ?? []) roles.push(`Wali ${nama}`);
+		}
+		// Wali kelas sekaligus guru mapel di kelas LAIN dari kelas wallinya.
+		if (row.type === 'wali_kelas' && row.pegawaiId != null) {
+			const ownKelas = new Set(waliKelasIdsByPegawai.get(row.pegawaiId) ?? []);
+			const arr = userMapelMap.get(row.id);
+			if (arr && arr.length > 0) {
+				const teachesOutsideOwn = arr.some((mpId) => {
+					const kId = mapelKelasMap.get(mpId);
+					return kId != null && !ownKelas.has(kId);
+				});
+				if (teachesOutsideOwn) roles.push('Guru');
+			}
+		}
+		const asuhCount = asuhCountByName.get((row.pegawaiName ?? '').trim().toLowerCase()) ?? 0;
+		if (asuhCount > 0 || row.type === 'wali_asuh') {
+			roles.push(asuhCount > 0 ? `Wali Asuh (${asuhCount} murid)` : 'Wali Asuh');
+		}
+		if (!roles.length) roles.push(typeLabel[row.type] ?? row.type);
+		return { ...row, roles };
+	});
+
+	// Attach mapelIds/kelasIds/waliKelasIds to each user for edit modal
 	for (const user of users) {
 		const uid = user.id as number;
 		if (uid > 0) {
+			const ids = new Set(userKelasMap.get(uid) ?? []);
+			if (user.kelasId != null) ids.add(user.kelasId);
+			if (user.pegawaiId != null) {
+				for (const kid of waliKelasIdsByPegawai.get(user.pegawaiId) ?? []) ids.add(kid);
+			}
 			(user as Record<string, unknown>).mataPelajaranIds = userMapelMap.get(uid) ?? [];
-			(user as Record<string, unknown>).kelasIds = userKelasMap.get(uid) ?? [];
+			(user as Record<string, unknown>).kelasIds = Array.from(ids);
+			(user as Record<string, unknown>).waliKelasIds =
+				user.pegawaiId != null ? (waliKelasIdsByPegawai.get(user.pegawaiId) ?? []) : [];
 		}
 	}
 
@@ -782,11 +809,11 @@ export const actions = {
 			}
 
 			// Auto-assign default permissions sesuai tipe akun.
-			// Tambahkan 'kelas_pindah' untuk user type (guru) dengan multiple kelas
+			// Tambahkan 'kelas_pindah' untuk wali_kelas/user (guru) dengan multiple kelas
 			const permissions: string[] = [
 				...(defaultPermissionsByType[roleValue as AuthUser['type']] ?? [])
 			];
-			if (roleValue === 'user' && kelasIds.length > 1) {
+			if ((roleValue === 'user' || roleValue === 'wali_kelas') && kelasIds.length > 1) {
 				permissions.push('kelas_pindah');
 			}
 
@@ -1050,6 +1077,24 @@ export const actions = {
 						});
 					} catch (err) {
 						if (!String(err).includes('UNIQUE')) throw err;
+					}
+				}
+
+				// Sinkron kelas_pindah: kelas >1 → beri, ≤1 → cabut (wali_kelas/user).
+				if (roleValue === 'user' || roleValue === 'wali_kelas') {
+					const [cur] = await tx.select({ permissions: u.permissions }).from(u).where(eq(u.id, id));
+					const perms = cur?.permissions ?? [];
+					const hasPindah = perms.includes('kelas_pindah');
+					if (kelasIds.length > 1 && !hasPindah) {
+						await tx
+							.update(u)
+							.set({ permissions: [...perms, 'kelas_pindah'] })
+							.where(eq(u.id, id));
+					} else if (kelasIds.length <= 1 && hasPindah) {
+						await tx
+							.update(u)
+							.set({ permissions: perms.filter((p) => p !== 'kelas_pindah') })
+							.where(eq(u.id, id));
 					}
 				}
 			});
