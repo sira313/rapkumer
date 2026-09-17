@@ -191,7 +191,7 @@ async function createUser(request: Request) {
 			if (p && typeof p.id === 'number') pegawaiId = p.id;
 		}
 
-		if (mataPelajaranIds.length === 0 && sekolahId) {
+		if (mataPelajaranIds.length === 0 && sekolahId && roleValue === 'user') {
 			try {
 				const mpList = await db
 					.select({ id: tableMataPelajaran.id })
@@ -378,14 +378,8 @@ async function updateUser(request: Request, id: number) {
 			updateData.type = roleValue;
 			updateData.sekolahId = sekolahId ?? null;
 			updateData.updatedAt = new Date().toISOString();
-			if (mataPelajaranIds.length === 1) {
-				updateData.mataPelajaranId = mataPelajaranIds[0];
-			} else {
-				updateData.mataPelajaranId = undefined;
-			}
-			if (kelasIds.length > 0) {
-				updateData.kelasId = kelasIds[0];
-			}
+			updateData.mataPelajaranId = mataPelajaranIds.length === 1 ? mataPelajaranIds[0] : null;
+			updateData.kelasId = kelasIds.length > 0 ? kelasIds[0] : null;
 
 			if (Object.keys(updateData).length > 0) {
 				await tx.update(u).set(updateData).where(eq(u.id, id));

@@ -26,27 +26,36 @@ let consolidationDone = false;
 export async function ensurePegawaiConsolidation() {
 	if (consolidationDone) return;
 	try {
-		// STEP 0: Consolidate PEGAWAI duplicates (same nama) → keep oldest, merge auth_user
+		// STEP 0: Consolidate PEGAWAI duplicates (same nama + same NIP) → keep oldest, merge auth_user
 		const allPegawai = await db.query.tablePegawai.findMany({
-			columns: { id: true, nama: true, createdAt: true }
+			columns: { id: true, nama: true, nip: true, createdAt: true }
 		});
 
-		// Group pegawai by (nama normalized) to find duplicates
-		type PegawaiArray = { id: number; nama: string; createdAt: string }[];
-		const pegawaiByName = new Map<string, PegawaiArray>();
+		// Group pegawai by (nama normalized + nip normalized) to find duplicates
+		// Only merge when both name AND NIP match to avoid collapsing distinct people
+		// who happen to share a name. Empty NIPs are grouped separately (two empty-NIP
+		// same-name records are treated as potentially different people and skipped).
+		type PegawaiArray = { id: number; nama: string; nip: string | null; createdAt: string }[];
+		const pegawaiByNameNip = new Map<string, PegawaiArray>();
 		for (const peg of allPegawai) {
 			const nameKey = (peg.nama || '').trim().toLowerCase();
 			if (!nameKey) continue;
-			const arr = pegawaiByName.get(nameKey) ?? [];
+			const nipKey = (peg.nip || '').trim();
+			// Require non-empty NIP for dedup — two anonymous same-name records
+			// could be different people at different schools.
+			if (!nipKey) continue;
+			const compositeKey = `${nameKey}\0${nipKey}`;
+			const arr = pegawaiByNameNip.get(compositeKey) ?? [];
 			arr.push(peg);
-			pegawaiByName.set(nameKey, arr);
+			pegawaiByNameNip.set(compositeKey, arr);
 		}
 
-		// For each pegawai name with duplicates
-		for (const [nameKey, pegawaiGroup] of pegawaiByName.entries()) {
+		// For each (nama, NIP) group with duplicates
+		for (const [, pegawaiGroup] of pegawaiByNameNip.entries()) {
 			if (pegawaiGroup.length > 1) {
+				const nameKey = (pegawaiGroup[0].nama || '').trim().toLowerCase();
 				console.log(
-					`[pengguna:consolidate] Found ${pegawaiGroup.length} pegawai with name "${nameKey}"`
+					`[pengguna:consolidate] Found ${pegawaiGroup.length} pegawai with name "${nameKey}" (same NIP)`
 				);
 				// Sort by createdAt to find oldest
 				const sorted = pegawaiGroup.sort((a, b) => {
