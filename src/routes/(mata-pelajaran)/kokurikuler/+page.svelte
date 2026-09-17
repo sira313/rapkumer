@@ -4,6 +4,9 @@
 	import Icon from '$lib/components/icon.svelte';
 	import KokurikulerFormModal from '$lib/components/kokurikuler/form-modal.svelte';
 	import KokurikulerDeleteModal from '$lib/components/kokurikuler/delete-modal.svelte';
+	import ImportKokurikulerDialog from '$lib/components/kokurikuler/import-kokurikuler-dialog.svelte';
+	import { showModal } from '$lib/components/global-modal.svelte';
+	import { toast } from '$lib/components/toast.svelte';
 	import {
 		profilPelajarPancasilaDimensionLabelByKey,
 		profilPelajarPancasilaDimensions,
@@ -246,7 +249,7 @@
 				</p>
 			{/if}
 		</div>
-		<div class="flex flex-col gap-2 sm:flex-row">
+		<div class="flex flex-row max-sm:w-full">
 			{#if anySelected}
 				<button
 					type="button"
@@ -260,7 +263,7 @@
 				</button>
 			{:else}
 				<button
-					class="btn btn-soft shadow-none"
+					class="btn btn-soft rounded-r-none shadow-none max-sm:flex-1"
 					disabled={!canManage || !canEdit}
 					onclick={openAddModal}
 					title={!canEdit ? 'Anda tidak memiliki izin untuk menambah' : ''}
@@ -268,6 +271,96 @@
 					<Icon name="plus" />
 					Tambah
 				</button>
+
+				<!-- dropdown untuk import dan export -->
+				<div class="dropdown dropdown-end">
+					<button
+						title={!canEdit ? 'Anda tidak memiliki izin' : 'Export dan Import kokurikuler'}
+						type="button"
+						tabindex="0"
+						class={`btn btn-soft rounded-l-none shadow-none ${!canManage || !canEdit ? 'opacity-50' : ''}`}
+						disabled={!canManage || !canEdit}
+						aria-disabled={!canManage || !canEdit}
+					>
+						<Icon name="down" />
+					</button>
+
+					<!-- menu dropdown -->
+					<ul
+						tabindex="-1"
+						class="border-base-300 dropdown-content menu bg-base-100 z-50 mt-2 w-52 rounded-md border p-2 shadow-lg"
+					>
+						<li>
+							<button
+								type="button"
+								class={`w-full text-left ${!canManage ? 'pointer-events-none opacity-50' : ''}`}
+								disabled={!canManage}
+								aria-disabled={!canManage}
+								onclick={() =>
+									showModal({
+										title: 'Impor Kokurikuler',
+										body: ImportKokurikulerDialog,
+										dismissible: true
+									})}
+							>
+								<Icon name="import" />
+								Impor Kokurikuler
+							</button>
+						</li>
+						<li>
+							<button
+								type="button"
+								class={`w-full text-left ${!canManage ? 'pointer-events-none opacity-50' : ''}`}
+								disabled={!canManage}
+								aria-disabled={!canManage}
+								onclick={async () => {
+									try {
+										const resp = await fetch('/kokurikuler/export_kokurikuler', { method: 'GET' });
+										if (!resp.ok) {
+											const body = await resp.json().catch(() => ({}));
+											return toast({
+												message: body?.fail || 'Gagal mengekspor data.',
+												type: 'error'
+											});
+										}
+										const blob = await resp.blob();
+										const url = URL.createObjectURL(blob);
+										// prefer filename from Content-Disposition header set by server
+										let filename = `kokurikuler-${new Date().toISOString().slice(0, 10)}.xlsx`;
+										try {
+											const cd =
+												resp.headers.get('content-disposition') ||
+												resp.headers.get('Content-Disposition');
+											if (cd) {
+												// match filename*=UTF-8''encoded or filename="name"
+												const mStar = cd.match(/filename\*=UTF-8''([^;\n\r]+)/i);
+												const mBasic = cd.match(/filename="?([^";]+)"?/i);
+												if (mStar && mStar[1]) filename = decodeURIComponent(mStar[1]);
+												else if (mBasic && mBasic[1]) filename = mBasic[1];
+											}
+										} catch {
+											/* ignore and fallback */
+										}
+										const a = document.createElement('a');
+										a.href = url;
+										a.download = filename;
+										document.body.appendChild(a);
+										a.click();
+										document.body.removeChild(a);
+										URL.revokeObjectURL(url);
+										toast({ message: 'Ekspor berhasil.', type: 'success' });
+									} catch (err) {
+										console.error(err);
+										toast({ message: 'Terjadi kesalahan saat mengekspor.', type: 'error' });
+									}
+								}}
+							>
+								<Icon name="export" />
+								Ekspor Kokurikuler
+							</button>
+						</li>
+					</ul>
+				</div>
 			{/if}
 		</div>
 	</div>
