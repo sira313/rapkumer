@@ -6,8 +6,8 @@
 
 	let { data }: { data: PageData } = $props();
 
-	let formEl: HTMLFormElement;
-	let canvasEl: HTMLCanvasElement;
+	let formEl = $state<HTMLFormElement>();
+	let canvasEl = $state<HTMLCanvasElement>();
 	let ctx: CanvasRenderingContext2D | null = null;
 	let drawing = $state(false);
 	let hasSignature = $state(false);
@@ -51,7 +51,7 @@
 	}
 
 	function getPos(e: MouseEvent | TouchEvent) {
-		const rect = canvasEl.getBoundingClientRect();
+		const rect = canvasEl!.getBoundingClientRect();
 		if ('touches' in e) {
 			const touch = e.touches[0];
 			return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
@@ -136,7 +136,7 @@
 			}
 
 			submitted = true;
-			formEl.reset();
+			formEl!.reset();
 			clearSignature();
 		} catch {
 			toast('Terjadi kesalahan jaringan', 'error');

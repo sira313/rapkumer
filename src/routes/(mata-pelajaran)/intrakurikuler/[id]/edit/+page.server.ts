@@ -2,6 +2,7 @@ import db from '$lib/server/db/index.js';
 import { normMapelName } from '$lib/server/dapodik';
 import { opsiMapelDapodik } from '$lib/server/dapodik-mapel-options';
 import { tableDapodikPembelajaran, tableMataPelajaran } from '$lib/server/db/schema.js';
+import { isWaliOfKelas } from '$lib/server/kelas-akses';
 import { agamaMapelNames, pksMapelNames } from '$lib/statics';
 import { unflattenFormData } from '$lib/utils';
 import { fail } from '@sveltejs/kit';
@@ -60,6 +61,12 @@ export const actions = {
 
 		if (!existing || existing.kelas.sekolahId !== sekolahId) {
 			return fail(404, { fail: 'Data mata pelajaran tidak ditemukan.' });
+		}
+
+		// Wali kelas hanya boleh mengedit mapel di kelas miliknya
+		const user = locals.user as { type?: string; pegawaiId?: number | null } | null;
+		if (user?.type === 'wali_kelas' && !(await isWaliOfKelas(user, existing.kelasId))) {
+			return fail(403, { fail: 'Anda tidak memiliki izin untuk mengedit di kelas ini.' });
 		}
 
 		const kkmValue = formMapel.kkm ? Number(formMapel.kkm) : Number.NaN;

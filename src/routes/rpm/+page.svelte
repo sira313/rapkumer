@@ -37,6 +37,7 @@
 	}));
 
 	let capaianPembelajaran = $state('');
+	// svelte-ignore state_referenced_locally
 	let mapelId = $state<number>(data.pickerMapelId ?? 0);
 	let lingkupMateri = $state('');
 	let tpIds = $state<number[]>([]);

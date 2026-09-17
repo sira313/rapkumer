@@ -22,6 +22,7 @@
 		};
 	} = $props();
 
+	// svelte-ignore state_referenced_locally
 	const isPersonal = variant === 'pribadi';
 	const saveAction = isPersonal ? '?/save-my-ai-key' : '?/save-gemini-key';
 	const clearAction = isPersonal ? '?/clear-my-ai-key' : '?/clear-gemini-key';

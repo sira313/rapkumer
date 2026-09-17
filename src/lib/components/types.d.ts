@@ -14,6 +14,8 @@ interface ModalProps<BodyProps extends Record<string, unknown> = Record<string, 
 	body: string | ModalBodyComponent;
 	bodyProps?: BodyProps;
 	dismissible?: boolean;
+	/** wraps the body in a `prose` container (typographic spacing) */
+	typography?: boolean;
 	/** spread action buttons across the footer (left vs right) instead of right-aligning them */
 	spreadActions?: boolean;
 	onPositive?: ModalAction;

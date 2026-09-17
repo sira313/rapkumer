@@ -19,12 +19,12 @@
 				<h1 class="text-base-content text-3xl font-bold md:text-4xl">Rapkumer</h1>
 				<p class="text-base-content/70 mt-1 text-sm">v{appVersion}</p>
 				<p class="text-base-content/80 mt-4">
-					Aplikasi administrasi guru terpadu untuk presensi, jurnal mengajar, nilai, dan rapor,
-					siap cetak sesuai Kurikulum Merdeka.
+					Aplikasi administrasi guru terpadu untuk presensi, jurnal mengajar, nilai, dan rapor, siap
+					cetak sesuai Kurikulum Merdeka.
 				</p>
 				<div class="mt-6 flex flex-wrap justify-center gap-2">
 					<a
-						class="btn btn-primary btn-sm"
+						class="btn btn-primary btn-sm shadow-none"
 						href="https://t.me/+zj3h_zjBAC02YjZl"
 						target="_blank"
 						rel="noreferrer"
@@ -64,7 +64,8 @@
 					<div>
 						<p class="font-semibold">Tarik data dan kirim nilai ke Dapodik</p>
 						<p class="text-base-content/70 text-sm">
-							Aplikasi ini sudah bisa menarik data dan mengirim matev beserta nilainya langsung ke Dapodik.
+							Aplikasi ini sudah bisa menarik data dan mengirim matev beserta nilainya langsung ke
+							Dapodik.
 						</p>
 					</div>
 				</div>
@@ -127,7 +128,7 @@
 				<h3 class="card-title mt-1">Tester</h3>
 				<ul class="menu bg-base-200 rounded-box w-full">
 					{#each ['Hamdani, S.Pd., Gr.', 'Rudiansyah, S.Pd., Gr.', 'Putra Panji Prasetiyo, S.Pd., Gr.'] as name (name)}
-						<li><a class="pointer-events-none cursor-default">{name}</a></li>
+						<li><span class="pointer-events-none cursor-default">{name}</span></li>
 					{/each}
 				</ul>
 			</div>

@@ -198,7 +198,7 @@ export async function load({ parent, url, depends, locals }) {
 	// assignedIsAgamaVariant is set if any of the assigned mapel is agama variant.
 	let assignedLocalMapelId: number | null = null;
 	let assignedIsAgamaVariant = false;
-	if (needsMapelFilter(maybeUser, kelasAktif?.id ?? null)) {
+	if (needsMapelFilter(maybeUser, kelasAktif?.id ?? null) && maybeUser?.id) {
 		// Check multi-mapel first
 		if (assignedMapelIds.size > 0) {
 			// Pick first assigned mapel from the filtered list

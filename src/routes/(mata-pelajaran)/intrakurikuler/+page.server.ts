@@ -2,6 +2,7 @@ import db from '$lib/server/db';
 import { normMapelName, pilihIndukPembelajaran } from '$lib/server/dapodik';
 import { ensureAgamaMapelForClasses } from '$lib/server/mapel-agama';
 import { getAksesMapelUser, needsMapelFilter } from '$lib/server/mapel-access';
+import { isWaliOfKelas } from '$lib/server/kelas-akses';
 import {
 	tableMataPelajaran,
 	tableTujuanPembelajaran,
@@ -25,8 +26,16 @@ const PKS_VARIANT_NAME_SET = new Set<string>(pksVariantNames);
 const AGAMA_PARENT_NAME = 'Pendidikan Agama dan Budi Pekerti';
 const PKS_PARENT_NAME = 'Pendalaman Kitab Suci';
 
-function canManageImportUrutan(userType?: string) {
-	return userType === 'admin' || userType === 'kepala_sekolah' || userType === 'wali_kelas';
+async function canManageImportUrutan(
+	user: { type?: string; pegawaiId?: number | null } | null,
+	kelasId: number | null
+): Promise<boolean> {
+	if (!user) return false;
+	if (user.type === 'admin' || user.type === 'kepala_sekolah') return true;
+	if (user.type !== 'wali_kelas') return false;
+	// Wali kelas hanya boleh menambah/import/urutan mapel di kelas miliknya.
+	if (kelasId == null) return false;
+	return isWaliOfKelas(user, kelasId);
 }
 
 type MapelRow = { id: number; nama: string | null };
@@ -336,16 +345,16 @@ function isXlsxMime(type: string | null | undefined) {
 
 export const actions = {
 	async import_mapel({ request, cookies, locals }) {
-		const user = locals.user as { type?: string } | null;
-		const userType = user?.type;
-		if (!canManageImportUrutan(userType)) {
-			return fail(403, { fail: 'Anda tidak memiliki akses untuk mengimpor mata pelajaran.' });
-		}
+		const user = locals.user as { type?: string; pegawaiId?: number | null } | null;
 
 		const kelasIdCookie = cookies.get(cookieNames.ACTIVE_KELAS_ID) || null;
 		const kelasId = kelasIdCookie ? Number(kelasIdCookie) : null;
 		if (!kelasId || !Number.isFinite(kelasId)) {
 			return fail(400, { fail: 'Pilih kelas aktif terlebih dahulu.' });
+		}
+
+		if (!(await canManageImportUrutan(user, kelasId))) {
+			return fail(403, { fail: 'Anda tidak memiliki akses untuk mengimpor mata pelajaran.' });
 		}
 
 		const sekolahId = locals.sekolah?.id;
@@ -709,16 +718,16 @@ export const actions = {
 	},
 
 	async simpan_urutan({ request, cookies, locals }) {
-		const user = locals.user as { type?: string } | null;
-		const userType = user?.type;
-		if (!canManageImportUrutan(userType)) {
-			return fail(403, { fail: 'Anda tidak memiliki akses untuk mengubah urutan.' });
-		}
+		const user = locals.user as { type?: string; pegawaiId?: number | null } | null;
 
 		const kelasIdCookie = cookies.get(cookieNames.ACTIVE_KELAS_ID) || null;
 		const kelasId = kelasIdCookie ? Number(kelasIdCookie) : null;
 		if (!kelasId || !Number.isFinite(kelasId)) {
 			return fail(400, { fail: 'Pilih kelas aktif terlebih dahulu.' });
+		}
+
+		if (!(await canManageImportUrutan(user, kelasId))) {
+			return fail(403, { fail: 'Anda tidak memiliki akses untuk mengubah urutan.' });
 		}
 
 		const sekolahId = locals.sekolah?.id;
@@ -771,16 +780,16 @@ export const actions = {
 	},
 
 	async tambah_pks({ cookies, locals }) {
-		const user = locals.user as { type?: string } | null;
-		const userType = user?.type;
-		if (!canManageImportUrutan(userType)) {
-			return fail(403, { fail: 'Anda tidak memiliki akses untuk menambahkan PKS.' });
-		}
+		const user = locals.user as { type?: string; pegawaiId?: number | null } | null;
 
 		const kelasIdCookie = cookies.get(cookieNames.ACTIVE_KELAS_ID) || null;
 		const kelasId = kelasIdCookie ? Number(kelasIdCookie) : null;
 		if (!kelasId || !Number.isFinite(kelasId)) {
 			return fail(400, { fail: 'Pilih kelas aktif terlebih dahulu.' });
+		}
+
+		if (!(await canManageImportUrutan(user, kelasId))) {
+			return fail(403, { fail: 'Anda tidak memiliki akses untuk menambahkan PKS.' });
 		}
 
 		const sekolahId = locals.sekolah?.id;

@@ -476,6 +476,7 @@
 					class="btn btn-soft btn-sm btn-error shadow-none"
 					onclick={() => removeSemesterRange(i)}
 					disabled={submitting}
+					aria-label="Hapus rentang tanggal"
 				>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
