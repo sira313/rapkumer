@@ -14,7 +14,7 @@ Password dan username dapat diganti, dan khusus admin harap simpan password ters
 Contoh menggunakan gratisan gemini ai.
 
 Buka halaman <a class="text-primary" href="https://aistudio.google.com/app/api-keys" rel="nofollow" target="_blank">Google AI Studio</a> lalu klik <kbd class="kbd">create API Key</kbd> dan isi formulir yang ada. Klik tombol dengan icon copy untuk mengambil API Key, lalu paste ke pengaturan API di halaman ini. Untuk APP Base URL isi dengan
-<pre class="bg-base-300 rounded-sm p-2 my-2"><code>https://generativelanguage.googleapis.com/</code></pre>
+<pre class="bg-base-300 rounded-sm"><code>https://generativelanguage.googleapis.com/</code></pre>
 
 Untuk model isi dengan
-<pre class="bg-base-300 rounded-sm p-2 my-2"><code>gemini-3.6-flash</code></pre>
+<pre class="bg-base-300 rounded-sm"><code>gemini-3.6-flash</code></pre>

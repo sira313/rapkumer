@@ -49,7 +49,7 @@
 
 					<div class="flex shrink-0 flex-col items-stretch gap-2 md:items-end">
 						<div class="flex gap-2">
-							<button class="btn btn-soft shadow-none" on:click={goBack} aria-label="Kembali"
+							<button class="btn btn-soft shadow-none" onclick={goBack} aria-label="Kembali"
 								>Kembali</button
 							>
 						</div>

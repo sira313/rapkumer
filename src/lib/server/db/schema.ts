@@ -7,7 +7,8 @@ import {
 	sqliteTable,
 	text,
 	unique,
-	uniqueIndex
+	uniqueIndex,
+	type AnySQLiteColumn
 } from 'drizzle-orm/sqlite-core';
 
 const audit = {
@@ -35,7 +36,7 @@ export const tableAuthUser = sqliteTable(
 			.notNull()
 			.default('admin'),
 		// optional: directly associate a user to a sekolah so login can pick it reliably
-		sekolahId: int().references(() => tableSekolah.id),
+		sekolahId: int().references((): AnySQLiteColumn => tableSekolah.id),
 		// referensi opsional ke pegawai (nama wali kelas disimpan di tablePegawai)
 		pegawaiId: int().references(() => tablePegawai.id),
 		// untuk wali_kelas kita bisa menyimpan kelas_id yang diijinkan
@@ -127,7 +128,7 @@ export const tableSekolah = sqliteTable('sekolah', {
 	website: text(),
 	email: text().notNull(),
 	kepalaSekolahId: int()
-		.references(() => tablePegawai.id)
+		.references((): AnySQLiteColumn => tablePegawai.id)
 		.notNull(),
 	lokasiTandaTangan: text(),
 	// Referensi Dapodik

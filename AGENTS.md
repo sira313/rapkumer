@@ -129,6 +129,7 @@ The 4 logic blocks below are **mutually exclusive** — gated by `isWaliKelasMas
 ## Quality
 
 - Run `pnpm lint` then `pnpm check` before committing.
+- `state_referenced_locally` fails `pnpm check` via `svelte-check --fail-on-warnings` (default in `scripts/svelte-check-wrapper.mjs`). Intentional initial-value captures from `data`/props must opt out with a `// svelte-ignore state_referenced_locally` comment directly above the `$state(...)` line — only when the one-time snapshot is deliberate.
 - No test framework wired (vitest/playwright absent).
 
 ## Security (Strix)

@@ -1,37 +1,27 @@
 <script lang="ts">
+	/* eslint-disable svelte/no-navigation-without-resolve -- edit/add links to dedicated form pages are intentional */
+	import { goto } from '$app/navigation';
 	import { showModal, updateModal } from '$lib/components/global-modal.svelte';
 	import { toast } from '$lib/components/toast.svelte';
 	import AlertWarning from '$lib/components/alert-warning.svelte';
 	import UsersHeader from '$lib/components/pengguna/UsersHeader.svelte';
-	import AddUserModal from '$lib/components/pengguna/AddUserModal.svelte';
 	import ExistingUserRow from '$lib/components/pengguna/ExistingUserRow.svelte';
 
 	let { data } = $props();
 
-	// derive user item type from incoming load data to keep typings simple
-	type UserItem = typeof data.users extends Array<infer U> ? U : unknown;
-
 	// local reactive users copy so UI updates instantly without full reload
-	// extend with local-only fields used for inline add
-	interface LocalUser extends UserItem {
+	// base shape mirrors load's users (never hardcode) + local-only fields
+	type LocalUser = (typeof data.users)[number] & {
+		roles: string[];
 		isNew?: boolean;
-		nama?: string;
-		mataPelajaranId?: number | null;
 		mataPelajaranIds?: number[];
 		kelasIds?: number[];
-	}
+		waliKelasIds?: number[];
+	};
 	// svelte-ignore state_referenced_locally
 	let users = $state<LocalUser[]>(data.users ?? []);
 
-	// mata pelajaran for inline-add select
-	// svelte-ignore state_referenced_locally
-	let mataPelajaran = $state<{ id: number; nama: string }[]>(data.mataPelajaran ?? []);
-
 	// (use global `ModalAction` from `src/lib/components/types.d.ts`)
-
-	// next temporary id for new rows (negative numbers)
-	let showAddModal = $state<boolean>(false);
-	let editingUser = $state<LocalUser | null>(null);
 
 	// selected ids for bulk actions
 	let selectedIds = $state<number[]>([]);
@@ -107,14 +97,13 @@
 						});
 						close();
 					} else {
-						let msg = 'Gagal menghapus';
+						let msg: string;
 						let parsedBody: unknown = null;
 						try {
 							parsedBody = await res.json().catch(() => null);
 							if (parsedBody && typeof parsedBody === 'object') {
 								const pb = parsedBody as Record<string, unknown>;
 								if (typeof pb.message === 'string' && pb.message.trim()) msg = pb.message;
-								else if (pb.type === 'warning' && typeof pb.message === 'string') msg = pb.message;
 								else if (
 									pb.error &&
 									typeof (pb.error as Record<string, unknown>).message === 'string'
@@ -129,6 +118,7 @@
 							const text = await res.text().catch(() => 'Gagal');
 							msg = text;
 						}
+						if (!msg.trim()) msg = 'Gagal menghapus';
 						try {
 							if (
 								parsedBody &&
@@ -180,12 +170,11 @@
 
 	// handle add/new row
 	function handleAdd() {
-		showAddModal = true;
+		goto('/pengguna/form');
 	}
 
 	function handleEdit(user: LocalUser) {
-		editingUser = user;
-		showAddModal = true;
+		goto(`/pengguna/form/${user.id}`);
 	}
 </script>
 
@@ -242,104 +231,5 @@
 				</tbody>
 			</table>
 		</div>
-
-		<AddUserModal
-			bind:open={showAddModal}
-			editUser={editingUser}
-			{mataPelajaran}
-			sekolahList={data.sekolahList ?? []}
-			kelasList={data.kelasList ?? []}
-			on:saved={(e: CustomEvent) => {
-				const body = e.detail?.body ?? {};
-				const serverUser = body.user ?? null;
-				const isEdit = editingUser !== null;
-
-				if (isEdit && editingUser) {
-					// Update existing user in list
-					const idx = users.findIndex((x) => x.id === editingUser!.id);
-					if (idx !== -1) {
-						const newType = serverUser?.type ?? users[idx].type;
-						const typeLabels: Record<string, string> = {
-							admin: 'Admin',
-							kepala_sekolah: 'Kepala Sekolah',
-							wali_kelas: 'Wali Kelas',
-							wali_asuh: 'Wali Asuh',
-							user: 'Guru'
-						};
-						users[idx] = {
-							...users[idx],
-							username: body.user?.username ?? body.username ?? users[idx].username,
-							pegawaiName: body.displayName ?? users[idx].pegawaiName,
-							type: newType,
-							roles: [typeLabels[newType] ?? newType],
-							mataPelajaranIds: body.mataPelajaranIds ?? users[idx].mataPelajaranIds,
-							kelasIds: body.kelasIds ?? users[idx].kelasIds,
-							passwordUpdatedAt: serverUser?.passwordUpdatedAt ?? users[idx].passwordUpdatedAt
-						};
-					}
-					editingUser = null;
-				} else {
-					// Add new user
-					const newType: string = serverUser?.type ?? 'user';
-					const typeLabels: Record<string, string> = {
-						admin: 'Admin',
-						kepala_sekolah: 'Kepala Sekolah',
-						wali_kelas: 'Wali Kelas',
-						wali_asuh: 'Wali Asuh',
-						user: 'Guru'
-					};
-					const newUser = {
-						id: serverUser?.id ?? Date.now(),
-						username: serverUser?.username ?? body.username ?? 'user',
-						createdAt: serverUser?.createdAt ?? new Date().toISOString(),
-						type: newType,
-						roles: [typeLabels[newType] ?? newType],
-						pegawaiName: body.displayName || serverUser?.username || (body.username ?? 'user'),
-						pegawaiId: null,
-						kelasId: null,
-						kelasName: null,
-						passwordUpdatedAt: serverUser?.passwordUpdatedAt ?? new Date().toISOString(),
-						mataPelajaranIds: body.mataPelajaranIds ?? [],
-						kelasIds: body.kelasIds ?? [],
-						// determine isNew based on whether server actually returned a real id
-						isNew: body.__server_user_returned ? false : true
-					} as LocalUser;
-					users = [newUser, ...users];
-
-					// if server did not return an id (or returned a local fallback), start polling to resolve the created user by username
-					if (!body.__server_user_returned) {
-						const usernameToFind = newUser.username;
-						let attempts = 0;
-						const maxAttempts = 10;
-						const interval = 500; // ms
-						const poll = setInterval(async () => {
-							attempts += 1;
-							try {
-								const resp = await fetch(
-									`/api/pengguna/find?username=${encodeURIComponent(usernameToFind)}`
-								);
-								if (!resp.ok) return;
-								const data = await resp.json().catch(() => null);
-								if (data && data.found && data.user && data.user.id) {
-									// replace temporary id with real id and clear isNew
-									users = users.map((u) =>
-										u.username === usernameToFind && u.isNew
-											? { ...u, id: data.user.id, isNew: false }
-											: u
-									);
-									clearInterval(poll);
-								}
-							} catch {
-								// ignore transient errors
-							}
-							if (attempts >= maxAttempts) clearInterval(poll);
-						}, interval);
-					}
-				}
-			}}
-			on:cancel={() => {
-				editingUser = null;
-			}}
-		/>
 	</div>
 </section>

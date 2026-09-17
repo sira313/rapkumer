@@ -194,6 +194,7 @@
 		showModal({
 			title: result.meta.title,
 			body: result.ContentPage,
+			typography: true,
 			dismissible: true
 		});
 	}

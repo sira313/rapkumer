@@ -97,7 +97,11 @@
 				<h3 class="shrink-0 text-lg font-bold">{modalProps.title}</h3>
 			{/if}
 
-			<div class="min-h-0 w-full max-w-none flex-1 overflow-y-auto px-1 py-4">
+			<div
+				class="min-h-0 w-full max-w-none flex-1 overflow-y-auto px-1 py-4 {modalProps.typography
+					? 'prose'
+					: ''}"
+			>
 				{#if typeof modalProps.body === 'function'}
 					<modalProps.body {...modalProps.bodyProps ?? {}} />
 				{:else if typeof modalProps.body === 'string'}
@@ -225,6 +229,14 @@
 {/if}
 
 <style>
+	:global(.modal .prose p) {
+		margin-top: 0.6em;
+		margin-bottom: 0.6em;
+	}
+	:global(.modal .prose pre) {
+		margin-top: 0.5em;
+		margin-bottom: 0.5em;
+	}
 	:global(dialog.modal-dragging) {
 		background: transparent !important;
 	}
