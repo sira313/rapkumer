@@ -24,7 +24,7 @@
 				</p>
 				<div class="mt-6 flex flex-wrap justify-center gap-2">
 					<a
-						class="btn btn-primary btn-sm"
+						class="btn btn-primary btn-sm shadow-none"
 						href="https://t.me/+zj3h_zjBAC02YjZl"
 						target="_blank"
 						rel="noreferrer"
