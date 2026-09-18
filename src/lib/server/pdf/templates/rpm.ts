@@ -1,4 +1,5 @@
 import { sharedStyles } from './shared';
+import type { SintaksBlock } from '$lib/server/ai-rpm';
 
 export interface RpmPrintData {
 	sekolah: {
@@ -7,20 +8,21 @@ export interface RpmPrintData {
 	mapelNama: string;
 	kelasLabel: string;
 	fase: string | null;
-	karakteristik: string;
 	lingkupMateri: string;
 	profilLulusan: string[];
 	capaianPembelajaran: string;
+	pengetahuanAwal: string;
+	minat: string;
+	latarBelakang: string;
+	kebutuhanBelajar: string;
 	lintasDisiplinIlmu: string;
 	tujuanPembelajaran: string[];
-	model: string;
+	praktikPedagogis: string;
 	kemitraanPembelajaran: string;
 	lingkunganPembelajaran: string;
 	pemanfaatanDigital: string;
 	kegiatanAwal: string;
-	memahami: string;
-	mengaplikasi: string;
-	merefleksi: string;
+	inti: SintaksBlock[];
 	penutup: string;
 	asesmen: string[];
 	penyusun: string;
@@ -39,7 +41,6 @@ function esc(value: string): string {
 	return escNoBr(value ?? '').replace(/\n/g, '<br>');
 }
 
-/** Escape single-line value; used for short fields (labels, headers). */
 function cssContent(value: string): string {
 	return (value ?? '').replace(/["\\\n\r]/g, '').trim();
 }
@@ -50,12 +51,6 @@ function val(value: string): string {
 	return esc(v);
 }
 
-/**
- * Render text as HTML with automatic numbered-list detection.
- * - Text that consists of "N. " items becomes a real <ol> — the browser renders
- *   numbers itself and hangs wrapped continuation lines neatly under the text.
- * - Any other text is split into per-paragraph <div> blocks.
- */
 function contentHtml(value: string): string {
 	const v = (value ?? '').trim();
 	if (!v) return '&nbsp;';
@@ -79,15 +74,10 @@ function contentHtml(value: string): string {
 	return `<ol class="rp-list">${items.map((it) => `<li>${esc(it)}</li>`).join('')}</ol>`;
 }
 
-/** Force "Langkah:" onto its own line (content after). */
 function langkahify(value: string): string {
 	return (value ?? '').trim().replace(/\s*Langkah:\s*/i, '\nLangkah:\n');
 }
 
-/**
- * Assessment text: ensure each labelled block ("Teknik & Instrumen:",
- * "Aspek yang Dinilai:", "Prinsip Assessment:") starts on its own line.
- */
 function asesmenHtml(value: string): string {
 	const v = (value ?? '').trim();
 	if (!v) return '&nbsp;';
@@ -98,7 +88,6 @@ function asesmenHtml(value: string): string {
 	return contentHtml(formatted);
 }
 
-/** Pecah teks langkah menjadi item-item (raw, tanpa nomor awal). */
 function langkahItems(value: string): string[] {
 	const v = (value ?? '').trim();
 	if (!v) return [];
@@ -115,13 +104,11 @@ function langkahItems(value: string): string[] {
 		.filter(Boolean);
 }
 
-/** Empty-safe content block (escaped text or auto <ol>). */
 function contentBlock(value: string): string {
 	const v = (value ?? '').trim();
 	return v ? contentHtml(v) : '&nbsp;';
 }
 
-/** Daftar bernomor jadi <ol> huruf (a., b., c.) — pakai utk lintas disiplin. */
 function letterList(value: string): string {
 	const items = langkahItems(value);
 	return items.length
@@ -129,7 +116,6 @@ function letterList(value: string): string {
 		: '&nbsp;';
 }
 
-/** Daftar Tujuan Pembelajaran (rumusan ABCD) sebagai <ol> huruf. */
 function tpList(items: string[]): string {
 	const arr = items.map((i) => (i ?? '').trim()).filter(Boolean);
 	return arr.length
@@ -137,7 +123,6 @@ function tpList(items: string[]): string {
 		: '&nbsp;';
 }
 
-/** Gabungkan item jadi kalimat: "A, B, dan C" (untuk Dimensi Profil Lulusan). */
 function commaItems(items: string[]): string {
 	const arr = items.map((i) => (i ?? '').trim()).filter(Boolean);
 	if (!arr.length) return '&nbsp;';
@@ -146,55 +131,88 @@ function commaItems(items: string[]): string {
 	return esc(`${arr.slice(0, -1).join(', ')}, dan ${arr[arr.length - 1]}`);
 }
 
-// ── Heading-based layout (h1/h2/h3/h4, penomoran A → 1 → a) ──
-
-/** Seksi top-level: huruf (A, B, C, …) sebagai h2. */
 function sectionHead(letter: string, title: string): string {
 	return `<h2 class="sec-title">${esc(letter)}. ${esc(title)}</h2>`;
 }
 
-/** Pembungkus field-field seksi: <ol> angka (1., 2., …) via CSS. */
 function fldWrap(nodes: string): string {
 	return `<ol class="fld">${nodes}</ol>`;
 }
 
-/** Field biasa (isi berupa blok teks). */
 function fieldItem(label: string, body: string): string {
 	return `<li><h3 class="fld-name">${esc(label)}</h3>${body}</li>`;
 }
 
-/** Field berisi langkah: isi langkah pakai <ol> huruf (a., b., …) via CSS. */
 function stepsItem(label: string, items: string[]): string {
 	const steps = items.map((it) => `<li>${esc(it)}</li>`).join('');
 	return `<li><h3 class="fld-name">${esc(label)}</h3><ol class="stp">${steps}</ol></li>`;
+}
+
+/** Sub-field (a., b., c.) untuk bagian yang punya anak — mis. "Murid". */
+function subWrap(nodes: string): string {
+	return `<ol class="sbf">${nodes}</ol>`;
+}
+
+function subItem(label: string, body: string): string {
+	return `<li><h4 class="sub-name">${esc(label)}</h4>${body}</li>`;
+}
+
+/** Sintaks model pada bagian Inti — sub-bagian (a., b., c.) dengan langkah. */
+function sintaksItem(idx: number, block: SintaksBlock): string {
+	const tahap =
+		block.tahap && block.tahap.trim()
+			? block.tahap.trim()
+			: `Sintaks model pembelajaran ${idx + 1}`;
+	return subItem(tahap, contentBlock(block.langkah));
+}
+
+/**
+ * Penutup: baris pembuka berlabel "Prinsip Pembelajaran:" (tanpa nomor) menjadi
+ * paragraf biasa, sisanya (langkah bernomor) jadi daftar a., b., c.
+ */
+function penutupHtml(value: string): string {
+	const items = langkahItems(value);
+	if (!items.length) return '&nbsp;';
+	if (/^Prinsip Pembelajaran\s*:/i.test(items[0])) {
+		const head = items[0];
+		const rest = items.slice(1);
+		return `<p class="prinsip">${escNoBr(head)}</p>${
+			rest.length ? `<ol class="stp">${rest.map((it) => `<li>${esc(it)}</li>`).join('')}</ol>` : ''
+		}`;
+	}
+	return `<ol class="stp">${items.map((it) => `<li>${esc(it)}</li>`).join('')}</ol>`;
 }
 
 export function renderRpmHTML(data: RpmPrintData): string {
 	const d = data;
 	const faseText = d.fase ? ` Fase ${d.fase.replace(/^Fase\s+/i, '').trim()}` : '';
 
-	// ── Daftar asesmen (jumlah = banyak TP) ──
 	const asesmenItems = (d.asesmen ?? []).map((a) => a.trim()).filter(Boolean);
+	const intiBlocks = (d.inti ?? []).filter((b) => (b.langkah ?? '').trim());
 
-	// ── Identifikasi (A.) ──
 	const ident = `${sectionHead('A', 'Identifikasi')}${fldWrap(
 		fieldItem(
-			'Peserta Didik',
-			`<p>Siswa ${val(d.kelasLabel)}${faseText} dengan karakteristik ${val(d.karakteristik)}</p>`
+			'Murid',
+			`<p>Siswa ${val(d.kelasLabel)}${faseText}</p>` +
+				subWrap(
+					subItem('Pengetahuan Awal', contentBlock(d.pengetahuanAwal)) +
+						subItem('Minat', contentBlock(d.minat)) +
+						subItem('Latar Belakang', contentBlock(d.latarBelakang)) +
+						subItem('Kebutuhan Belajar', contentBlock(d.kebutuhanBelajar))
+				)
 		) +
 			fieldItem('Materi Pelajaran', contentBlock(d.lingkupMateri)) +
 			fieldItem('Dimensi Profil Lulusan', commaItems(d.profilLulusan))
 	)}`;
 
-	// ── Desain Pembelajaran (B.) ──
 	const desainFields: Array<[string, string]> = [
 		['Capaian Pembelajaran', contentBlock(d.capaianPembelajaran)],
 		['Lintas Disiplin Ilmu', letterList(d.lintasDisiplinIlmu)],
 		['Tujuan Pembelajaran', tpList(d.tujuanPembelajaran)],
 		['Topik Pembelajaran', contentBlock(d.lingkupMateri)],
-		['Praktis Pedagogis (Model/Strategi)', contentBlock(langkahify(d.model))]
+		['Praktik Pedagogis (Model/Strategi/Metode)', contentBlock(langkahify(d.praktikPedagogis))]
 	];
-	if (d.kemitraanPembelajaran.trim()) {
+	if ((d.kemitraanPembelajaran ?? '').trim()) {
 		desainFields.push(['Kemitraan Pembelajaran', contentBlock(d.kemitraanPembelajaran)]);
 	}
 	desainFields.push(
@@ -205,16 +223,14 @@ export function renderRpmHTML(data: RpmPrintData): string {
 		desainFields.map(([label, body]) => fieldItem(label, body)).join('')
 	)}`;
 
-	// ── Pengalaman Belajar (C.) — langkah a., b., c. ──
 	const pengalaman = `${sectionHead('C', 'Pengalaman Belajar')}${fldWrap(
-		stepsItem('Kegiatan Awal', langkahItems(d.kegiatanAwal)) +
-			stepsItem('Memahami (Berkesadaran, Bermakna)', langkahItems(d.memahami)) +
-			stepsItem('Mengaplikasi (Bermakna, Menyenangkan)', langkahItems(d.mengaplikasi)) +
-			stepsItem('Merefleksi (Berkesadaran, Bermakna)', langkahItems(d.merefleksi)) +
-			stepsItem('Penutup Bermakna, Menggembirakan', langkahItems(d.penutup))
+		stepsItem('Awal', langkahItems(d.kegiatanAwal)) +
+			`<li><h3 class="fld-name">Inti</h3>${
+				intiBlocks.length ? subWrap(intiBlocks.map((b, i) => sintaksItem(i, b)).join('')) : '&nbsp;'
+			}</li>` +
+			fieldItem('Penutup', penutupHtml(d.penutup))
 	)}`;
 
-	// ── Asesmen Pembelajaran (D.) — satu field per assessment ──
 	const asesmen = `${sectionHead('D', 'Asesmen Pembelajaran')}${fldWrap(
 		asesmenItems
 			.map((a, i) => fieldItem(`Assessment for Learning (${i + 1})`, asesmenHtml(a)))
@@ -292,7 +308,6 @@ body {
 	text-align: center;
 }
 
-/* ── Heading-based body ── */
 h2.sec-title {
 	font-size: 12pt;
 	font-weight: bold;
@@ -328,9 +343,30 @@ ol.stp li {
 	text-align: justify;
 }
 
+ol.sbf {
+	margin: 2pt 0 0 1.2em;
+	padding: 0;
+	list-style: lower-alpha;
+}
+ol.sbf > li {
+	margin: 3pt 0;
+	page-break-inside: avoid;
+	break-inside: avoid;
+}
+.sub-name {
+	font-size: 11pt;
+	font-weight: bold;
+	margin: 0 0 1pt;
+}
+
 p {
 	margin: 2pt 0;
 	text-align: justify;
+}
+
+p.prinsip {
+	font-style: italic;
+	margin-bottom: 3pt;
 }
 
 ol.rp-list {

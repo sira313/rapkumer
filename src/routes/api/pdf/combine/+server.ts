@@ -7,6 +7,7 @@ import { renderSimplePDF } from '$lib/server/pdf/pagedpdf';
 import { renderRpmHTML } from '$lib/server/pdf/templates/rpm';
 import { renderLampiranHTML } from '$lib/server/pdf/templates/lampiran';
 import { normalizeAsesmen } from '$lib/server/ai-lampiran';
+import { parseInti, toText, type SintaksBlock } from '$lib/server/ai-rpm';
 
 const ALLOWED_USER_TYPES = ['admin', 'kepala_sekolah', 'user', 'wali_kelas'];
 
@@ -65,6 +66,25 @@ export const POST = async ({ request, locals }) => {
 	const sekolahNama = sekolah?.nama ?? '';
 	const penyusun = str(rpm.penyusun);
 
+	const intiRaw = rpm.inti;
+	let inti: SintaksBlock[] = [];
+	if (typeof intiRaw === 'string' && intiRaw.trim()) {
+		inti = parseInti(intiRaw);
+	} else if (Array.isArray(intiRaw)) {
+		inti = (intiRaw as unknown[])
+			.map((item) => {
+				if (item && typeof item === 'object') {
+					const o = item as Record<string, unknown>;
+					return {
+						tahap: typeof o.tahap === 'string' ? o.tahap.trim() : '',
+						langkah: toText(o.langkah)
+					};
+				}
+				return { tahap: '', langkah: String(item ?? '').trim() };
+			})
+			.filter((b) => b.langkah);
+	}
+
 	try {
 		const [rpmPdf, lampiranPdf] = await Promise.all([
 			renderSimplePDF(
@@ -73,20 +93,21 @@ export const POST = async ({ request, locals }) => {
 					mapelNama: str(rpm.mapelNama),
 					kelasLabel: str(rpm.kelasLabel),
 					fase: typeof rpm.fase === 'string' && rpm.fase.trim() ? rpm.fase.trim() : null,
-					karakteristik: str(rpm.karakteristik),
 					lingkupMateri: str(rpm.lingkupMateri),
 					profilLulusan: strArray(rpm.profilLulusan),
 					capaianPembelajaran: str(rpm.capaianPembelajaran),
+					pengetahuanAwal: str(rpm.pengetahuanAwal),
+					minat: str(rpm.minat),
+					latarBelakang: str(rpm.latarBelakang),
+					kebutuhanBelajar: str(rpm.kebutuhanBelajar),
 					lintasDisiplinIlmu: str(rpm.lintasDisiplinIlmu),
 					tujuanPembelajaran: strArray(rpm.tujuanPembelajaran),
-					model: str(rpm.model),
+					praktikPedagogis: str(rpm.praktikPedagogis),
 					kemitraanPembelajaran: str(rpm.kemitraanPembelajaran),
 					lingkunganPembelajaran: str(rpm.lingkunganPembelajaran),
 					pemanfaatanDigital: str(rpm.pemanfaatanDigital),
 					kegiatanAwal: str(rpm.kegiatanAwal),
-					memahami: str(rpm.memahami),
-					mengaplikasi: str(rpm.mengaplikasi),
-					merefleksi: str(rpm.merefleksi),
+					inti,
 					penutup: str(rpm.penutup),
 					asesmen: strArray(rpm.asesmen),
 					penyusun

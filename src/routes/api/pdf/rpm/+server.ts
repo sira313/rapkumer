@@ -4,6 +4,7 @@ import { tableSekolah } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import { renderSimplePDF } from '$lib/server/pdf/pagedpdf';
 import { renderRpmHTML, type RpmPrintData } from '$lib/server/pdf/templates/rpm';
+import { parseInti, toText } from '$lib/server/ai-rpm';
 
 const ALLOWED_USER_TYPES = ['admin', 'kepala_sekolah', 'user', 'wali_kelas'];
 
@@ -12,20 +13,21 @@ type RpmBody = {
 	penyusun?: unknown;
 	kelasLabel?: unknown;
 	fase?: unknown;
-	karakteristik?: unknown;
 	lingkupMateri?: unknown;
 	profilLulusan?: unknown;
 	capaianPembelajaran?: unknown;
+	pengetahuanAwal?: unknown;
+	minat?: unknown;
+	latarBelakang?: unknown;
+	kebutuhanBelajar?: unknown;
 	lintasDisiplinIlmu?: unknown;
 	tujuanPembelajaran?: unknown;
-	model?: unknown;
+	praktikPedagogis?: unknown;
 	kemitraanPembelajaran?: unknown;
 	lingkunganPembelajaran?: unknown;
 	pemanfaatanDigital?: unknown;
 	kegiatanAwal?: unknown;
-	memahami?: unknown;
-	mengaplikasi?: unknown;
-	merefleksi?: unknown;
+	inti?: unknown;
 	penutup?: unknown;
 	asesmen?: unknown;
 };
@@ -59,26 +61,46 @@ export const POST = async ({ request, locals }) => {
 		where: eq(tableSekolah.id, sekolahId)
 	});
 
+	const intiRaw = payload.inti;
+	let inti: RpmPrintData['inti'] = [];
+	if (typeof intiRaw === 'string' && intiRaw.trim()) {
+		inti = parseInti(intiRaw);
+	} else if (Array.isArray(intiRaw)) {
+		inti = (intiRaw as unknown[])
+			.map((item) => {
+				if (item && typeof item === 'object') {
+					const o = item as Record<string, unknown>;
+return {
+						tahap: typeof o.tahap === 'string' ? o.tahap.trim() : '',
+						langkah: toText(o.langkah)
+					};
+				}
+				return { tahap: '', langkah: String(item ?? '').trim() };
+			})
+			.filter((b) => b.langkah);
+	}
+
 	const printData: RpmPrintData = {
 		sekolah: { nama: sekolah?.nama ?? '' },
 		mapelNama: str(payload.mapelNama),
 		penyusun: str(payload.penyusun),
 		kelasLabel: str(payload.kelasLabel),
 		fase: str(payload.fase) || null,
-		karakteristik: str(payload.karakteristik),
 		lingkupMateri: str(payload.lingkupMateri),
 		profilLulusan: strArray(payload.profilLulusan),
 		capaianPembelajaran: str(payload.capaianPembelajaran),
+		pengetahuanAwal: str(payload.pengetahuanAwal),
+		minat: str(payload.minat),
+		latarBelakang: str(payload.latarBelakang),
+		kebutuhanBelajar: str(payload.kebutuhanBelajar),
 		lintasDisiplinIlmu: str(payload.lintasDisiplinIlmu),
 		tujuanPembelajaran: strArray(payload.tujuanPembelajaran),
-		model: str(payload.model),
+		praktikPedagogis: str(payload.praktikPedagogis),
 		kemitraanPembelajaran: str(payload.kemitraanPembelajaran),
 		lingkunganPembelajaran: str(payload.lingkunganPembelajaran),
 		pemanfaatanDigital: str(payload.pemanfaatanDigital),
 		kegiatanAwal: str(payload.kegiatanAwal),
-		memahami: str(payload.memahami),
-		mengaplikasi: str(payload.mengaplikasi),
-		merefleksi: str(payload.merefleksi),
+		inti,
 		penutup: str(payload.penutup),
 		asesmen: strArray(payload.asesmen)
 	};

@@ -4,7 +4,7 @@ import { ADMIN_TYPES, getAiSettings, withAi429Retry } from '$lib/server/ai';
 import { generateRpm } from '$lib/server/ai-rpm';
 import { enqueueAi } from '$lib/server/ai-queue';
 import { json } from '@sveltejs/kit';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray } from 'drizzle-orm';
 
 const ALLOWED_USER_TYPES = ['admin', 'kepala_sekolah', 'user', 'wali_kelas'];
 
@@ -33,7 +33,6 @@ export const POST = async ({ request, locals }) => {
 		? body.tujuanPembelajaranIds.map(Number).filter(Number.isFinite)
 		: [];
 	const inputCustom = typeof body.inputCustom === 'string' ? body.inputCustom.trim() : '';
-	const karakteristik = typeof body.karakteristik === 'string' ? body.karakteristik.trim() : '';
 	const profilLulusan = Array.isArray(body.profilLulusan)
 		? body.profilLulusan.map(String).filter(Boolean)
 		: [];
@@ -68,7 +67,7 @@ export const POST = async ({ request, locals }) => {
 		return json({ message: 'Mata pelajaran tidak ditemukan.' }, { status: 404 });
 	}
 
-	const kelas = mapel.kelas as { nama: string; fase: string | null; sekolahId: number };
+	const kelas = mapel.kelas as { nama: string; fase: string | null; sekolahId: number; id: number };
 	const kelasLabel = `Kelas ${kelas.nama}`;
 
 	if (locals.sekolah?.id && kelas.sekolahId !== locals.sekolah.id) {
@@ -89,6 +88,14 @@ export const POST = async ({ request, locals }) => {
 					.then((rows) => rows.map((r) => r.deskripsi))
 			: [];
 
+	const mapelList = (
+		await db.query.tableMataPelajaran.findMany({
+			columns: { nama: true },
+			where: eq(tableMataPelajaran.kelasId, kelas.id),
+			orderBy: [asc(tableMataPelajaran.nama)]
+		})
+	).map((m) => m.nama);
+
 	try {
 		const generated = await enqueueAi(settings.apiKey, () =>
 			withAi429Retry(() =>
@@ -97,13 +104,13 @@ export const POST = async ({ request, locals }) => {
 					model: settings.model,
 					baseUrl: settings.baseUrl,
 					mapelNama: mapel.nama,
+					mapelList,
 					kelasLabel,
 					fase: kelas.fase,
 					capaianPembelajaran,
 					lingkupMateri,
 					tujuanPembelajaran,
 					inputCustom,
-					karakteristik: karakteristik || undefined,
 					profilLulusan
 				})
 			)

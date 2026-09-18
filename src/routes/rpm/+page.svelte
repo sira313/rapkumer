@@ -9,20 +9,23 @@
 		type DimensiProfilLulusanKey
 	} from '$lib/statics';
 
+	type SintaksData = { tahap: string; langkah: string };
+
 	type Generated = {
-		karakteristik: string;
-		model: string;
+		pengetahuanAwal: string;
+		minat: string;
+		latarBelakang: string;
+		kebutuhanBelajar: string;
 		lintasDisiplinIlmu: string;
+		tujuanPembelajaran: string[];
+		praktikPedagogis: string;
 		kemitraanPembelajaran: string;
 		lingkunganPembelajaran: string;
 		pemanfaatanDigital: string;
 		kegiatanAwal: string;
-		memahami: string;
-		mengaplikasi: string;
-		merefleksi: string;
+		inti: SintaksData[];
 		penutup: string;
 		asesmen: string[];
-		tujuanPembelajaran: string[];
 	};
 
 	type StringFieldKey = {
@@ -42,7 +45,6 @@
 	let lingkupMateri = $state('');
 	let tpIds = $state<number[]>([]);
 	let inputCustom = $state('');
-	let karakteristikInput = $state('');
 	let profilLulusan = $state<DimensiProfilLulusanKey[]>([]);
 
 	const profilLulusanLabels = $derived(
@@ -52,7 +54,7 @@
 		if (!kelasAktif) return '';
 		const faseRaw = kelasAktif.fase ?? '';
 		const fase = faseRaw ? ` Fase ${faseRaw.replace(/^Fase\s+/i, '').trim()}` : '';
-		return `Siswa ${kelasAktif.nama}${fase} dengan karakteristik`;
+		return `${kelasAktif.nama}${fase}`;
 	});
 
 	let generated = $state<Generated | null>(null);
@@ -85,8 +87,6 @@
 			: false
 	);
 
-	// Pemilih "agama" saat wali_kelas/admin memilih PABP (Pendidikan Agama dan
-	// Budi Pekerti) — mapel efektif memakai varian agama yang dipilih.
 	let agamaKey = $state('');
 	const showAgamaSelect = $derived(
 		['admin', 'kepala_sekolah', 'wali_kelas'].includes(
@@ -196,7 +196,6 @@
 					lingkupMateri: lingkupMateri.trim(),
 					tujuanPembelajaranIds: tpIds,
 					inputCustom: inputCustom.trim(),
-					karakteristik: karakteristikInput.trim(),
 					profilLulusan: profilLulusanLabels
 				})
 			});
@@ -221,6 +220,38 @@
 		generated = { ...generated, [key]: value };
 	}
 
+	function updateIntiSintaks(idx: number, field: 'tahap' | 'langkah', value: string) {
+		if (!generated) return;
+		const next = [...generated.inti];
+		next[idx] = { ...next[idx], [field]: value };
+		updateGenerated('inti', next);
+	}
+
+	function addIntiSintaks() {
+		if (!generated) return;
+		updateGenerated('inti', [...generated.inti, { tahap: '', langkah: '' }]);
+	}
+
+	function removeIntiSintaks(idx: number) {
+		if (!generated) return;
+		updateGenerated(
+			'inti',
+			generated.inti.filter((_, i) => i !== idx)
+		);
+	}
+
+	function addAsesmen() {
+		if (!generated) return;
+		updateGenerated('asesmen', [...generated.asesmen, '']);
+	}
+
+	function updateAsesmen(idx: number, value: string) {
+		if (!generated) return;
+		const next = [...generated.asesmen];
+		next[idx] = value;
+		updateGenerated('asesmen', next);
+	}
+
 	function rpmPdfPayload() {
 		if (!generated || !kelasAktif) return null;
 		return {
@@ -231,22 +262,23 @@
 					: ((data.user as { pegawaiName?: string | null } | undefined)?.pegawaiName ?? '-'),
 			kelasLabel: kelasAktif.nama,
 			fase: kelasAktif.fase ?? null,
-			karakteristik: generated.karakteristik,
 			lingkupMateri: lingkupMateri.trim(),
 			profilLulusan: profilLulusanLabels,
 			capaianPembelajaran: capaianPembelajaran.trim(),
+			pengetahuanAwal: generated.pengetahuanAwal,
+			minat: generated.minat,
+			latarBelakang: generated.latarBelakang,
+			kebutuhanBelajar: generated.kebutuhanBelajar,
 			lintasDisiplinIlmu: generated.lintasDisiplinIlmu,
 			tujuanPembelajaran: generated.tujuanPembelajaran.length
 				? generated.tujuanPembelajaran
 				: selectedTps.map((tp) => tp.deskripsi),
-			model: generated.model,
+			praktikPedagogis: generated.praktikPedagogis,
 			kemitraanPembelajaran: generated.kemitraanPembelajaran,
 			lingkunganPembelajaran: generated.lingkunganPembelajaran,
 			pemanfaatanDigital: generated.pemanfaatanDigital,
 			kegiatanAwal: generated.kegiatanAwal,
-			memahami: generated.memahami,
-			mengaplikasi: generated.mengaplikasi,
-			merefleksi: generated.merefleksi,
+			inti: generated.inti,
 			penutup: generated.penutup,
 			asesmen: generated.asesmen
 		};
@@ -350,6 +382,34 @@
 
 	function lampiranPayload() {
 		if (!generated || !kelasAktif) return null;
+		const muridText = [
+			generated.pengetahuanAwal,
+			generated.minat,
+			generated.latarBelakang,
+			generated.kebutuhanBelajar
+		]
+			.map((s) => s.trim())
+			.filter(Boolean)
+			.join('\n');
+
+		// Pecah langkah inti ke tiga fase klasik agar lampiran tetap mengerti struktur.
+		const intiLines: string[] = [];
+		for (const b of generated.inti) {
+			intiLines.push(b.langkah);
+		}
+		const allSteps = intiLines.join('\n');
+		const memahami: string[] = [];
+		const mengaplikasi: string[] = [];
+		const merefleksi: string[] = [];
+		for (const line of allSteps
+			.split(/\n+/)
+			.map((s) => s.trim())
+			.filter(Boolean)) {
+			if (/^\d+\.\s*Mengaplikasi\s*:/i.test(line)) mengaplikasi.push(line);
+			else if (/^\d+\.\s*Merefleksi\s*:/i.test(line)) merefleksi.push(line);
+			else memahami.push(line);
+		}
+
 		return {
 			mapelNama,
 			kelasLabel: kelasAktif.nama,
@@ -361,14 +421,14 @@
 				? generated.tujuanPembelajaran
 				: selectedTps.map((tp) => tp.deskripsi),
 			asesmen: generated.asesmen,
-			karakteristik: generated.karakteristik,
+			karakteristik: muridText,
 			profilLulusan: profilLulusanLabels,
-			model: generated.model,
+			model: generated.praktikPedagogis,
 			inputCustom: lampiranCustom.trim(),
 			kegiatanAwal: generated.kegiatanAwal,
-			memahami: generated.memahami,
-			mengaplikasi: generated.mengaplikasi,
-			merefleksi: generated.merefleksi,
+			memahami: memahami.join('\n'),
+			mengaplikasi: mengaplikasi.join('\n'),
+			merefleksi: merefleksi.join('\n'),
 			penutup: generated.penutup
 		};
 	}
@@ -559,6 +619,57 @@
 		return typeof v === 'string' ? v : '';
 	}
 
+	function sintaksFromUnknown(v: unknown): SintaksData[] {
+		if (!v) return [];
+		if (Array.isArray(v)) {
+			return v
+				.map((item) => {
+					if (item && typeof item === 'object') {
+						const o = item as Record<string, unknown>;
+						return {
+							tahap: strOrEmpty(o.tahap ?? o.sintaks ?? o.nama),
+							langkah: strOrEmpty(o.langkah ?? o.isi ?? o.detail)
+						};
+					}
+					return { tahap: '', langkah: strOrEmpty(item) };
+				})
+				.filter((b) => b.langkah);
+		}
+		if (typeof v === 'string' && v.trim()) {
+			// Format bracket "[Sintaks N — Nama]" ... jika tak ada, format baris
+			// "Sintaks model pembelajaran N — Nama".
+			const brackets = [
+				...(v.matchAll(/\[(?:Sintaks|SINTAKS)\s*\d+\s*[—–-]\s*([^\]]+)\]/g) ?? [])
+			];
+			const lines = [
+				...(v.matchAll(/^(?:Sintaks|SINTAKS)\s+model\s+pembelajaran\s+\d+\s*[—–-]\s*(.+)$/gim) ?? [])
+			];
+			const heads = brackets.map((m, i) => ({
+				name: m[1].trim(),
+				start: m.index,
+				end: m.index + m[0].length
+			}));
+			if (heads.length === 0 && lines.length) {
+				const lh = lines.map((m, i) => ({
+					name: m[1].trim(),
+					start: m.index,
+					end: (m as RegExpExecArray).index + (m as RegExpExecArray)[0].length
+				}));
+				heads.push(...lh);
+			}
+			if (heads.length === 0) return [{ tahap: '', langkah: v.trim() }];
+			const blocks: SintaksData[] = [];
+			for (let i = 0; i < heads.length; i++) {
+				const sectionStart = heads[i].end;
+				const sectionEnd = i + 1 < heads.length ? heads[i + 1].start : v.length;
+				const langkah = v.slice(sectionStart, sectionEnd).trim();
+				if (langkah) blocks.push({ tahap: heads[i].name, langkah });
+			}
+			return blocks;
+		}
+		return [];
+	}
+
 	async function handleImportFile(event: Event) {
 		const input = event.currentTarget as HTMLInputElement;
 		const file = input.files?.[0];
@@ -584,34 +695,33 @@
 		}
 
 		const g = payload;
-		if (typeof g.model !== 'string' || typeof g.kegiatanAwal !== 'string') {
+		if (typeof g.praktikPedagogis !== 'string' || typeof g.kegiatanAwal !== 'string') {
 			importError = 'File bukan hasil generate RPM (format tidak sesuai).';
 			return;
 		}
 
 		const next: Generated = {
-			karakteristik: strOrEmpty(g.karakteristik),
-			model: strOrEmpty(g.model),
+			pengetahuanAwal: strOrEmpty(g.pengetahuanAwal),
+			minat: strOrEmpty(g.minat),
+			latarBelakang: strOrEmpty(g.latarBelakang),
+			kebutuhanBelajar: strOrEmpty(g.kebutuhanBelajar),
 			lintasDisiplinIlmu: strOrEmpty(g.lintasDisiplinIlmu),
+			tujuanPembelajaran: Array.isArray(g.tujuanPembelajaran)
+				? (g.tujuanPembelajaran as unknown[]).map(String).filter(Boolean)
+				: [],
+			praktikPedagogis: strOrEmpty(g.praktikPedagogis),
 			kemitraanPembelajaran: strOrEmpty(g.kemitraanPembelajaran),
 			lingkunganPembelajaran: strOrEmpty(g.lingkunganPembelajaran),
 			pemanfaatanDigital: strOrEmpty(g.pemanfaatanDigital),
 			kegiatanAwal: strOrEmpty(g.kegiatanAwal),
-			memahami: strOrEmpty(g.memahami),
-			mengaplikasi: strOrEmpty(g.mengaplikasi),
-			merefleksi: strOrEmpty(g.merefleksi),
+			inti: sintaksFromUnknown(g.inti),
 			penutup: strOrEmpty(g.penutup),
-			asesmen: Array.isArray(g.asesmen) ? (g.asesmen as unknown[]).map(String).filter(Boolean) : [],
-			tujuanPembelajaran: Array.isArray(g.tujuanPembelajaran)
-				? (g.tujuanPembelajaran as unknown[]).map(String).filter(Boolean)
-				: []
+			asesmen: Array.isArray(g.asesmen) ? (g.asesmen as unknown[]).map(String).filter(Boolean) : []
 		};
 		generated = next;
 
-		// Pulihkan input terkait (agar preview & cetak konsisten).
 		lingkupMateri = strOrEmpty(g.lingkupMateri);
 		capaianPembelajaran = strOrEmpty(g.capaianPembelajaran);
-		karakteristikInput = strOrEmpty(g.karakteristik);
 
 		const mapelNama = strOrEmpty(g.mapelNama);
 		if (mapelNama) {
@@ -620,7 +730,6 @@
 				mapelId = match.id;
 				agamaKey = '';
 			} else {
-				// Varian agama (PABP) — cari di agamaOptions agar agamaKey ikut terisi.
 				const agamaMatch = agamaOptions.find((o) => o.nama === mapelNama);
 				if (agamaMatch) {
 					mapelId = agamaMatch.mapelId;
@@ -667,10 +776,10 @@
 			</button>
 		</div>
 		<p class="text-base-content/70 mb-4 text-sm">
-			Buat Rencana Pembelajaran Mendalam (RPM) Kurikulum Merdeka berbasis Capaian Pembelajaran, mata
-			pelajaran, lingkup materi, tujuan pembelajaran, karakteristik murid, dan Dimensi Profil
-			Lulusan pilihan Anda. Teks dihasilkan AI dalam bahasa Indonesia sesuai EYD, terstruktur,
-			ringkas, dan jelas — hasilnya dapat diperiksa dan disunting sebelum dicetak ke PDF.
+			Buat Rencana Pembelajaran Mendalam (RPM) berbasis Capaian Pembelajaran, mata pelajaran,
+			lingkup materi, tujuan pembelajaran, karakteristik murid, dan Dimensi Profil Lulusan pilihan
+			Anda. Hasil disusun ke dalam Identifikasi, Desain Pembelajaran, Pengalaman Belajar, dan
+			Asesmen Pembelajaran — diperiksa dan disunting sebelum dicetak ke PDF.
 		</p>
 
 		{#if aiStatus === 'checking'}
@@ -776,31 +885,24 @@
 						rows="6"></textarea>
 				</fieldset>
 
-				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-					<fieldset class="fieldset">
-						<legend class="fieldset-legend font-semibold">Lingkup Materi</legend>
-						<select
-							class="select bg-base-200 dark:bg-base-300 validator w-full dark:border-none"
-							value={lingkupMateri}
-							onchange={handleLingkupChange}
-							disabled={!selectedMapel || lingkupOptions.length === 0}
-						>
-							<option value="">Pilih lingkup materi…</option>
-							{#each lingkupOptions as lm (lm)}
-								<option value={lm}>{lm}</option>
-							{/each}
-						</select>
-					</fieldset>
-
-					<fieldset class="fieldset">
-						<legend class="fieldset-legend font-semibold">Karakteristik Murid (opsional)</legend>
-						<textarea
-							class="textarea bg-base-200 dark:bg-base-300 w-full dark:border-none"
-							bind:value={karakteristikInput}
-							placeholder="Kosongkan untuk digenerate otomatis oleh AI, mis. siswa kelas aktif dengan latar belakang kemampuan beragam"
-							rows="4"></textarea>
-					</fieldset>
-				</div>
+				<fieldset class="fieldset">
+					<legend class="fieldset-legend font-semibold">Lingkup Materi</legend>
+					<select
+						class="select bg-base-200 dark:bg-base-300 validator w-full dark:border-none"
+						value={lingkupMateri}
+						onchange={handleLingkupChange}
+						disabled={!selectedMapel || lingkupOptions.length === 0}
+					>
+						<option value="">Pilih lingkup materi…</option>
+						{#each lingkupOptions as lm (lm)}
+							<option value={lm}>{lm}</option>
+						{/each}
+					</select>
+					<p class="mt-1 text-xs opacity-60">
+						Lingkup materi menjadi "Materi Pelajaran" pada Identifikasi sekaligus "Topik
+						Pembelajaran" pada Desain Pembelajaran.
+					</p>
+				</fieldset>
 
 				<fieldset class="fieldset">
 					<legend class="fieldset-legend font-semibold">
@@ -827,6 +929,9 @@
 								</label>
 							{/each}
 						</div>
+						<p class="mt-1 text-xs opacity-60">
+							Tujuan pembelajaran yang dipilih akan diubah AI menjadi rumusan ABCD pada hasil.
+						</p>
 					{/if}
 				</fieldset>
 
@@ -850,9 +955,6 @@
 							</label>
 						{/each}
 					</div>
-					<p class="mt-1 text-xs opacity-60">
-						Pilih Dimensi Profil Lulusan yang relevan, sama seperti pada halaman Kokurikuler.
-					</p>
 				</fieldset>
 
 				<fieldset class="fieldset">
@@ -860,13 +962,12 @@
 					<textarea
 						class="textarea bg-base-200 dark:bg-base-300 w-full dark:border-none"
 						bind:value={inputCustom}
-						placeholder="contoh: aku ingin ada kemitraan pembelajaran dengan pihak puskesmas dengan kegiatan wawancara antara murid dan nakes"
+						placeholder="contoh: murid lebih suka belajar dengan video; aku ingin ada kemitraan dengan puskesmas; gunakan model Problem Based Learning"
 						rows="3"></textarea>
 					<p class="mt-1 text-xs opacity-60">
-						Ketentuan/permintaan tambahan yang akan memengaruhi hasil generate, mis. "Saya ingin ada
-						kegiatan ice breaking yang menyenangkan", "gunakan model pembelajaran Problem Based
-						Learning", atau "perinci langkah pembelajarannya". Tidak dicetak langsung, hanya menjadi
-						acuan AI.
+						Permintaan tambahan yang memengaruhi seluruh hasil: karakteristik murid, lintas disiplin
+						ilmu, praktik pedagogis, kemitraan, lingkungan, pemanfaatan digital, pengalaman belajar,
+						dan asesmen. Tidak dicetak langsung, hanya menjadi acuan AI.
 					</p>
 				</fieldset>
 
@@ -898,7 +999,7 @@
 		{:else}
 			{@const g = generated}
 			{#snippet field_item(label: string, key: StringFieldKey, rows = 4)}
-				<div class="grid gap-1 sm:grid-cols-[10rem_1fr] sm:items-start">
+				<div class="grid gap-1 sm:grid-cols-[12rem_1fr] sm:items-start">
 					<span class="text-sm font-semibold sm:pt-2">{label}</span>
 					<textarea
 						class="textarea validator bg-base-200 dark:bg-base-300 w-full dark:border-none"
@@ -916,31 +1017,24 @@
 
 			<div class="flex flex-col gap-4">
 				<div class="card bg-base-100 rounded-box border border-base-300 p-4">
-					<h3 class="mb-3 text-base font-bold">Identifikasi</h3>
+					<h3 class="mb-3 text-base font-bold">A. Identifikasi</h3>
 					<div class="flex flex-col gap-4">
-						<div class="grid gap-1 sm:grid-cols-[10rem_1fr] sm:items-start">
-							<span class="text-sm font-semibold sm:pt-2">Peserta Didik</span>
-							<div>
-								<p class="text-sm">{kelasLabelFase}</p>
-								<textarea
-									class="textarea validator bg-base-200 dark:bg-base-300 mt-2 w-full dark:border-none"
-									rows="2"
-									value={g.karakteristik}
-									oninput={(event) =>
-										updateGenerated(
-											'karakteristik',
-											(event.currentTarget as HTMLTextAreaElement).value
-										)}
-									placeholder="Karakteristik peserta didik"></textarea>
+						<div class="grid gap-1 sm:grid-cols-[12rem_1fr] sm:items-start">
+							<span class="text-sm font-semibold sm:pt-2">Murid ({kelasLabelFase})</span>
+							<div class="flex flex-col gap-3">
+								{@render field_item('Pengetahuan Awal', 'pengetahuanAwal', 2)}
+								{@render field_item('Minat', 'minat', 2)}
+								{@render field_item('Latar Belakang', 'latarBelakang', 2)}
+								{@render field_item('Kebutuhan Belajar', 'kebutuhanBelajar', 2)}
 							</div>
 						</div>
 
-						<div class="grid gap-1 sm:grid-cols-[10rem_1fr] sm:items-start">
+						<div class="grid gap-1 sm:grid-cols-[12rem_1fr] sm:items-start">
 							<span class="text-sm font-semibold sm:pt-2">Materi Pelajaran</span>
 							<div class="pt-2 text-sm">{lingkupMateri}</div>
 						</div>
 
-						<div class="grid gap-1 sm:grid-cols-[10rem_1fr] sm:items-start">
+						<div class="grid gap-1 sm:grid-cols-[12rem_1fr] sm:items-start">
 							<span class="text-sm font-semibold sm:pt-2">Dimensi Profil Lulusan</span>
 							<div
 								class="flex max-h-48 flex-col gap-1 overflow-y-auto rounded-box border p-2 bg-base-200 dark:bg-base-300 border-base-300 dark:border-none"
@@ -963,9 +1057,9 @@
 				</div>
 
 				<div class="card bg-base-100 rounded-box border border-base-300 p-4">
-					<h3 class="mb-3 text-base font-bold">Desain Pembelajaran</h3>
+					<h3 class="mb-3 text-base font-bold">B. Desain Pembelajaran</h3>
 					<div class="flex flex-col gap-4">
-						<div class="grid gap-1 sm:grid-cols-[10rem_1fr] sm:items-start">
+						<div class="grid gap-1 sm:grid-cols-[12rem_1fr] sm:items-start">
 							<span class="text-sm font-semibold sm:pt-2">Capaian Pembelajaran</span>
 							<textarea
 								class="textarea validator bg-base-200 dark:bg-base-300 w-full dark:border-none"
@@ -976,12 +1070,12 @@
 							></textarea>
 						</div>
 
-						<div class="grid gap-1 sm:grid-cols-[10rem_1fr] sm:items-start">
+						<div class="grid gap-1 sm:grid-cols-[12rem_1fr] sm:items-start">
 							<span class="text-sm font-semibold sm:pt-2">Topik Pembelajaran</span>
 							<div class="pt-2 text-sm">{lingkupMateri}</div>
 						</div>
 
-						<div class="grid gap-1 sm:grid-cols-[10rem_1fr] sm:items-start">
+						<div class="grid gap-1 sm:grid-cols-[12rem_1fr] sm:items-start">
 							<span class="text-sm font-semibold sm:pt-2">Tujuan Pembelajaran</span>
 							<div class="flex flex-col gap-1 pt-1">
 								{#if g.tujuanPembelajaran?.length}
@@ -1001,7 +1095,7 @@
 						</div>
 
 						{@render field_item('Lintas Disiplin Ilmu', 'lintasDisiplinIlmu')}
-						{@render field_item('Praktis Pedagogis (Model/Strategi)', 'model', 5)}
+						{@render field_item('Praktik Pedagogis (Model/Strategi/Metode)', 'praktikPedagogis', 6)}
 						{@render field_item('Kemitraan Pembelajaran', 'kemitraanPembelajaran')}
 						{@render field_item('Lingkungan Pembelajaran', 'lingkunganPembelajaran')}
 						{@render field_item('Pemanfaatan Digital', 'pemanfaatanDigital')}
@@ -1009,22 +1103,77 @@
 				</div>
 
 				<div class="card bg-base-100 rounded-box border border-base-300 p-4">
-					<h3 class="mb-3 text-base font-bold">Pengalaman Belajar</h3>
+					<h3 class="mb-3 text-base font-bold">C. Pengalaman Belajar</h3>
 					<div class="flex flex-col gap-4">
-						{@render field_item('Kegiatan Awal', 'kegiatanAwal', 5)}
-						{@render field_item('Memahami (Berkesadaran, Bermakna)', 'memahami', 5)}
-						{@render field_item('Mengaplikasi (Bermakna, Menyenangkan)', 'mengaplikasi', 5)}
-						{@render field_item('Merefleksi (Berkesadaran, Bermakna)', 'merefleksi', 5)}
-						{@render field_item('Penutup Bermakna, Menggembirakan', 'penutup', 5)}
+						{@render field_item('Awal', 'kegiatanAwal', 5)}
+
+						<div class="grid gap-1 sm:grid-cols-[12rem_1fr] sm:items-start">
+							<span class="text-sm font-semibold sm:pt-3">Inti</span>
+							<div class="flex flex-col gap-3">
+								{#if g.inti.length === 0}
+									<p class="text-sm italic opacity-60">Belum ada sintaks model pembelajaran.</p>
+								{/if}
+								{#each g.inti as block, i (i)}
+									<div class="rounded-box border border-base-300 bg-base-200 p-3 dark:bg-base-300">
+										<div class="flex items-center justify-between gap-2">
+											<span class="text-sm font-semibold"
+												>{block.tahap.trim() || `Sintaks model pembelajaran ${i + 1}`}</span
+											>
+											<button
+												class="btn btn-ghost btn-sm shadow-none"
+												type="button"
+												title="Hapus sintaks ini"
+												aria-label="Hapus sintaks"
+												onclick={() => removeIntiSintaks(i)}
+											>
+												<Icon name="close" />
+											</button>
+										</div>
+										<input
+											class="input input-sm bg-base-100 dark:bg-base-100 w-full"
+											placeholder="Nama tahap sintaks (mis. Orientasi, Merumuskan Masalah)"
+											value={block.tahap}
+											oninput={(event) =>
+												updateIntiSintaks(
+													i,
+													'tahap',
+													(event.currentTarget as HTMLInputElement).value
+												)}
+										/>
+										<textarea
+											class="textarea validator bg-base-100 dark:bg-base-100 mt-2 w-full dark:border-none"
+											rows="6"
+											value={block.langkah}
+											placeholder="Langkah-langkah (setiap langkah memuat Memahami/Mengaplikasi/Merefleksi + prinsip + alokasi waktu)"
+											oninput={(event) =>
+												updateIntiSintaks(
+													i,
+													'langkah',
+													(event.currentTarget as HTMLTextAreaElement).value
+												)}></textarea>
+									</div>
+								{/each}
+								<button
+									class="btn btn-soft btn-sm shadow-none"
+									type="button"
+									onclick={addIntiSintaks}
+								>
+									<Icon name="plus" />
+									Tambah Sintaks
+								</button>
+							</div>
+						</div>
+
+						{@render field_item('Penutup', 'penutup', 5)}
 					</div>
 				</div>
 
 				<div class="card bg-base-100 rounded-box border border-base-300 p-4">
-					<h3 class="mb-3 text-base font-bold">Asesmen Pembelajaran</h3>
+					<h3 class="mb-3 text-base font-bold">D. Asesmen Pembelajaran</h3>
 					<div class="flex flex-col gap-4">
 						{#if g.asesmen.length}
 							{#each g.asesmen as a, i (i)}
-								<div class="grid gap-1 sm:grid-cols-[10rem_1fr] sm:items-start">
+								<div class="grid gap-1 sm:grid-cols-[12rem_1fr] sm:items-start">
 									<span class="text-sm font-semibold sm:pt-2"
 										>Assessment for Learning ({i + 1})</span
 									>
@@ -1032,16 +1181,20 @@
 										class="textarea validator bg-base-200 dark:bg-base-300 w-full dark:border-none"
 										rows="5"
 										value={a}
-										oninput={(event) => {
-											const next = [...g.asesmen];
-											next[i] = (event.currentTarget as HTMLTextAreaElement).value;
-											updateGenerated('asesmen', next);
-										}}></textarea>
+										oninput={(event) =>
+											updateAsesmen(i, (event.currentTarget as HTMLTextAreaElement).value)}
+									></textarea>
 								</div>
 							{/each}
 						{:else}
 							<p class="text-sm italic opacity-60">Belum ada assessment.</p>
 						{/if}
+						<div class="flex justify-end">
+							<button class="btn btn-soft btn-sm shadow-none" type="button" onclick={addAsesmen}>
+								<Icon name="plus" />
+								Tambah Asesmen
+							</button>
+						</div>
 					</div>
 				</div>
 			</div>
