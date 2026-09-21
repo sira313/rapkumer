@@ -74,7 +74,7 @@ export async function ensureDapodikSchema() {
 			"nama" text NOT NULL,
 			"created_at" text NOT NULL,
 			"updated_at" text,
-			UNIQUE(pembelajaran_id)
+			UNIQUE(kelas_id, pembelajaran_id)
 		)`
 	]);
 
@@ -86,7 +86,61 @@ export async function ensureDapodikSchema() {
 		}
 	}
 
+	// Satu pembelajaran rombel pilihan bisa dipakai lintas kelas → UNIQUE komposit
+	// (kelas_id, pembelajaran_id). Tabel lama ber-UNIQUE(pembelajaran_id) perlu
+	// di-rebuild (SQLite tak bisa mengganti constraint tanpa create ulang).
+	await upgradePembelajaranUniqueKomposit();
+
 	await mergeDuplicateAgamaMapel();
+}
+
+// https://www.sqlite.org/rowidtable.html — SQLite tak mendukung DROP CONSTRAINT;
+// rebuild tabel penuh (baru + salin data + rename). tidak ada tabel lain yang
+// mereferensikan dapodik_pembelajaran → drop lama aman.
+const TABLE_DAPODIK_PEMBELAJARAN = 'dapodik_pembelajaran';
+let pembelajaranUniqueMigrated = false;
+
+async function hasPembelajaranUniqueKomposit(): Promise<boolean> {
+	const rows = await db.$client.execute({
+		sql: `SELECT sql FROM sqlite_master WHERE type='table' AND name='${TABLE_DAPODIK_PEMBELAJARAN}'`
+	});
+	const sql = String(rows.rows?.[0]?.sql ?? '');
+	return sql.includes('UNIQUE(kelas_id, pembelajaran_id)');
+}
+
+async function upgradePembelajaranUniqueKomposit() {
+	if (pembelajaranUniqueMigrated) return;
+	try {
+		if (await hasPembelajaranUniqueKomposit()) {
+			pembelajaranUniqueMigrated = true;
+			return;
+		}
+		await db.$client.batch([
+			`CREATE TABLE "${TABLE_DAPODIK_PEMBELAJARAN}_new" (
+				"id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+				"kelas_id" integer NOT NULL REFERENCES kelas(id) ON DELETE CASCADE,
+				"pembelajaran_id" text NOT NULL,
+				"mata_pelajaran_id" text,
+				"nama" text NOT NULL,
+				"created_at" text NOT NULL,
+				"updated_at" text,
+				UNIQUE(kelas_id, pembelajaran_id)
+			)`,
+			`INSERT INTO "${TABLE_DAPODIK_PEMBELAJARAN}_new"
+				(id, kelas_id, pembelajaran_id, mata_pelajaran_id, nama, created_at, updated_at)
+				SELECT id, kelas_id, pembelajaran_id, mata_pelajaran_id, nama, created_at, updated_at
+				FROM "${TABLE_DAPODIK_PEMBELAJARAN}"`,
+			`DROP TABLE "${TABLE_DAPODIK_PEMBELAJARAN}"`,
+			`ALTER TABLE "${TABLE_DAPODIK_PEMBELAJARAN}_new" RENAME TO "${TABLE_DAPODIK_PEMBELAJARAN}"`
+		]);
+		pembelajaranUniqueMigrated = true;
+		console.info(
+			`[ensure-dapodik] dapodik_pembelajaran UNIQUE di-upgrade ke (kelas_id, pembelajaran_id)`
+		);
+	} catch (error) {
+		// Jangan gagalkan boot; sync berikutnya akan coba lagi.
+		console.error('[ensure-dapodik] upgrade UNIQUE dapodik_pembelajaran gagal:', error);
+	}
 }
 
 /**

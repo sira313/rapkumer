@@ -1316,7 +1316,7 @@ interface RombelSyncResult {
 	/** peserta_didik_id → penempatan kelas (dari anggota_rombel nested). */
 	anggotaMap: Map<string, AnggotaPlacement>;
 	/** pembelajaran nested per kelas, diproses pada langkah mata pelajaran. */
-	pembelajaranItems: Array<{ kelasId: number; row: Row }>;
+	pembelajaranItems: PembelajaranItem[];
 }
 
 /**
@@ -1342,10 +1342,26 @@ async function upsertKelasFromRombel(
 		let created = 0;
 		let updated = 0;
 		let skipped = 0;
+		let pilihanMapel = 0;
+
+		// Pembelajaran dari rombel mapel pilihan (jenis_rombel 16) dikaitkan ke
+		// kelas lewat anggota rombel; diproses setelah loop karena anggotaMap
+		// baru lengkap setelah semua rombel reguler terbaca.
+		const electiveItems: Array<{ row: Row; memberPdIds: string[] }> = [];
 
 		for (const row of rows) {
-			// Hanya rombel reguler (jenis_rombel 1); 16 = mapel pilihan, 51 = ekskul.
+			// 1 = rombel reguler, 16 = kelompok mapel pilihan, 51 = ekskul.
 			const jenis = intOrNull(row['jenis_rombel']) ?? 1;
+			if (jenis === 16) {
+				const memberPdIds = (
+					Array.isArray(row['anggota_rombel']) ? (row['anggota_rombel'] as Row[]) : []
+				)
+					.map((member) => str(member, 'peserta_didik_id'))
+					.filter((id): id is string => !!id);
+				const pbRows = Array.isArray(row['pembelajaran']) ? (row['pembelajaran'] as Row[]) : [];
+				for (const pb of pbRows) electiveItems.push({ row: pb, memberPdIds });
+				continue;
+			}
 			if (jenis !== 1) {
 				skipped++;
 				continue;
@@ -1426,10 +1442,23 @@ async function upsertKelasFromRombel(
 			}
 		}
 
+		// Mapel pilihan: buat satu mapel per kelas yang siswanya ikut kelompok itu.
+		for (const { row, memberPdIds } of electiveItems) {
+			const kelasIds = new Set<number>();
+			for (const pdId of memberPdIds) {
+				const placement = result.anggotaMap.get(pdId);
+				if (placement) kelasIds.add(placement.kelasId);
+			}
+			for (const kelasId of kelasIds) {
+				result.pembelajaranItems.push({ kelasId, row, pilihan: true });
+				pilihanMapel++;
+			}
+		}
+
 		sections.push({
 			label: 'Rombongan Belajar',
 			status: 'ok',
-			detail: `${updated} kelas dicocokkan, ${created} kelas baru${skipped ? `, ${skipped} rombel non-reguler dilewati` : ''}, ${result.anggotaMap.size} anggota & ${result.pembelajaranItems.length} pembelajaran terbaca.`
+			detail: `${updated} kelas dicocokkan, ${created} kelas baru${skipped ? `, ${skipped} rombel non-reguler dilewati` : ''}${pilihanMapel ? `, ${pilihanMapel} mapel pilihan dibaca` : ''}, ${result.anggotaMap.size} anggota & ${result.pembelajaranItems.length} pembelajaran terbaca.`
 		});
 	} catch (e) {
 		sections.push({
@@ -1842,12 +1871,18 @@ async function syncPesertaDidik(
  * build Dapodik). Sub-mapel (mis. varian agama dengan induk_pembelajaran_id)
  * di-upsert sama seperti mapel biasa agar ter-binding ke kode Dapodik.
  */
-function flattenPembelajaran(items: Array<{ kelasId: number; row: Row }>) {
-	const result: Array<{ kelasId: number; row: Row }> = [];
+type PembelajaranItem = { kelasId: number; row: Row; pilihan?: boolean };
+
+function flattenPembelajaran(items: PembelajaranItem[]): PembelajaranItem[] {
+	const result: PembelajaranItem[] = [];
 	for (const item of items) {
 		result.push(item);
 		const subs = Array.isArray(item.row['sub_mapel']) ? (item.row['sub_mapel'] as Row[]) : [];
-		result.push(...flattenPembelajaran(subs.map((row) => ({ kelasId: item.kelasId, row }))));
+		result.push(
+			...flattenPembelajaran(
+				subs.map((row) => ({ kelasId: item.kelasId, row, pilihan: item.pilihan }))
+			)
+		);
 	}
 	return result;
 }
@@ -1857,7 +1892,7 @@ function flattenPembelajaran(items: Array<{ kelasId: number; row: Row }>) {
  * upsert rombel (endpoint getPembelajaran tidak tersedia → HTTP 404).
  */
 async function upsertPembelajaran(
-	allItems: Array<{ kelasId: number; row: Row }>,
+	allItems: PembelajaranItem[],
 	validKelasIds: Set<number>,
 	ptkIndex: PegawaiIndex,
 	sections: DapodikSectionLog[]
@@ -1878,7 +1913,7 @@ async function upsertPembelajaran(
 		let incomplete = 0;
 		let skipped = 0;
 
-		for (const { kelasId, row } of items) {
+		for (const { kelasId, row, pilihan } of items) {
 			if (!validKelasIds.has(kelasId)) continue;
 
 			const pembelajaranId = str(row, 'pembelajaran_id');
@@ -1905,9 +1940,8 @@ async function upsertPembelajaran(
 						nama: namaMapel
 					})
 					.onConflictDoUpdate({
-						target: tableDapodikPembelajaran.pembelajaranId,
+						target: [tableDapodikPembelajaran.kelasId, tableDapodikPembelajaran.pembelajaranId],
 						set: {
-							kelasId: sql`excluded.kelas_id`,
 							mataPelajaranId: sql`excluded.mata_pelajaran_id`,
 							nama: sql`excluded.nama`
 						}
@@ -2014,7 +2048,7 @@ async function upsertPembelajaran(
 					await db.insert(tableMataPelajaran).values({
 						kelasId,
 						nama: namaInsert,
-						jenis: 'wajib',
+						jenis: pilihan ? 'pilihan' : 'wajib',
 						kode: isAgama ? 'PAPB' : '',
 						dapodikPembelajaranId: pembelajaranId,
 						dapodikMataPelajaranId: mapelRefId,

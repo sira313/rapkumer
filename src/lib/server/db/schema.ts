@@ -1649,5 +1649,6 @@ export const tableDapodikPembelajaran = sqliteTable(
 		nama: text().notNull(),
 		...audit
 	},
-	(table) => [unique().on(table.pembelajaranId)]
+	// Komposit: satu pembelajaran rombel pilihan bisa dipakai lintas kelas.
+	(table) => [unique().on(table.kelasId, table.pembelajaranId)]
 );

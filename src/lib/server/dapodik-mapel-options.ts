@@ -6,10 +6,11 @@ export type OpsiMapelDapodik = { nama: string; kode: string | null };
 
 // Dapodik tidak punya katalog mapel per tingkat (getPembelajaran 404; row
 // pembelajaran rombel hanya mapel yang diinput operator — di SD umumnya cuma
-// Guru Kelas + PJOK karena mapel lain diajar wali kelas). Untuk jenjang
-// dasar/menengah, daftar pilihan = pembelajaran rombel DIGABUNG subset
-// referensi nasional ber-nama umum. Jenjang lanjutan (SMA/SMK/MA/PKBM) =
-// mirror rombel saja agar tidak "unlock" mapel umum yang tidak relevan.
+// Guru Kelas + PJOK karena mapel lain diajar wali kelas). Daftar pilihan =
+// pembelajaran rombel DIGABUNG referensi nasional (hasil Dapodik Sync).
+// Jenjang dasar/menengah dibatasi subset ber-nama umum agar tidak menawarkan
+// mapel khas lanjutan; jenjang lanjutan (SMA/SMK/MA/PKBM) memakai seluruh
+// referensi agar mapel seperti Kimia/Fisika/Biologi tersedia.
 const RE_MAPEL_UMUM_DASAR =
 	/^(guru kelas sd|pendidikan agama|pendidikan kepercayaan|pendidikan pancasila|pendidikan kewarganegaraan|bahasa indonesia|bahasa inggris|matematika|ilmu pengetahuan alam|ilmu pengetahuan sosial|ipas|seni budaya|seni rupa|sbdp|prakarya|pendidikan jasmani|pjok|muatan lokal|mulok|bahasa daerah|informatika|koding|pembelajaran berbasis proje[ky])/;
 const RE_NOISE = /(tingkat lanjut|peminatan|maritim|perikanan|bimp)/i;
@@ -28,15 +29,13 @@ export async function opsiMapelDapodik(
 	dapodikMapelList: OpsiMapelDapodik[];
 	indukList: Array<{ nama: string; pembelajaranId: string }>;
 }> {
-	const referensiPromise = grupJenjangDasarMenengah(sekolah)
-		? db
-				.select({
-					nama: tableDapodikMataPelajaran.nama,
-					kode: tableDapodikMataPelajaran.mataPelajaranId
-				})
-				.from(tableDapodikMataPelajaran)
-				.where(isNull(tableDapodikMataPelajaran.jurusanId))
-		: Promise.resolve<Array<{ nama: string; kode: number }>>([]);
+	const referensiPromise = db
+		.select({
+			nama: tableDapodikMataPelajaran.nama,
+			kode: tableDapodikMataPelajaran.mataPelajaranId
+		})
+		.from(tableDapodikMataPelajaran)
+		.where(isNull(tableDapodikMataPelajaran.jurusanId));
 	const [pembelajaranRows, referensiRows, indukList] = await Promise.all([
 		db
 			.selectDistinct({
@@ -63,7 +62,8 @@ export async function opsiMapelDapodik(
 	for (const row of referensiRows ?? []) {
 		const nama = row.nama.trim();
 		if (!nama || RE_NOISE.test(nama)) continue;
-		if (!RE_MAPEL_UMUM_DASAR.test(nama.toLowerCase())) continue;
+		if (grupJenjangDasarMenengah(sekolah) && !RE_MAPEL_UMUM_DASAR.test(nama.toLowerCase()))
+			continue;
 		const kode = String(row.kode);
 		opsiMap.set(`${nama}|${kode}`, { nama, kode });
 	}
