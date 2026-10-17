@@ -1,8 +1,7 @@
 <script lang="ts">
 	import Icon from './icon.svelte';
 
-	// The main content area is the element that actually scrolls (layout shell).
-	const SELECTOR = '.max-h-\\[calc\\(100vh-4\\.2rem\\)\\]';
+	const SELECTOR = '[data-scroll-container]';
 
 	let isVisible = $state(false);
 
