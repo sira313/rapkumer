@@ -2,7 +2,8 @@
 	import FormEnhance from '$lib/components/form-enhance.svelte';
 	import Icon from '$lib/components/icon.svelte';
 
-	let { passkeySet }: { passkeySet: boolean } = $props();
+	let { passkeySet, activePasskey = null }: { passkeySet: boolean; activePasskey?: string | null } =
+		$props();
 
 	// Password visibility toggles
 	let showBukuTamuPasskey = $state(false);
@@ -24,7 +25,15 @@
 					Jika diaktifkan, pengunjung harus memasukkan passkey sekali saat membuka halaman
 					<code>/tamu</code> sebelum dapat mengisi buku tamu. Kosongkan untuk menonaktifkan.
 				</p>
-				{#if passkeySet}
+				{#if passkeySet && activePasskey}
+					<div class="alert alert-success flex items-center gap-2">
+						<Icon name="success" />
+						<div>
+							<span>Passkey buku tamu aktif:</span>
+							<code class="ml-1 font-mono">{activePasskey}</code>
+						</div>
+					</div>
+				{:else if passkeySet}
 					<div class="alert alert-success">
 						<Icon name="success" />
 						<span>Passkey buku tamu aktif.</span>

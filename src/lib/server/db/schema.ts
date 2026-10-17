@@ -1401,6 +1401,10 @@ export const tableBukuTamuSettings = sqliteTable(
 		sekolahId: int()
 			.references(() => tableSekolah.id, { onDelete: 'cascade' })
 			.notNull(),
+		// ponytail: plaintext on purpose — the guest-book gate is low-sensitivity and the
+		// admin UI must display the active passkey. Upgrade path: encrypt at rest (or show
+		// once at save) if the threat model changes.
+		passkey: text(),
 		passkeyHash: text(),
 		passkeySalt: text(),
 		unlockToken: text(),

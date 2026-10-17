@@ -72,7 +72,10 @@
 
 {#if isAdmin}
 	<div class="mt-4">
-		<BukuTamuPasskeyCard passkeySet={data.bukuTamuPasskeySet} />
+		<BukuTamuPasskeyCard
+			passkeySet={data.bukuTamuPasskeySet}
+			activePasskey={data.bukuTamuPasskey}
+		/>
 	</div>
 {/if}
 

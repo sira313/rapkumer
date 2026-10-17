@@ -14,6 +14,7 @@ const UNLOCK_LOCKOUT_MS = 15 * 60 * 1000;
 interface BukuTamuSettingsRow {
 	id: number;
 	sekolahId: number;
+	passkey: string | null;
 	passkeyHash: string | null;
 	passkeySalt: string | null;
 	unlockToken: string | null;
@@ -95,11 +96,12 @@ export async function setBukuTamuPasskey(sekolahId: number, passkey: string | nu
 	if (existing) {
 		await db
 			.update(tableBukuTamuSettings)
-			.set({ passkeyHash: hash, passkeySalt: salt, unlockToken, updatedAt: now })
+			.set({ passkey, passkeyHash: hash, passkeySalt: salt, unlockToken, updatedAt: now })
 			.where(eq(tableBukuTamuSettings.id, existing.id));
 	} else {
 		await db.insert(tableBukuTamuSettings).values({
 			sekolahId,
+			passkey,
 			passkeyHash: hash,
 			passkeySalt: salt,
 			unlockToken,
@@ -107,6 +109,11 @@ export async function setBukuTamuPasskey(sekolahId: number, passkey: string | nu
 			updatedAt: now
 		});
 	}
+}
+
+export async function getBukuTamuPasskey(sekolahId: number): Promise<string | null> {
+	const row = await getBukuTamuSettings(sekolahId);
+	return row?.passkey ?? null;
 }
 
 export function applyBukuTamuUnlockCookie(cookies: Cookies, token: string, secure: boolean) {
