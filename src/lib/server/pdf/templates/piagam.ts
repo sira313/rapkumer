@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { uploadsDir } from '$lib/server/data-dirs';
 import { getKopSuratLines } from '$lib/statics';
+import { kopSuratDataUri } from '$lib/server/kop-surat';
 import { sharedStyles, formatUpper, formatValue, escHtml } from './shared';
 
 export interface PiagamPrintData {
@@ -176,6 +177,12 @@ function piagamStyles(margin16mm = true): string {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+	margin-bottom: 2mm;
+}
+
+.kop-image {
+	width: 100%;
+	display: block;
 	margin-bottom: 2mm;
 }
 
@@ -416,6 +423,7 @@ export function renderPiagamHTML(data: PiagamPrintData, template: '1' | '2'): st
 
 	if (template === '1') {
 		const bgCert = getBgCertificateDataUri(sekolahId);
+		const customKop = kopSuratDataUri(sekolahId, 'landscape');
 
 		return `<!DOCTYPE html>
 <html lang="id">
@@ -429,7 +437,10 @@ ${piagamStyles(!bgCert)}
 <body class="font-palatino">
 ${bgCert ? `<div class="piagam-bg" style="background-image: url('${bgCert}')"></div>` : ''}
 <div class="piagam-page">
-	<div class="header">
+	${
+		customKop
+			? `<img src="${customKop}" alt="" class="kop-image">`
+			: `<div class="header">
 		${logoDinasUrl ? `<img src="${logoDinasUrl}" alt="" class="header-logo">` : '<div class="header-logo"></div>'}
 		<div class="header-center">
 			${kopLines.map((line) => `<div class="header-text">${line}</div>`).join('')}
@@ -440,7 +451,8 @@ ${bgCert ? `<div class="piagam-bg" style="background-image: url('${bgCert}')"></
 		${logoUrl ? `<img src="${logoUrl}" alt="" class="header-logo">` : '<div class="header-logo"></div>'}
 	</div>
 
-	<div class="double-line"></div>
+	<div class="double-line"></div>`
+	}
 
 	<div class="main-content">
 		<div class="title-main">${formatUpper(penghargaan.judul)}</div>

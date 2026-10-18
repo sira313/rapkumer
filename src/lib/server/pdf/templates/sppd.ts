@@ -1,5 +1,6 @@
 import { sharedStyles, formatUpper, formatValue, escHtml } from './shared';
 import { getKopSuratLines } from '$lib/statics';
+import { kopSuratDataUri } from '$lib/server/kop-surat';
 
 export interface SppdPrintData {
 	sekolah: {
@@ -106,6 +107,12 @@ body {
 	align-items: center;
 	justify-content: space-between;
 	margin-bottom: 2mm;
+}
+
+.kop-image {
+	width: 100%;
+	display: block;
+	margin-bottom: 4mm;
 }
 
 .kop-logo {
@@ -351,7 +358,10 @@ export function renderSppdHTML(data: SppdPrintData): string {
 	const pegawai = data.pegawai ?? [];
 	const pengikut = data.pengikut ?? [];
 
-	const kopHTML = `
+	const customKop = kopSuratDataUri(sekolah.id, 'portrait');
+	const kopHTML = customKop
+		? `<img src="${customKop}" alt="" class="kop-image">`
+		: `
 <div class="kop">
 	${logoDinas ? `<img src="${logoDinas}" alt="" class="kop-logo">` : '<div class="kop-logo"></div>'}
 	<div class="kop-center">
