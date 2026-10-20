@@ -1,6 +1,7 @@
 import { sharedStyles, formatValue, formatUpper, escHtml, getTutwuriBwDataUri } from './shared';
 import { parseTingkat, lastGradeOfFase, isGraduatingFase, isGraduatingGrade } from '$lib/tingkat';
 import { ttdStempelBoxHTML } from '$lib/server/tanda-tangan-sekolah';
+import { guruTtdBoxHTML } from '$lib/server/tanda-tangan-guru';
 
 export interface RaporPrintData {
 	sekolah: {
@@ -27,6 +28,7 @@ export interface RaporPrintData {
 	waliKelas: {
 		nama: string;
 		nip?: string | null;
+		ttdUserId?: number | null;
 	};
 	kepalaSekolah: {
 		nama: string;
@@ -522,7 +524,7 @@ ${
 			</tr>
 			<tr>
 				<td class="spacer-5"></td>
-				<td class="spacer-5"></td>
+				<td class="spacer-5">${guruTtdBoxHTML(data.waliKelas.ttdUserId, '5rem', '0mm', '3mm') ?? ''}</td>
 			</tr>
 			<tr>
 				<td class="text-center">____________________</td>

@@ -9,6 +9,7 @@
 	import StorageLocationCard from '$lib/components/settings/storage-location-card.svelte';
 	import KopSuratCard from '$lib/components/settings/kop-surat-card.svelte';
 	import TandaTanganCard from '$lib/components/settings/tanda-tangan-card.svelte';
+	import TandaTanganGuruCard from '$lib/components/settings/tanda-tangan-guru-card.svelte';
 	import DatabaseCard from '$lib/components/settings/database-card.svelte';
 	import BukuTamuPasskeyCard from '$lib/components/settings/buku-tamu-passkey-card.svelte';
 	import AiKeyCard from '$lib/components/settings/ai-key-card.svelte';
@@ -79,6 +80,12 @@
 
 	<div class="mt-4">
 		<TandaTanganCard />
+	</div>
+{/if}
+
+{#if user?.type === 'wali_kelas'}
+	<div class="mt-4">
+		<TandaTanganGuruCard />
 	</div>
 {/if}
 

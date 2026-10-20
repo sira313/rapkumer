@@ -122,6 +122,7 @@ interface RaporPrintData {
 	waliKelas: {
 		nama: string;
 		nip?: string | null;
+		ttdUserId?: number | null;
 	};
 	kepalaSekolah: {
 		nama: string;
@@ -208,6 +209,7 @@ interface PiagamPrintData {
 		waliKelas: {
 			nama: string;
 			nip?: string | null;
+			ttdUserId?: number | null;
 		};
 	};
 }

@@ -12,6 +12,7 @@ import {
 	formatTanggal,
 	fallbackTempat
 } from '$lib/server/pdf/preview-utils';
+import { waliKelasTtdUserId } from '$lib/server/tanda-tangan-guru';
 
 const ORDINAL_WORDS: Record<number, string> = {
 	1: 'Pertama',
@@ -81,6 +82,7 @@ export async function getPiagamPreviewPayload({ locals, url }: { locals: App.Loc
 				with: {
 					waliKelas: {
 						columns: {
+							id: true,
 							nama: true,
 							nip: true
 						}
@@ -129,6 +131,8 @@ export async function getPiagamPreviewPayload({ locals, url }: { locals: App.Loc
 		getLogoSrc(sekolah.id),
 		getLogoDinasSrc(sekolah.id)
 	]);
+
+	const waliKelasTtd = await waliKelasTtdUserId(murid.kelas?.waliKelas?.id);
 
 	const piagamData: PiagamPrintData = {
 		sekolah: {
@@ -179,7 +183,8 @@ export async function getPiagamPreviewPayload({ locals, url }: { locals: App.Loc
 			},
 			waliKelas: {
 				nama: murid.kelas?.waliKelas?.nama ?? '',
-				nip: murid.kelas?.waliKelas?.nip ?? ''
+				nip: murid.kelas?.waliKelas?.nip ?? '',
+				ttdUserId: waliKelasTtd
 			}
 		}
 	};

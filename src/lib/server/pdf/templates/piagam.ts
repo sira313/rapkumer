@@ -4,6 +4,7 @@ import { uploadsDir } from '$lib/server/data-dirs';
 import { getKopSuratLines } from '$lib/statics';
 import { kopSuratDataUri } from '$lib/server/kop-surat';
 import { ttdStempelBoxHTML } from '$lib/server/tanda-tangan-sekolah';
+import { guruTtdBoxHTML } from '$lib/server/tanda-tangan-guru';
 import { sharedStyles, formatUpper, formatValue, escHtml } from './shared';
 
 export interface PiagamPrintData {
@@ -42,7 +43,7 @@ export interface PiagamPrintData {
 		tempat: string;
 		tanggal: string;
 		kepalaSekolah: { nama: string; nip?: string | null; statusKepalaSekolah?: string | null };
-		waliKelas: { nama: string; nip?: string | null };
+		waliKelas: { nama: string; nip?: string | null; ttdUserId?: number | null };
 	};
 }
 
@@ -406,6 +407,7 @@ export function renderPiagamHTML(data: PiagamPrintData, template: '1' | '2'): st
 	);
 
 	function footerHTML(): string {
+		const waliTtdBox = guruTtdBoxHTML(ttd.waliKelas.ttdUserId, '15mm', '0mm', '6mm');
 		return `
 	<div class="footer">
 		<div class="footer-left">
@@ -416,7 +418,8 @@ export function renderPiagamHTML(data: PiagamPrintData, template: '1' | '2'): st
 		</div>
 		<div class="footer-right">
 			<div class="footer-label">${escHtml(ttd.tempat)}, ${escHtml(ttd.tanggal)}</div>
-			<div class="footer-label">Wali Kelas</div>
+			<div class="footer-label"${waliTtdBox ? ' style="margin-bottom:0;"' : ''}>Wali Kelas</div>
+			${waliTtdBox ?? ''}
 			<div class="ttd-name">${formatValue(ttd.waliKelas.nama)}</div>
 			<div class="ttd-nip">${escHtml(ttd.waliKelas.nip ?? '')}</div>
 		</div>

@@ -1,5 +1,6 @@
-import { sharedStyles, formatValue, getTutwuriBwDataUri } from './shared';
+import { sharedStyles, formatValue } from './shared';
 import { ttdStempelBoxHTML } from '$lib/server/tanda-tangan-sekolah';
+import { guruTtdBoxHTML } from '$lib/server/tanda-tangan-guru';
 
 export interface JurnalMengajarPrintData {
 	sekolah: {
@@ -37,6 +38,7 @@ export interface JurnalMengajarPrintData {
 	guru: {
 		nama: string;
 		nip?: string | null;
+		ttdUserId?: number | null;
 	};
 	isWaliKelas: boolean;
 	guruLabel: string;
@@ -220,7 +222,7 @@ tr.striped td {
 				</tr>
 				<tr>
 					<td class="h-24">${ttdStempelBoxHTML(data.sekolah.id, '4rem', '3mm', '6mm')}</td>
-					<td class="h-24"></td>
+					<td class="h-24">${guruTtdBoxHTML(data.guru.ttdUserId, '4rem', '0mm', '6mm') ?? ''}</td>
 				</tr>
 				<tr>
 					<td class="font-bold underline">${formatValue(data.kepalaSekolah.nama)}</td>
