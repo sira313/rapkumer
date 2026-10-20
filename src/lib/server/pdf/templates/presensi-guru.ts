@@ -1,5 +1,6 @@
 import { sharedStyles, formatValue, FALLBACK, escHtml } from './shared';
 import { compareKepegawaian } from '$lib/server/kepegawaian-order';
+import { ttdStempelBoxHTML } from '$lib/server/tanda-tangan-sekolah';
 
 export type PresensiGuruStatusPerDay =
 	'hadir' | 'izin' | 'sakit' | 'dinas_luar' | 'cuti' | 'belum' | '';
@@ -57,6 +58,7 @@ export interface PresensiGuruPrintRow {
 
 export interface PresensiGuruPrintData {
 	sekolah: {
+		id?: number;
 		nama: string;
 	};
 	periode: {
@@ -506,7 +508,7 @@ td {
 			<p>${formatValue(data.tanggalTtd)}</p>
 			<p>${kepalaTitle}</p>
 			<p>${formatValue(data.sekolah.nama)}</p>
-			<div class="ttd-space"></div>
+			${ttdStempelBoxHTML(data.sekolah.id, '55px', '20mm', '7mm')}
 			<p class="bold">${kepalaNama}</p>
 			<p>${kepalaNipLabel}</p>
 		</div>

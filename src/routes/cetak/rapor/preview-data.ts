@@ -536,6 +536,7 @@ export async function getRaporPreviewPayload({ locals, url }: RaporContext) {
 
 	const raporData: RaporPrintData = {
 		sekolah: {
+			id: sekolah.id,
 			nama: sekolah.nama,
 			alamat: composeAlamat(sekolah),
 			bgLogoSrc,

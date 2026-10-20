@@ -3,6 +3,7 @@ import { join, resolve } from 'node:path';
 import { uploadsDir } from '$lib/server/data-dirs';
 import { getKopSuratLines } from '$lib/statics';
 import { kopSuratDataUri } from '$lib/server/kop-surat';
+import { ttdStempelBoxHTML } from '$lib/server/tanda-tangan-sekolah';
 import { sharedStyles, formatUpper, formatValue, escHtml } from './shared';
 
 export interface PiagamPrintData {
@@ -304,7 +305,7 @@ function piagamStyles(margin16mm = true): string {
 
 .kepala-status {
 	font-size: 12pt;
-	margin-bottom: 16mm;
+	margin-bottom: 1mm;
 }
 
 .ttd-name {
@@ -409,6 +410,7 @@ export function renderPiagamHTML(data: PiagamPrintData, template: '1' | '2'): st
 	<div class="footer">
 		<div class="footer-left">
 			<div class="kepala-status">${ttd.kepalaSekolah.statusKepalaSekolah === 'plt' ? 'Plt. Kepala Sekolah' : 'Kepala Sekolah'}</div>
+			${ttdStempelBoxHTML(sekolahId, '15mm', '3mm', '6mm')}
 			<div class="ttd-name">${formatValue(ttd.kepalaSekolah.nama)}</div>
 			<div class="ttd-nip">${escHtml(ttd.kepalaSekolah.nip ?? '')}</div>
 		</div>

@@ -1,8 +1,10 @@
 import { sharedStyles, formatValue, formatUpper, escHtml, getTutwuriBwDataUri } from './shared';
 import { parseTingkat, lastGradeOfFase, isGraduatingFase, isGraduatingGrade } from '$lib/tingkat';
+import { ttdStempelBoxHTML } from '$lib/server/tanda-tangan-sekolah';
 
 export interface RaporPrintData {
 	sekolah: {
+		id?: number;
 		nama: string;
 		alamat: string;
 		bgLogoSrc?: string | null;
@@ -541,7 +543,7 @@ ${
 				<td colspan="2" class="text-center font-bold" style="padding-top:8pt;">${kepalaStatus}</td>
 			</tr>
 			<tr>
-				<td colspan="2" class="spacer-5"></td>
+				<td colspan="2">${ttdStempelBoxHTML(data.sekolah.id, '5rem')}</td>
 			</tr>
 			<tr>
 				<td colspan="2" class="text-center font-bold underline">${formatValue(data.kepalaSekolah.nama)}</td>

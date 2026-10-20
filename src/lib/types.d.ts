@@ -42,6 +42,7 @@ interface CoverPrintData {
 
 interface BiodataPrintData {
 	sekolah: {
+		id?: number;
 		nama: string;
 		bgLogoSrc?: string | null;
 		statusKepalaSekolah?: string | null;
@@ -98,6 +99,7 @@ interface BiodataPrintData {
 
 interface RaporPrintData {
 	sekolah: {
+		id?: number;
 		nama: string;
 		alamat: string;
 		bgLogoSrc?: string | null;
@@ -159,6 +161,7 @@ interface RaporPrintData {
 
 interface PiagamPrintData {
 	sekolah: {
+		id?: number;
 		nama: string;
 		jenjang: 'sd' | 'smp' | 'sma' | 'slb' | 'pkbm' | 'srt';
 		jenjangVariant?: string | null;
@@ -211,6 +214,7 @@ interface PiagamPrintData {
 
 interface KeasramaanPrintData {
 	sekolah: {
+		id?: number;
 		nama: string;
 		alamat: string;
 		logoUrl?: string | null;

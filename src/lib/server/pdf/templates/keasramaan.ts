@@ -1,7 +1,9 @@
 import { sharedStyles, formatValue, formatUpper, FALLBACK, getTutwuriBwDataUri } from './shared';
+import { ttdStempelBoxHTML } from '$lib/server/tanda-tangan-sekolah';
 
 interface KeasramaanPrintData {
 	sekolah: {
+		id?: number;
 		nama: string;
 		alamat: string;
 		logoUrl?: string | null;
@@ -422,7 +424,7 @@ ${kehadiranSection}
 		</tr>
 		<tr>
 			<td class="h-24"></td>
-			<td></td>
+			<td>${ttdStempelBoxHTML(data.sekolah.id, '6rem')}</td>
 		</tr>
 		<tr>
 			<td class="text-center">____________________</td>

@@ -35,8 +35,10 @@ export async function POST(args: {
 	const { params, locals, request } = args;
 	const sekolahId = locals.sekolah?.id;
 	if (!sekolahId) return new Response('Sekolah aktif tidak ditemukan.', { status: 401 });
-	if (locals.user?.type !== 'admin') {
-		return new Response('Hanya admin yang dapat mengunggah kop surat.', { status: 403 });
+	if (locals.user?.type !== 'admin' && locals.user?.type !== 'kepala_sekolah') {
+		return new Response('Hanya admin/kepala sekolah yang dapat mengunggah kop surat.', {
+			status: 403
+		});
 	}
 	const orientasi = params.orientasi;
 	if (!orientasi || !isKopSuratOrientasi(orientasi)) {
@@ -64,8 +66,10 @@ export async function DELETE(args: { params: Record<string, string>; locals: App
 	const { params, locals } = args;
 	const sekolahId = locals.sekolah?.id;
 	if (!sekolahId) return new Response('Sekolah aktif tidak ditemukan.', { status: 401 });
-	if (locals.user?.type !== 'admin') {
-		return new Response('Hanya admin yang dapat menghapus kop surat.', { status: 403 });
+	if (locals.user?.type !== 'admin' && locals.user?.type !== 'kepala_sekolah') {
+		return new Response('Hanya admin/kepala sekolah yang dapat menghapus kop surat.', {
+			status: 403
+		});
 	}
 	const orientasi = params.orientasi;
 	if (!orientasi || !isKopSuratOrientasi(orientasi)) {

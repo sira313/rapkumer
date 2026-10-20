@@ -187,6 +187,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 
 	const printData = {
 		sekolah: {
+			id: sekolahId,
 			nama: sekolah?.nama ?? ''
 		},
 		periode: {

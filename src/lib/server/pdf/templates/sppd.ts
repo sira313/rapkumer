@@ -1,6 +1,7 @@
 import { sharedStyles, formatUpper, formatValue, escHtml } from './shared';
 import { getKopSuratLines } from '$lib/statics';
 import { kopSuratDataUri } from '$lib/server/kop-surat';
+import { ttdStempelBoxHTML } from '$lib/server/tanda-tangan-sekolah';
 
 export interface SppdPrintData {
 	sekolah: {
@@ -439,7 +440,7 @@ export function renderSppdHTML(data: SppdPrintData): string {
 		<div>${formatValue(ttd.tempat)}, ${formatValue(ttd.tanggal)}</div>
 		<div class="ttd-role">${kepalaLabelSekolah}</div>
 		<div class="ttd-sekolah">${formatValue(sekolah.nama)}</div>
-		<div class="ttd-space"></div>
+		${ttdStempelBoxHTML(sekolah.id, '20mm')}
 		<div class="ttd-nama">${formatValue(ttd.nama)}</div>
 		<div class="ttd-nip">${formatValue(ttd.nip)}</div>
 	</div>
@@ -545,7 +546,7 @@ export function renderSppdHTML(data: SppdPrintData): string {
 		<div>Tanggal ${formatValue(ttd.tanggal)}</div>
 		<div class="ttd-role">${kepalaLabelSekolah}</div>
 		<div class="ttd-sekolah">${formatValue(sekolah.nama)}</div>
-		<div class="ttd-space"></div>
+		${ttdStempelBoxHTML(sekolah.id, '20mm')}
 		<div class="ttd-nama">${formatValue(ttd.nama)}</div>
 		<div class="ttd-nip">${formatValue(ttd.nip)}</div>
 	</div>
@@ -575,7 +576,7 @@ export function renderSppdHTML(data: SppdPrintData): string {
 	</tr>
 	<tr>
 		<td class="page3-col-num">VI</td>
-		<td class="page3-cell"><span class="p3lbl">Tiba</span> : <span class="p3val">${formatValue(sekolah.nama)}</span><br><span class="p3lbl">Pada tanggal</span> : <span class="p3val">.......................</span><br>${kepalaLabelSekolah}<br>${formatValue(sekolah.nama)}<br><div class="sig-gap"></div>${formatValue(ttd.nama)}<br>${formatValue(ttd.nip)}</td>
+		<td class="page3-cell"><span class="p3lbl">Tiba</span> : <span class="p3val">${formatValue(sekolah.nama)}</span><br><span class="p3lbl">Pada tanggal</span> : <span class="p3val">.......................</span><br>${kepalaLabelSekolah}<br>${formatValue(sekolah.nama)}<br>${ttdStempelBoxHTML(sekolah.id, '14mm', '20mm', '3mm', '10mm', '3mm')}${formatValue(ttd.nama)}<br>${formatValue(ttd.nip)}</td>
 		<td class="page3-cell"><span class="p3lbl">Berangkat dari</span> : <span class="p3val">........................</span><br><span class="p3lbl">Ke</span> : <span class="p3val">........................</span><br><span class="p3lbl">Pada tanggal</span> : <span class="p3val">........................</span><br>......<br><br><br><br><br><br><div class="cell-sig">...........................................<br>NIP</div></td>
 	</tr>`;
 
@@ -586,7 +587,7 @@ export function renderSppdHTML(data: SppdPrintData): string {
 			<tr>
 				<td></td>
 				<td class="page3-cell"></td>
-				<td class="page3-cell">I. <span class="p3lbl">Berangkat dari</span> : <span class="p3val">${formatValue(sekolah.nama)}</span><br>&nbsp;&nbsp;&nbsp;&nbsp;(Tempat Kedudukan)<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="p3lbl">Ke</span> : <span class="p3val">${formatValue(surat.tempatTujuan)}</span><br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="p3lbl">Pada Tanggal</span> : <span class="p3val">${formatValue(surat.tanggalBerangkat)}</span><br>&nbsp;&nbsp;&nbsp;&nbsp;${kepalaLabelSekolah}<br>&nbsp;&nbsp;&nbsp;&nbsp;${formatValue(sekolah.nama)}<br><div class="sig-gap"></div>&nbsp;&nbsp;&nbsp;&nbsp;${formatValue(ttd.nama)}<br>&nbsp;&nbsp;&nbsp;&nbsp;${formatValue(ttd.nip)}</td>
+				<td class="page3-cell">I. <span class="p3lbl">Berangkat dari</span> : <span class="p3val">${formatValue(sekolah.nama)}</span><br>&nbsp;&nbsp;&nbsp;&nbsp;(Tempat Kedudukan)<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="p3lbl">Ke</span> : <span class="p3val">${formatValue(surat.tempatTujuan)}</span><br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="p3lbl">Pada Tanggal</span> : <span class="p3val">${formatValue(surat.tanggalBerangkat)}</span><br>&nbsp;&nbsp;&nbsp;&nbsp;${kepalaLabelSekolah}<br>&nbsp;&nbsp;&nbsp;&nbsp;${formatValue(sekolah.nama)}<br>${ttdStempelBoxHTML(sekolah.id, '14mm', '20mm', '3mm', '10mm', '3mm')}&nbsp;&nbsp;&nbsp;&nbsp;${formatValue(ttd.nama)}<br>&nbsp;&nbsp;&nbsp;&nbsp;${formatValue(ttd.nip)}</td>
 			</tr>
 			${berangkatTiba}
 			<tr>
@@ -603,7 +604,7 @@ export function renderSppdHTML(data: SppdPrintData): string {
 	<div class="ttd-page3">
 		<div>${kepalaLabelSekolah}</div>
 		<div>${formatValue(sekolah.nama)}</div>
-		<div class="ttd-space"></div>
+		${ttdStempelBoxHTML(sekolah.id, '14mm', '3mm', '7mm')}
 		<div class="ttd-nama">${formatValue(ttd.nama)}</div>
 		<div class="ttd-nip">${formatValue(ttd.nip)}</div>
 	</div>

@@ -174,6 +174,7 @@ export type KeasramaanRow = {
 
 export type KeasramaanPrintData = {
 	sekolah: {
+		id?: number;
 		nama: string;
 		alamat: string;
 		logoUrl: string | null;
@@ -467,6 +468,7 @@ export async function getKeasramaanPreviewPayload({ locals, url }: KeasramaanCon
 
 	const keasramaanData: KeasramaanPrintData = {
 		sekolah: {
+			id: sekolah.id,
 			nama: sekolah.nama,
 			alamat: composeAlamat(sekolah),
 			logoUrl: logoSrc,

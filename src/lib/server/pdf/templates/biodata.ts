@@ -1,7 +1,13 @@
 import { sharedStyles, formatValue, formatUpper, getTutwuriBwDataUri } from './shared';
+import { ttdStempelBoxHTML } from '$lib/server/tanda-tangan-sekolah';
 
 interface BiodataPrintData {
-	sekolah: { nama: string; bgLogoSrc?: string | null; statusKepalaSekolah?: string | null };
+	sekolah: {
+		id?: number;
+		nama: string;
+		bgLogoSrc?: string | null;
+		statusKepalaSekolah?: string | null;
+	};
 	murid: {
 		id?: number;
 		foto?: string | null;
@@ -211,7 +217,7 @@ ${bgLogoSrc ? `<img class="watermark" src="${bgLogoSrc}" alt="logo" />` : ''}
 </table>
 
 <div class="footer">
-	<div class="photo-box">
+	<div class="photo-box"${foto ? ' style="z-index:-2"' : ''}>
 		${foto ? `<img src="${foto}" alt="foto" />` : 'PAS FOTO 3x4'}
 	</div>
 	<div class="ttd-section">
@@ -220,6 +226,7 @@ ${bgLogoSrc ? `<img class="watermark" src="${bgLogoSrc}" alt="logo" />` : ''}
 			<p>${kepalaTitle}</p>
 		</div>
 		<div class="ttd-bottom">
+			${ttdStempelBoxHTML(sekolah.id, '16mm')}
 			<p class="font-bold">${formatValue(ttd.kepalaSekolah)}</p>
 			<p>${formatValue(ttd.nip)}</p>
 		</div>

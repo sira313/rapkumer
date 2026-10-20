@@ -240,6 +240,7 @@ export const GET = (async ({ locals, url }) => {
 
 	const printData = {
 		sekolah: {
+			id: sekolahId,
 			nama: sekolah?.nama ?? ''
 		},
 		murid: {
