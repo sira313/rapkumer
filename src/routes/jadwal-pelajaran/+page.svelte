@@ -196,10 +196,25 @@
 		return 1;
 	}
 
+	function computePlgPosisi(hari: string): number | null {
+		const autoPlgJam = computePlgAutoJam(hari);
+		const dayMatrix = jadwalMatrix[hari];
+		if (!dayMatrix) return null;
+		for (const jamKeStr of Object.keys(dayMatrix)) {
+			const jk = Number(jamKeStr);
+			if (jk === autoPlgJam) continue;
+			const kelasEntries = dayMatrix[jk];
+			if (!kelasEntries) continue;
+			const codes = kelasTerurut.map((k) => kelasEntries[k.id]);
+			if (codes.every((c) => c === 'PLG')) return jk;
+		}
+		return null;
+	}
+
 	const hariMaxJam = $derived.by(() => {
 		const m: Record<string, number> = {};
 		for (const hari of hariList) {
-			m[hari] = computePlgAutoJam(hari);
+			m[hari] = computePlgPosisi(hari) ?? computePlgAutoJam(hari);
 		}
 		return m;
 	});
