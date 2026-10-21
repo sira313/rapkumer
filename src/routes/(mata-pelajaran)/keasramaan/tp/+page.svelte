@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { invalidate } from '$app/navigation';
+	import FormEnhance from '$lib/components/form-enhance.svelte';
 	import Icon from '$lib/components/icon.svelte';
 	import TujuanPembelajaranToolbar from '$lib/components/keasramaan/TujuanPembelajaranToolbar.svelte';
 	import TujuanPembelajaranCreateRow from '$lib/components/keasramaan/TujuanPembelajaranCreateRow.svelte';
@@ -32,6 +33,8 @@
 		{ mode: 'create' } | { mode: 'edit'; item: (typeof data.tujuan)[0] } | null
 	>(null);
 	let deskripsiInput = $state('');
+	let createTujuanList = $state<string[]>(['']);
+	let isSubmitting = $state(false);
 	let deleteDialogState = $state<
 		| { source: 'bulk'; ids: number[] }
 		| { source: 'single'; ids: number[]; item: (typeof data.tujuan)[0] }
@@ -44,6 +47,9 @@
 	// formOpen removed (unused)
 	const isCreateMode = $derived.by(() => formState?.mode === 'create');
 	const isEditMode = $derived.by(() => formState?.mode === 'edit');
+	const filledCreateCount = $derived.by(
+		() => createTujuanList.filter((item) => item.trim().length > 0).length
+	);
 	const editingItemId = $derived.by(() => (formState?.mode === 'edit' ? formState.item.id : null));
 	const isDeleteModalOpen = $derived.by(() => deleteDialogState !== null);
 	const deleteModalIds = $derived.by(() => deleteDialogState?.ids ?? []);
@@ -77,9 +83,38 @@
 		if (data.tujuanTableReady) return;
 		if (selectedIds.length) selectedIds = [];
 		if (formState) formState = null;
-		if (deskripsiInput) deskripsiInput = '';
+		if (createTujuanList.length !== 1 || createTujuanList[0] !== '') createTujuanList = [''];
 		if (deleteDialogState) deleteDialogState = null;
 	});
+
+	// Selalu sisakan satu baris kosong di bawah sebagai slot tambahan
+	function ensureTrailingCreateTujuan() {
+		while (createTujuanList.length > 1) {
+			const last = createTujuanList[createTujuanList.length - 1];
+			const prev = createTujuanList[createTujuanList.length - 2];
+			if (!last.trim() && !prev.trim()) {
+				createTujuanList.pop();
+			} else {
+				break;
+			}
+		}
+
+		const last = createTujuanList[createTujuanList.length - 1];
+		if (last !== undefined && last.trim() !== '') {
+			createTujuanList.push('');
+		}
+	}
+
+	function updateCreateTujuan(index: number, value: string) {
+		createTujuanList[index] = value;
+		ensureTrailingCreateTujuan();
+	}
+
+	function removeCreateTujuan(index: number) {
+		createTujuanList.splice(index, 1);
+		if (!createTujuanList.length) createTujuanList.push('');
+		ensureTrailingCreateTujuan();
+	}
 
 	function toggleRowSelection(id: number, checked: boolean) {
 		selectedIds = checked
@@ -95,9 +130,9 @@
 		if (!canManage) return;
 		if (isCreateMode) {
 			formState = null;
-			deskripsiInput = '';
+			createTujuanList = [''];
 		} else if (!isEditMode) {
-			deskripsiInput = '';
+			createTujuanList = [''];
 			formState = { mode: 'create' };
 		}
 	}
@@ -130,7 +165,7 @@
 
 	function handleCreateSuccess() {
 		formState = null;
-		deskripsiInput = '';
+		createTujuanList = [''];
 		invalidate('app:keasramaan:tp');
 	}
 
@@ -166,7 +201,28 @@
 		{canManage}
 		onToggleCreateForm={toggleCreateForm}
 		onOpenBulkDelete={openBulkDelete}
-	/>
+	>
+		{#snippet children()}
+			{#if isCreateMode}
+				<button
+					class="btn btn-primary shadow-none"
+					type="submit"
+					form="tp-keasramaan-create"
+					disabled={isSubmitting || filledCreateCount === 0}
+					aria-disabled={isSubmitting || filledCreateCount === 0}
+					aria-busy={isSubmitting}
+					title="Simpan tujuan pembelajaran"
+				>
+					{#if isSubmitting}
+						<div class="loading loading-spinner loading-xs"></div>
+					{:else}
+						<Icon name="save" />
+					{/if}
+					Simpan
+				</button>
+			{/if}
+		{/snippet}
+	</TujuanPembelajaranToolbar>
 
 	{#if !data.tujuanTableReady}
 		<div class="alert border-error/60 bg-error/10 text-error-content mb-4 border border-dashed">
@@ -176,6 +232,20 @@
 				migrasi terbaru.
 			</span>
 		</div>
+	{/if}
+
+	<!-- Form create berada di luar tabel: input memakai atribut form= agar tetap terkait -->
+	{#if isCreateMode}
+		<FormEnhance
+			id="tp-keasramaan-create"
+			action="?/create"
+			onsuccess={handleCreateSuccess}
+			submitStateChange={(value) => (isSubmitting = value)}
+		>
+			{#snippet children()}
+				<input name="indikatorId" value={data.indikator.id} hidden />
+			{/snippet}
+		</FormEnhance>
 	{/if}
 
 	<div class="bg-base-100 dark:bg-base-200 overflow-x-auto rounded-md shadow-md dark:shadow-none">
@@ -198,20 +268,13 @@
 				</tr>
 			</thead>
 			<tbody>
-				{#if isCreateMode}
-					<TujuanPembelajaranCreateRow
-						indikatorId={data.indikator.id}
-						{canManage}
-						onSuccess={handleCreateSuccess}
-					/>
-				{/if}
-
 				{#if data.tujuan.length}
 					{#each data.tujuan as item, index (item.id)}
-						{@const rowNumber = index + 1 + (isCreateMode ? 1 : 0)}
+						{@const rowNumber = index + 1}
 						{#if isEditMode && editingItemId === item.id}
 							<TujuanPembelajaranEditRow
 								{item}
+								{rowNumber}
 								indikatorId={data.indikator.id}
 								{deskripsiInput}
 								{canManage}
@@ -258,12 +321,24 @@
 							</tr>
 						{/if}
 					{/each}
-				{:else}
+				{:else if !isCreateMode}
 					<tr>
 						<td class="py-6 text-center italic opacity-60" colspan="4">
 							Belum ada tujuan pembelajaran
 						</td>
 					</tr>
+				{/if}
+
+				<!-- Baris tambah diletakkan di bawah agar nomor urut sama dengan hasil akhir simpan -->
+				{#if isCreateMode}
+					<TujuanPembelajaranCreateRow
+						list={createTujuanList}
+						startNumber={data.tujuan.length}
+						{canManage}
+						{isSubmitting}
+						onUpdate={updateCreateTujuan}
+						onRemove={removeCreateTujuan}
+					/>
 				{/if}
 			</tbody>
 		</table>

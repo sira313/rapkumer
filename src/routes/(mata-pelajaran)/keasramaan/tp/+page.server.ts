@@ -4,6 +4,7 @@ import {
 	tableKeasramaanIndikator,
 	tableKeasramaanTujuan
 } from '$lib/server/db/schema';
+import { unflattenFormData } from '$lib/utils';
 import { fail, redirect, error } from '@sveltejs/kit';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 
@@ -12,12 +13,18 @@ const TABLE_INDIKATOR_MISSING_MESSAGE =
 const TABLE_TUJUAN_MISSING_MESSAGE =
 	'Tabel tujuan keasramaan belum tersedia. Jalankan "pnpm db:push" untuk menerapkan migrasi terbaru.';
 
-function isTableMissingError(error: unknown, tableName: string) {
-	return (
-		error instanceof Error &&
-		error.message.includes('no such table') &&
-		error.message.includes(tableName)
-	);
+// Driver membungkus error SQL di dalam `cause`, jadi pesan asli ada di sana
+function isTableMissingError(err: unknown, tableName: string) {
+	const messages = [err instanceof Error ? err.message : '', getErrorCause(err)]
+		.filter(Boolean)
+		.join(' ');
+	return messages.includes('no such table') && messages.includes(tableName);
+}
+
+function getErrorCause(err: unknown): string {
+	const cause = (err as { cause?: unknown })?.cause;
+	if (cause instanceof Error) return cause.message;
+	return typeof cause === 'string' ? cause : '';
 }
 
 export async function load({ depends, url, parent }) {
@@ -67,7 +74,8 @@ export async function load({ depends, url, parent }) {
 	try {
 		tujuan = await db.query.tableKeasramaanTujuan.findMany({
 			where: eq(tableKeasramaanTujuan.indikatorId, indikatorId),
-			orderBy: asc(tableKeasramaanTujuan.createdAt)
+			// id as tiebreaker so rows sharing createdAt keep insertion order
+			orderBy: [asc(tableKeasramaanTujuan.createdAt), asc(tableKeasramaanTujuan.id)]
 		});
 	} catch (err) {
 		if (isTableMissingError(err, 'keasramaan_tujuan')) {
@@ -101,6 +109,13 @@ function canManageKeasramaan(user: unknown): boolean {
 	);
 }
 
+function collectDeskripsi(formData: FormData): string[] {
+	const body = unflattenFormData<{ tujuan?: Record<string, { deskripsi?: string }> }>(formData);
+	return Object.values(body.tujuan ?? {})
+		.map((item) => (item?.deskripsi ?? '').trim())
+		.filter((deskripsi) => deskripsi.length > 0);
+}
+
 export const actions = {
 	create: async ({ request, locals }) => {
 		if (!canManageKeasramaan(locals.user)) {
@@ -108,7 +123,6 @@ export const actions = {
 		}
 		const formData = await request.formData();
 		const indikatorIdRaw = formData.get('indikatorId');
-		const deskripsi = formData.get('deskripsi')?.toString().trim() ?? '';
 
 		if (!indikatorIdRaw) {
 			return fail(400, { fail: 'Indikator tidak valid' });
@@ -119,12 +133,16 @@ export const actions = {
 			return fail(400, { fail: 'Indikator tidak valid' });
 		}
 
-		if (!deskripsi) {
+		const deskripsiList = collectDeskripsi(formData);
+
+		if (deskripsiList.length === 0) {
 			return fail(400, { fail: 'Tujuan pembelajaran keasramaan wajib diisi' });
 		}
 
 		try {
-			await db.insert(tableKeasramaanTujuan).values({ indikatorId, deskripsi });
+			await db
+				.insert(tableKeasramaanTujuan)
+				.values(deskripsiList.map((deskripsi) => ({ indikatorId, deskripsi })));
 		} catch (err) {
 			if (isTableMissingError(err, 'keasramaan_tujuan')) {
 				return fail(500, { fail: TABLE_TUJUAN_MISSING_MESSAGE });
@@ -135,7 +153,12 @@ export const actions = {
 			throw err;
 		}
 
-		return { message: 'Tujuan pembelajaran keasramaan berhasil ditambahkan' };
+		return {
+			message:
+				deskripsiList.length === 1
+					? 'Tujuan pembelajaran keasramaan berhasil ditambahkan'
+					: `${deskripsiList.length} tujuan pembelajaran keasramaan berhasil ditambahkan`
+		};
 	},
 
 	update: async ({ request, locals }) => {

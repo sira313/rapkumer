@@ -45,14 +45,21 @@
 	{isAdmin}
 />
 
-{#if wasForcePasswordChange}
-	{#if passwordChanged}
-		<div class="alert alert-success mt-4" role="status">
-			<Icon name="success" />
-			<span>Kata sandi berhasil diubah. Silakan gunakan aplikasi.</span>
-		</div>
-	{:else}
-		<div id="default-password-warning" class="alert alert-warning mt-4 scroll-mt-20" role="alert">
+{#if wasForcePasswordChange && passwordChanged}
+	<div class="alert alert-success mt-4" role="status">
+		<Icon name="success" />
+		<span>Kata sandi berhasil diubah. Silakan gunakan aplikasi.</span>
+	</div>
+{/if}
+
+<div class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+	<ChangeUsernameCard />
+	{#if wasForcePasswordChange && !passwordChanged}
+		<div
+			id="default-password-warning"
+			class="alert alert-warning scroll-mt-20 lg:order-first lg:col-span-2"
+			role="alert"
+		>
 			<Icon name="lock" />
 			<span>
 				Jangan gunakan sandi bawaan! Perbarui kata sandi di bagian
@@ -60,10 +67,6 @@
 			</span>
 		</div>
 	{/if}
-{/if}
-
-<div class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-	<ChangeUsernameCard />
 	<ChangePasswordCard onsuccess={handlePasswordSuccess} />
 </div>
 

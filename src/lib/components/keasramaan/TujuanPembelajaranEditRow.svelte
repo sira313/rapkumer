@@ -5,6 +5,7 @@
 
 	let {
 		item,
+		rowNumber = 1,
 		indikatorId,
 		deskripsiInput,
 		canManage,
@@ -12,6 +13,7 @@
 		onCancel
 	}: {
 		item: { id: number };
+		rowNumber?: number;
 		indikatorId: number;
 		deskripsiInput: string;
 		canManage: boolean;
@@ -32,7 +34,7 @@
 	<td class="align-top">
 		<input type="checkbox" class="checkbox" disabled />
 	</td>
-	<td class="align-top">1</td>
+	<td class="align-top">{rowNumber}</td>
 	<td class="align-top">
 		<FormEnhance
 			id={`tp-keasramaan-edit-${item.id}`}
