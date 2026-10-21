@@ -258,7 +258,7 @@
 			title="Tambah permohonan perjalanan dinas"
 		>
 			<Icon name="plus" />
-			Tambah Permohonan Perjalanan Dinas
+			Ajukan Permohonan
 		</button>
 	</div>
 

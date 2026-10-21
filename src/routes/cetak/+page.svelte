@@ -47,7 +47,7 @@
 		const visible = all.filter(
 			(o) => !((o.value === 'presensi-guru' || o.value === 'laporan-tpp') && !presensiGuruEnabled)
 		);
-		if (userType === 'wali_asuh') {
+		if (userType === 'wali_asuh' || userType === 'wali_asrama') {
 			return visible.filter((o) => o.value === 'keasramaan');
 		}
 		if (userType === 'user') {

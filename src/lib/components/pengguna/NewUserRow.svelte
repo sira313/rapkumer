@@ -17,6 +17,7 @@
 		<option value="admin">Admin</option>
 		<option value="wali_kelas">Wali Kelas</option>
 		<option value="wali_asuh">Wali Asuh</option>
+		<option value="wali_asrama">Wali Asrama</option>
 		<option value="user">User</option>
 	</select>
 </td>

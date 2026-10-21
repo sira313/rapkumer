@@ -68,10 +68,14 @@ export async function load({ url, locals }) {
 	// Derive every role a pegawai holds from relations, so rangkap accounts
 	// (e.g. Kepala Sekolah + Wali Kelas A + Wali Kelas B) display all labels.
 	const sekolahFilter = locals.sekolah?.id ? sql` AND sekolah_id = ${locals.sekolah.id}` : sql``;
-	const [kelasBerwali, sekolahBerkepala, asuhCounts] = await Promise.all([
+	const [kelasBerwali, kelasBerwaliAsrama, sekolahBerkepala, asuhCounts] = await Promise.all([
 		db.query.tableKelas.findMany({
 			columns: { id: true, nama: true, waliKelasId: true },
 			where: sql`${tableKelas.waliKelasId} IS NOT NULL${sekolahFilter}`
+		}),
+		db.query.tableKelas.findMany({
+			columns: { id: true, nama: true, waliAsramaId: true },
+			where: sql`${tableKelas.waliAsramaId} IS NOT NULL${sekolahFilter}`
 		}),
 		db
 			.select({ pegawaiId: tableSekolah.kepalaSekolahId })
@@ -99,6 +103,18 @@ export async function load({ url, locals }) {
 		idArr.push(k.id);
 		waliKelasIdsByPegawai.set(k.waliKelasId, idArr);
 	}
+
+	const waliAsramaByPegawai = new Map<number, string[]>();
+	const waliAsramaIdsByPegawai = new Map<number, number[]>();
+	for (const k of kelasBerwaliAsrama) {
+		if (!k.waliAsramaId) continue;
+		const arr = waliAsramaByPegawai.get(k.waliAsramaId) ?? [];
+		arr.push(k.nama);
+		waliAsramaByPegawai.set(k.waliAsramaId, arr);
+		const idArr = waliAsramaIdsByPegawai.get(k.waliAsramaId) ?? [];
+		idArr.push(k.id);
+		waliAsramaIdsByPegawai.set(k.waliAsramaId, idArr);
+	}
 	const kepalaPegawaiIds = new Set(
 		sekolahBerkepala.map((s) => s.pegawaiId).filter((id): id is number => id != null)
 	);
@@ -114,6 +130,7 @@ export async function load({ url, locals }) {
 		kepala_sekolah: 'Kepala Sekolah',
 		wali_kelas: 'Wali Kelas',
 		wali_asuh: 'Wali Asuh',
+		wali_asrama: 'Wali Asrama',
 		user: 'Guru'
 	};
 
@@ -189,6 +206,11 @@ export async function load({ url, locals }) {
 		if (asuhCount > 0 || row.type === 'wali_asuh') {
 			roles.push(asuhCount > 0 ? `Wali Asuh (${asuhCount} murid)` : 'Wali Asuh');
 		}
+		if (row.pegawaiId) {
+			for (const nama of waliAsramaByPegawai.get(row.pegawaiId) ?? []) {
+				roles.push(`Wali Asrama ${nama}`);
+			}
+		}
 		if (!roles.length) roles.push(typeLabel[row.type] ?? row.type);
 		return { ...row, roles };
 	});
@@ -201,11 +223,14 @@ export async function load({ url, locals }) {
 			if (user.kelasId != null) ids.add(user.kelasId);
 			if (user.pegawaiId != null) {
 				for (const kid of waliKelasIdsByPegawai.get(user.pegawaiId) ?? []) ids.add(kid);
+				for (const kid of waliAsramaIdsByPegawai.get(user.pegawaiId) ?? []) ids.add(kid);
 			}
 			(user as Record<string, unknown>).mataPelajaranIds = userMapelMap.get(uid) ?? [];
 			(user as Record<string, unknown>).kelasIds = Array.from(ids);
 			(user as Record<string, unknown>).waliKelasIds =
 				user.pegawaiId != null ? (waliKelasIdsByPegawai.get(user.pegawaiId) ?? []) : [];
+			(user as Record<string, unknown>).waliAsramaIds =
+				user.pegawaiId != null ? (waliAsramaIdsByPegawai.get(user.pegawaiId) ?? []) : [];
 		}
 	}
 
@@ -299,16 +324,20 @@ export const actions = {
 				.leftJoin(tableKelas, eq(tableAuthUser.kelasId, tableKelas.id))
 				.where(inArray(tableAuthUser.id, ids));
 
-			const blocked = candidates.filter((c) => c.type === 'wali_kelas' || c.type === 'wali_asuh');
+			const blocked = candidates.filter(
+				(c) => c.type === 'wali_kelas' || c.type === 'wali_asuh' || c.type === 'wali_asrama'
+			);
 			if (blocked.length) {
 				const messages = blocked.map((b) => {
 					const name = b.pegawaiName || b.username || 'Pengguna';
 					const kelas = b.kelasName || '';
-					const role = b.type === 'wali_asuh' ? 'Wali Asuh' : 'Wali Kelas';
 					if (b.type === 'wali_asuh') {
-						return `${name} adalah ${role}, tidak dapat dihapus. Ubah wali asuh melalui menu Data Murid`;
+						return `${name} adalah Wali Asuh, tidak dapat dihapus. Ubah wali asuh melalui menu Data Murid`;
 					}
-					return `${name} adalah ${role} ${kelas}, tidak dapat dihapus. Untuk menggantinya buka menu Data Kelas`;
+					if (b.type === 'wali_asrama') {
+						return `${name} adalah Wali Asrama, tidak dapat dihapus. Untuk menggantinya buka menu Data Kelas`;
+					}
+					return `${name} adalah Wali Kelas ${kelas}, tidak dapat dihapus. Untuk menggantinya buka menu Data Kelas`;
 				});
 				return new Response(JSON.stringify({ type: 'warning', message: messages.join(' | ') }), {
 					status: 400,

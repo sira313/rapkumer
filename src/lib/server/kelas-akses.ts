@@ -32,6 +32,23 @@ export async function ownedKelasIdSet(
 }
 
 /**
+ * True bila `user` adalah wali asrama dari `kelasId` (lewat relasi
+ * waliAsramaId). Selalu dibaca dari DB agar konsisten dengan kelas yang
+ * sedang diampu.
+ */
+export async function isWaliAsramaOfKelas(
+	user: { type?: string; pegawaiId?: number | null } | null | undefined,
+	kelasId: number
+): Promise<boolean> {
+	if (!user || user.type !== 'wali_asrama' || !user.pegawaiId) return false;
+	const own = await db.query.tableKelas.findFirst({
+		columns: { id: true },
+		where: and(eq(tableKelas.id, kelasId), eq(tableKelas.waliAsramaId, user.pegawaiId))
+	});
+	return !!own;
+}
+
+/**
  * Whether `user` may access `kelasId` in the active `sekolahId`. Mirrors the
  * per-role class scoping in src/routes/+layout.server.ts so API handlers that
  * select the class from the client-controlled active-kelas-id cookie cannot
@@ -65,6 +82,22 @@ export async function canAccessKelas(
 		}
 		// Kelas lintas only with kelas_pindah permission (mirror verifyWaliKelasAccess
 		// in +layout.server.ts: cookie-selected kelas is nulled for wali_kelas otherwise).
+		const hasPindah = Array.isArray(user.permissions) && user.permissions.includes('kelas_pindah');
+		if (!hasPindah) return false;
+		return !!(await db.query.tableAuthUserKelas.findFirst({
+			columns: { id: true },
+			where: and(
+				eq(tableAuthUserKelas.authUserId, user.id),
+				eq(tableAuthUserKelas.kelasId, kelasId)
+			)
+		}));
+	}
+
+	if (user.type === 'wali_asrama') {
+		// Kelas yang diampunya (kelas.waliAsramaId) + kelas tambahan via
+		// auth_user_kelas yang di-assign admin (dengan izin kelas_pindah).
+		if (await isWaliAsramaOfKelas(user, kelasId)) return true;
+		if (!user.id) return false;
 		const hasPindah = Array.isArray(user.permissions) && user.permissions.includes('kelas_pindah');
 		if (!hasPindah) return false;
 		return !!(await db.query.tableAuthUserKelas.findFirst({

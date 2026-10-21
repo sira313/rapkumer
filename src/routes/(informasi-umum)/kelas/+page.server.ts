@@ -16,8 +16,9 @@ import {
 	tableWaliMurid
 } from '$lib/server/db/schema.js';
 import { tableAuthUser } from '$lib/server/db/schema.js';
+import { deletePegawaiIfOrphaned } from '$lib/server/pengguna-merge.js';
 import { fail } from '@sveltejs/kit';
-import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm';
 
 export async function load({ depends, locals }) {
 	depends('app:kelas');
@@ -126,7 +127,7 @@ export const actions = {
 
 		const kelas = await db.query.tableKelas.findFirst({
 			where: and(eq(tableKelas.id, kelasIdNumber), eq(tableKelas.sekolahId, sekolahId)),
-			columns: { id: true, waliKelasId: true }
+			columns: { id: true, waliKelasId: true, waliAsramaId: true }
 		});
 
 		if (!kelas) {
@@ -242,6 +243,29 @@ export const actions = {
 				// Hapus akun pengguna yang terkait langsung ke kelas (mis. wali_kelas users)
 				await tx.delete(tableAuthUser).where(eq(tableAuthUser.kelasId, kelasIdNumber));
 
+				// Wali asrama: pindahkan kelas utama akunnya ke kelas lain yang masih
+				// diampu supaya akun (username/sandi) tidak ikut terhapus.
+				if (kelas.waliAsramaId) {
+					const asramaKelas = await tx.query.tableKelas.findMany({
+						columns: { id: true },
+						where: and(
+							eq(tableKelas.waliAsramaId, kelas.waliAsramaId),
+							ne(tableKelas.id, kelasIdNumber)
+						)
+					});
+					if (asramaKelas.length) {
+						await tx
+							.update(tableAuthUser)
+							.set({ kelasId: asramaKelas[0].id })
+							.where(
+								and(
+									eq(tableAuthUser.pegawaiId, kelas.waliAsramaId),
+									eq(tableAuthUser.kelasId, kelasIdNumber)
+								)
+							);
+					}
+				}
+
 				await tx.delete(tableKelas).where(eq(tableKelas.id, kelasIdNumber));
 
 				const waliIdsArray = Array.from(waliMuridIds);
@@ -329,6 +353,11 @@ export const actions = {
 			return fail(500, {
 				fail: 'Gagal menghapus kelas. Periksa log server untuk detail.'
 			});
+		}
+
+		// Pegawai wali asrama yang tidak lagi diampu kelas mana pun → hapus.
+		if (kelas.waliAsramaId) {
+			await deletePegawaiIfOrphaned(kelas.waliAsramaId);
 		}
 
 		return {

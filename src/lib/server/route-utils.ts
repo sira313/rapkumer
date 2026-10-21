@@ -1,6 +1,7 @@
 import db from '$lib/server/db';
 import { resolveSekolahAcademicContext, type AcademicContext } from '$lib/server/db/academic';
 import { tableMurid, tablePegawai, tableAuthUserKelas, tableKelas } from '$lib/server/db/schema';
+import { isWaliAsramaOfKelas } from '$lib/server/kelas-akses';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 
 export interface KelasContext {
@@ -73,6 +74,10 @@ export async function getKelasContextForUser(
 			where: eq(tableKelas.id, kelasId)
 		});
 		if (kelasRow?.waliKelasId === user.pegawaiId) return { hasAccess: true };
+	}
+	if (user.type === 'wali_asrama' && user.pegawaiId) {
+		// Wali asrama: kelas yang diampunya (kelas.waliAsramaId).
+		if (await isWaliAsramaOfKelas(user, kelasId)) return { hasAccess: true };
 	}
 	if (user.type === 'wali_asuh' && user.pegawaiId) {
 		const peg = await db.query.tablePegawai.findFirst({

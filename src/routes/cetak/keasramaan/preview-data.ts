@@ -23,6 +23,7 @@ import {
 } from '$lib/server/pdf/preview-utils';
 import { parseTPMode } from '$lib/rapor-params';
 import { computeRaporAttendance } from '$lib/server/pdf/attendance-utils';
+import { isWaliAsramaOfKelas } from '$lib/server/kelas-akses';
 
 export type KeasramaanContext = {
 	locals: App.Locals;
@@ -257,6 +258,13 @@ export async function getKeasramaanPreviewPayload({ locals, url }: KeasramaanCon
 		const muridWali = murid.waliAsuhNama;
 		if (!pegNama || (muridWali?.trim().toLowerCase() ?? '') !== pegNama) {
 			throw error(403, 'Anda hanya dapat mencetak rapor keasramaan murid asuhan sendiri');
+		}
+	}
+
+	// Wali_asrama: only students of the classes they supervise
+	if (userWithType?.type === 'wali_asrama' && userWithType.pegawaiId) {
+		if (!(await isWaliAsramaOfKelas(userWithType, murid.kelasId ?? 0))) {
+			throw error(403, 'Anda hanya dapat mencetak rapor keasramaan murid kelas yang Anda ampu');
 		}
 	}
 

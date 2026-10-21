@@ -9,6 +9,7 @@ import {
 } from '$lib/server/db/schema.js';
 import { unflattenFormData } from '$lib/utils.js';
 import { deletePegawaiIfOrphaned } from '$lib/server/pengguna-merge.js';
+import { ensureWaliAsramaAccount } from '../../../../pengguna/consolidation.server';
 import { error, fail } from '@sveltejs/kit';
 import { and, eq, isNotNull, sql } from 'drizzle-orm';
 import { authority } from '../../../../pengguna/utils.server';
@@ -413,6 +414,10 @@ export const actions = {
 		}
 
 		const replacedPegawaiIds: number[] = [];
+		// Wali asrama yang baru ditugaskan & yang sebelumnya ditugaskan (akunnya
+		// perlu disinkronkan: dibuat atau kelas utamanya diperbarui).
+		let waliAsramaPegawaiId: number | null = null;
+		const replacedWaliAsramaIds: number[] = [];
 		await db.transaction(async (tx) => {
 			if (params.id) {
 				const kelas = await tx.query.tableKelas.findFirst({
@@ -427,6 +432,7 @@ export const actions = {
 
 				let waliKelasId = kelas.waliKelasId ?? null;
 				let waliAsramaId = kelas.waliAsramaId ?? null;
+				const prevWaliAsramaId = waliAsramaId;
 
 				if (hasWali && dapodikAktif) {
 					if (waliKelasId && waliKelasId !== waliTargetId) {
@@ -456,6 +462,10 @@ export const actions = {
 					replacedPegawaiIds.push(waliAsramaId);
 					waliAsramaId = null;
 				}
+				if (prevWaliAsramaId && prevWaliAsramaId !== waliAsramaId) {
+					replacedWaliAsramaIds.push(prevWaliAsramaId);
+				}
+				waliAsramaPegawaiId = waliAsramaId;
 
 				await tx
 					.update(tableKelas)
@@ -487,6 +497,7 @@ export const actions = {
 					const res = await resolveWaliPegawai(tx, null, waliAsramaNama, waliAsramaNip, timestamp);
 					waliAsramaId = res.id;
 				}
+				waliAsramaPegawaiId = waliAsramaId;
 
 				await tx.insert(tableKelas).values({
 					nama: rombel,
@@ -506,6 +517,16 @@ export const actions = {
 		for (const id of replacedPegawaiIds) {
 			await deletePegawaiIfOrphaned(id);
 		}
+
+		// Akun wali asrama dibuat/diperbarui otomatis begitu wali asrama
+		// ditugaskan di form kelas (meniru alur wali kelas).
+		if (waliAsramaPegawaiId) {
+			await ensureWaliAsramaAccount(waliAsramaPegawaiId);
+		}
+		for (const id of replacedWaliAsramaIds) {
+			await ensureWaliAsramaAccount(id);
+		}
+
 		return { message: `Data kelas berhasil disimpan` };
 	},
 

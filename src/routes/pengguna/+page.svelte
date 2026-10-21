@@ -46,7 +46,7 @@
 		const selectedUsers = users.filter((u) => ids.indexOf(u.id as number) !== -1);
 		const hasWali = selectedUsers.some((u) => {
 			const type = (u as { type?: string }).type;
-			return type === 'wali_kelas' || type === 'wali_asuh';
+			return type === 'wali_kelas' || type === 'wali_asuh' || type === 'wali_asrama';
 		});
 
 		if (hasWali) {
@@ -55,7 +55,7 @@
 				body: AlertWarning,
 				bodyProps: {
 					message:
-						'Tidak dapat menghapus karena satu atau lebih pengguna terpilih berperan sebagai Wali Kelas atau Wali Asuh. Untuk menggantinya, klik tombol <strong>Atur Data Kelas</strong>'
+						'Tidak dapat menghapus karena satu atau lebih pengguna terpilih berperan sebagai Wali Kelas, Wali Asuh, atau Wali Asrama. Untuk menggantinya, klik tombol <strong>Atur Data Kelas</strong>'
 				},
 				onPositive: {
 					label: 'Atur Data Kelas',

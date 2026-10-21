@@ -137,6 +137,46 @@ export const load: LayoutServerLoad = async ({ url, locals, cookies, depends }) 
 					orderBy: asc(tableKelas.nama)
 				});
 			}
+		} else if (userWithType?.type === 'wali_asrama' && userWithType.pegawaiId) {
+			// Wali asrama: kelas yang diampunya (kelas.waliAsramaId) + kelas tambahan
+			// via auth_user_kelas (assign admin di /pengguna/form).
+			const ownKelasRows = await db.query.tableKelas.findMany({
+				columns: { id: true },
+				where: academicContext?.activeSemesterId
+					? and(
+							eq(tableKelas.sekolahId, sekolah.id),
+							eq(tableKelas.waliAsramaId, userWithType.pegawaiId),
+							eq(tableKelas.semesterId, academicContext.activeSemesterId)
+						)
+					: and(
+							eq(tableKelas.sekolahId, sekolah.id),
+							eq(tableKelas.waliAsramaId, userWithType.pegawaiId)
+						)
+			});
+			const additionalKelasRows = userWithType.id
+				? await db.query.tableAuthUserKelas.findMany({
+						columns: { kelasId: true },
+						where: eq(tableAuthUserKelas.authUserId, userWithType.id)
+					})
+				: [];
+			const allKelasIds = new Set([
+				...ownKelasRows.map((r) => r.id),
+				...additionalKelasRows.map((r) => r.kelasId)
+			]);
+			if (allKelasIds.size > 0) {
+				daftarKelas = await db.query.tableKelas.findMany({
+					columns: { id: true, nama: true, fase: true },
+					with: { waliKelas: { columns: { id: true, nama: true } } },
+					where: academicContext?.activeSemesterId
+						? and(
+								eq(tableKelas.sekolahId, sekolah.id),
+								inArray(tableKelas.id, [...allKelasIds]),
+								eq(tableKelas.semesterId, academicContext.activeSemesterId)
+							)
+						: and(eq(tableKelas.sekolahId, sekolah.id), inArray(tableKelas.id, [...allKelasIds])),
+					orderBy: asc(tableKelas.nama)
+				});
+			}
 		} else if (userWithType?.type === 'wali_asuh' && userWithType.pegawaiId) {
 			// Wali_asuh: only show classes that have their assigned students
 			const peg = await db.query.tablePegawai.findFirst({
@@ -386,7 +426,7 @@ export const load: LayoutServerLoad = async ({ url, locals, cookies, depends }) 
 
 	if (user) {
 		const userType = (user as { type?: string }).type;
-		const canManageMapel = userType !== 'wali_asuh';
+		const canManageMapel = userType !== 'wali_asuh' && userType !== 'wali_asrama';
 		const canEditUrutan =
 			userType === 'admin' || userType === 'kepala_sekolah' || userType === 'wali_kelas';
 		const canAddImportMapel = canEditUrutan;

@@ -22,7 +22,7 @@
 		pegawaiName?: string;
 		username?: string;
 		permissions?: string[];
-		type?: 'admin' | 'kepala_sekolah' | 'user' | 'wali_asuh';
+		type?: 'admin' | 'kepala_sekolah' | 'user' | 'wali_asuh' | 'wali_asrama' | 'wali_kelas';
 	};
 
 	let {
@@ -77,7 +77,7 @@
 	}
 
 	function hasPindahPermission() {
-		if (user?.type === 'wali_asuh') return true;
+		if (user?.type === 'wali_asuh' || user?.type === 'wali_asrama') return true;
 		const perms = user?.permissions ?? [];
 		return perms.includes('kelas_pindah');
 	}
@@ -303,6 +303,13 @@
 								<Icon name="info" />
 								<span>
 									<strong>{displayUserName}</strong> - Wali Asuh
+								</span>
+							</div>
+						{:else if user?.type === 'wali_asrama'}
+							<div role="alert" class="alert alert-info mb-4">
+								<Icon name="info" />
+								<span>
+									<strong>{displayUserName}</strong> - Wali Asrama
 								</span>
 							</div>
 						{/if}

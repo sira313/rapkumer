@@ -16,6 +16,7 @@ pnpm package:win             # stage windows installer artifacts
 pnpm prepare                 # svelte-kit sync (auto-runs on install)
 pnpm check                   # svelte-kit sync + svelte-check
 pnpm check:watch             # svelte-kit sync + svelte-check --watch
+pnpm check:wali-asrama       # self-check alur wali asrama (DB temp, kode asli via Vite SSR)
 pnpm lint                    # prettier --check . && eslint .
 pnpm format                  # prettier --write . (tabs, single quotes, no trailing comma, width 100)
 strix -n -t ./ --scan-mode quick   # AI pentest (install & usage: docs/SKILLS.md)
@@ -57,7 +58,7 @@ strix -n -t ./ --scan-mode quick   # AI pentest (install & usage: docs/SKILLS.md
 - Custom session auth (not Lucia). Session TTL 12h, refresh threshold 2h.
 - Cookie names from `$lib/utils.ts` `cookieNames`: `rapkumer-session`, `active-sekolah-id`, `active-kelas-id`.
 - Default admin: `Admin` / `Admin123` (created by `ensureDefaultAdmin()` on first start).
-- User types: `admin`, `wali_kelas`, `wali_asuh`, `user`. Permissions stored as JSON array on `auth_user.permissions`.
+- User types: `admin`, `wali_kelas`, `wali_asuh`, `wali_asrama`, `user`. Permissions stored as JSON array on `auth_user.permissions`.
 - Three hooks composed via `sequence(csrfGuard, authGuard, cookieParser)` in `src/hooks.server.ts`.
 - CSRF: SvelteKit's built-in disabled (`csrf.trustedOrigins: ['*']`). Custom guard checks origin/referer.
 - `event.locals.sekolah` scopes all queries — set by `cookieParser` hook.

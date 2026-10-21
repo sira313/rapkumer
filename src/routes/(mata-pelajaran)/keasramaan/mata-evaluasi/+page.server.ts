@@ -61,7 +61,8 @@ function canManageKeasramaan(user: unknown): boolean {
 		u.type === 'admin' ||
 		u.type === 'kepala_sekolah' ||
 		u.type === 'wali_kelas' ||
-		u.type === 'wali_asuh'
+		u.type === 'wali_asuh' ||
+		u.type === 'wali_asrama'
 	);
 }
 

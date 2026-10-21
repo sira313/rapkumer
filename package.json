@@ -25,6 +25,7 @@
 		"version": "node scripts/update-version.mjs",
 		"check": "svelte-kit sync && node scripts/svelte-check-wrapper.mjs",
 		"check:watch": "svelte-kit sync && node scripts/svelte-check-wrapper.mjs --watch",
+		"check:wali-asrama": "node scripts/check-wali-asrama.mjs",
 		"tes-bell": "node scripts/test-bell.mjs",
 		"format": "prettier --write .",
 		"lint": "prettier --check . && eslint .",

@@ -436,6 +436,25 @@ export async function ensurePegawaiConsolidation() {
 			console.info(`[pengguna] Created user for wali_asuh "${nama}" (pegawaiId=${pegawaiId})`);
 		}
 
+		// ========== WALI ASRAMA AUTO-DETECTION ==========
+		// Same logic as wali_kelas but sourced from kelas.waliAsramaId — a person
+		// supervising one or more classes. The account is scoped to those classes
+		// so the navbar can switch between them.
+		const kelasWithWaliAsrama = await db.query.tableKelas.findMany({
+			where: sql`${tableKelas.waliAsramaId} IS NOT NULL`,
+			columns: { id: true, waliAsramaId: true }
+		});
+
+		const waliAsramaIds = new Set<number>();
+		for (const k of kelasWithWaliAsrama) {
+			if (!k.waliAsramaId) continue;
+			waliAsramaIds.add(k.waliAsramaId);
+		}
+
+		for (const waliAsramaPegawaiId of waliAsramaIds) {
+			await ensureWaliAsramaAccount(waliAsramaPegawaiId);
+		}
+
 		// Cross-type merge: if the same person is both kepala_sekolah and a guru
 		// (wali_kelas / user, e.g. a PLT kepala sekolah who must keep teaching
 		// hours), keep the kepala_sekolah account and merge the rest.
@@ -443,5 +462,96 @@ export async function ensurePegawaiConsolidation() {
 		consolidationDone = true;
 	} catch (err) {
 		console.warn('[pengguna] Failed to ensure wali_kelas/wali_asuh users:', err);
+	}
+}
+
+/**
+ * Ensure a login account exists for a wali asrama (pegawai) yang mengampu satu
+ * atau lebih kelas (kelas.waliAsramaId). Akun-nya di-scope ke kelas-kelas itu
+ * supaya navbar bisa pindah kelas di antara kelas yang diampunya.
+ *
+ * Dipanggil dari form /kelas (langsung setelah wali asrama ditugaskan) dan
+ * dari konsolidasi halaman /pengguna.
+ */
+export async function ensureWaliAsramaAccount(pegawaiId: number): Promise<void> {
+	if (!pegawaiId) return;
+
+	const kelasArr = await db.query.tableKelas.findMany({
+		columns: { id: true },
+		where: eq(tableKelas.waliAsramaId, pegawaiId)
+	});
+	if (!kelasArr.length) return;
+
+	const peg = await db.query.tablePegawai.findFirst({
+		where: eq(tablePegawai.id, pegawaiId),
+		columns: { nama: true }
+	});
+	const nama = (peg?.nama || '').trim();
+	if (!nama) return;
+
+	const existing = await db.query.tableAuthUser.findFirst({
+		where: and(eq(tableAuthUser.pegawaiId, pegawaiId), eq(tableAuthUser.type, 'wali_asrama')),
+		columns: { id: true, permissions: true, kelasId: true }
+	});
+
+	if (!existing) {
+		const username = await resolveUniqueUsername(nama);
+		const usernameNormalized = username.toLowerCase();
+		const password = randomBytes(6).toString('base64url');
+		const { hash, salt } = hashPassword(password);
+		const timestamp = new Date().toISOString();
+
+		await db.insert(tableAuthUser).values({
+			username,
+			usernameNormalized,
+			passwordHash: hash,
+			passwordSalt: salt,
+			passwordUpdatedAt: timestamp,
+			// password generated automatically → require a change at first login
+			mustChangePassword: true,
+			permissions: defaultPermissionsByType['wali_asrama'] ?? [],
+			type: 'wali_asrama',
+			pegawaiId,
+			kelasId: kelasArr[0].id,
+			createdAt: timestamp,
+			updatedAt: timestamp
+		});
+
+		console.info(
+			`[pengguna] Created user for wali_asrama ${nama} (kelas: ${kelasArr
+				.map((k) => k.id)
+				.join(', ')})`
+		);
+		return;
+	}
+
+	// Account exists: keep kelasId menunjuk kelas yang masih diampunya, pastikan
+	// permission 'kelas_pindah' ada bila menangani >1 kelas, dan lengkapi
+	// permission default yang baru ditambahkan (tanpa membuang penyesuaian manual).
+	const currentPerms = Array.isArray(existing.permissions) ? existing.permissions : [];
+	const missingDefaults = (defaultPermissionsByType['wali_asrama'] ?? []).filter(
+		(p) => !currentPerms.includes(p)
+	);
+	const needsPindah = kelasArr.length > 1 && !currentPerms.includes('kelas_pindah');
+	const staleKelasId = existing.kelasId == null || !kelasArr.some((k) => k.id === existing.kelasId);
+	if (missingDefaults.length || needsPindah || staleKelasId) {
+		const updatedPerms: UserPermission[] = Array.from(
+			new Set([
+				...currentPerms,
+				...missingDefaults,
+				...(needsPindah ? (['kelas_pindah'] as UserPermission[]) : [])
+			])
+		);
+		await db
+			.update(tableAuthUser)
+			.set({
+				permissions: updatedPerms,
+				kelasId: staleKelasId ? kelasArr[0].id : existing.kelasId,
+				updatedAt: new Date().toISOString()
+			})
+			.where(eq(tableAuthUser.id, existing.id));
+		console.info(
+			`[pengguna] Updated wali_asrama ${nama} (kelas: ${kelasArr.map((k) => k.id).join(', ')})`
+		);
 	}
 }

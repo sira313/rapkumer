@@ -111,6 +111,16 @@ export const defaultPermissionsByType: Partial<Record<AuthUser['type'], UserPerm
 		'kelas_pindah',
 		'administrasi_dinas_luar'
 	],
+	// Wali asrama: kelas yang diampunya (kelas.wali_asrama_id). Masuk ke halaman
+	// keasramaan + asesmen keasramaan, mengajukan dinas luar, dan pada /cetak
+	// hanya "Rapor Keasramaan". `kelas_pindah` supaya bisa pindah kelas via navbar.
+	wali_asrama: [
+		'mata_pelajaran_keasramaan',
+		'input_nilai_asesmen_keasramaan',
+		'cetak_dokumen',
+		'kelas_pindah',
+		'administrasi_dinas_luar'
+	],
 	user: [
 		'mata_pelajaran_intrakurikuler',
 		'input_nilai_asesmen_formatif',

@@ -19,7 +19,14 @@ import { validatePasswordStrength } from '$lib/server/password-policy';
 
 const u = tableAuthUser;
 
-const ALLOWED_USER_TYPES = ['admin', 'kepala_sekolah', 'wali_kelas', 'wali_asuh', 'user'] as const;
+const ALLOWED_USER_TYPES = [
+	'admin',
+	'kepala_sekolah',
+	'wali_kelas',
+	'wali_asuh',
+	'wali_asrama',
+	'user'
+] as const;
 
 async function fetchSharedLists() {
 	const [mataPelajaran, sekolahList, kelasListRaw] = await Promise.all([
@@ -97,7 +104,7 @@ export async function load({ params }) {
 		if (!user) error(404, 'Pengguna tidak ditemukan');
 
 		const pegawaiId = user.pegawaiId ?? -1;
-		const [mapelRows, kelasRows, waliKelas] = await Promise.all([
+		const [mapelRows, kelasRows, waliKelas, waliAsrama] = await Promise.all([
 			db
 				.select({ id: tableAuthUserMataPelajaran.mataPelajaranId })
 				.from(tableAuthUserMataPelajaran)
@@ -106,18 +113,27 @@ export async function load({ params }) {
 				.select({ id: tableAuthUserKelas.kelasId })
 				.from(tableAuthUserKelas)
 				.where(eq(tableAuthUserKelas.authUserId, id)),
-			db.select({ id: tableKelas.id }).from(tableKelas).where(eq(tableKelas.waliKelasId, pegawaiId))
+			db
+				.select({ id: tableKelas.id })
+				.from(tableKelas)
+				.where(eq(tableKelas.waliKelasId, pegawaiId)),
+			db
+				.select({ id: tableKelas.id })
+				.from(tableKelas)
+				.where(eq(tableKelas.waliAsramaId, pegawaiId))
 		]);
 
 		const kelasSet = new Set(kelasRows.map((r) => r.id));
 		if (user.kelasId != null) kelasSet.add(user.kelasId);
 		for (const wk of waliKelas) kelasSet.add(wk.id);
+		for (const wa of waliAsrama) kelasSet.add(wa.id);
 
 		userDetail = {
 			...user,
 			mataPelajaranIds: mapelRows.map((r) => r.id),
 			kelasIds: Array.from(kelasSet),
-			waliKelasIds: waliKelas.map((r) => r.id)
+			waliKelasIds: waliKelas.map((r) => r.id),
+			waliAsramaIds: waliAsrama.map((r) => r.id)
 		};
 	}
 
@@ -207,12 +223,15 @@ async function createUser(request: Request) {
 			}
 		}
 
-		const permissions: string[] = [
-			...(defaultPermissionsByType[roleValue as AuthUser['type']] ?? [])
-		];
-		if ((roleValue === 'user' || roleValue === 'wali_kelas') && kelasIds.length > 1) {
-			permissions.push('kelas_pindah');
-		}
+		const permissions: string[] = Array.from(
+			new Set([
+				...(defaultPermissionsByType[roleValue as AuthUser['type']] ?? []),
+				...((roleValue === 'user' || roleValue === 'wali_kelas' || roleValue === 'wali_asrama') &&
+				kelasIds.length > 1
+					? (['kelas_pindah'] as UserPermission[])
+					: [])
+			])
+		);
 
 		const insertData = {
 			username,

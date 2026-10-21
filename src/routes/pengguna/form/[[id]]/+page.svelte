@@ -71,14 +71,20 @@
 	const visibleKelasCount = $derived(filteredKelasList.filter((k) => kelasIds.has(k.id)).length);
 
 	const waliKelasIdSet = $derived(new Set(data.userDetail?.waliKelasIds ?? []));
+	const waliAsramaIdSet = $derived(new Set(data.userDetail?.waliAsramaIds ?? []));
 	const roleHint = $derived.by(() => {
-		if (!isEditMode || type !== 'wali_kelas') return '';
+		if (!isEditMode) return '';
 		const list = (data.kelasList ?? []) as {
 			id: number;
 			nama: string;
 			fase?: string | null;
 			sekolahId: number;
 		}[];
+		if (type === 'wali_asrama') {
+			const asramaNames = list.filter((k) => waliAsramaIdSet.has(k.id)).map((k) => k.nama);
+			return asramaNames.length ? `Wali Asrama ${asramaNames.join(', ')}` : '';
+		}
+		if (type !== 'wali_kelas') return '';
 		const waliNames = list.filter((k) => waliKelasIdSet.has(k.id)).map((k) => k.nama);
 		const guruNames = list
 			.filter((k) => !waliKelasIdSet.has(k.id) && kelasIds.has(k.id))
@@ -224,6 +230,9 @@
 												{#if waliKelasIdSet.has(k.id)}
 													<span class="badge badge-sm badge-primary ml-1">wali</span>
 												{/if}
+												{#if waliAsramaIdSet.has(k.id)}
+													<span class="badge badge-sm badge-secondary ml-1">asrama</span>
+												{/if}
 											</span>
 										</label>
 									{/each}
@@ -263,6 +272,7 @@
 							<option value="kepala_sekolah">Kepala Sekolah</option>
 							<option value="wali_kelas">Wali Kelas</option>
 							<option value="wali_asuh">Wali Asuh</option>
+							<option value="wali_asrama">Wali Asrama</option>
 							<option value="user">Guru</option>
 						</select>
 						<p class="label text-wrap">Tentukan peran pengguna</p>
