@@ -58,7 +58,9 @@ export async function GET({ locals }) {
 		'Kontak Ibu',
 		'Nama Wali',
 		'Pekerjaan Wali',
-		'Kontak Wali'
+		'Kontak Wali',
+		'Wali Asuh',
+		'NIP Wali Asuh'
 	];
 
 	const rows: unknown[][] = [headers];
@@ -96,7 +98,9 @@ export async function GET({ locals }) {
 			ibu?.kontak ?? '',
 			wali?.nama ?? '',
 			wali?.pekerjaan ?? '',
-			wali?.kontak ?? ''
+			wali?.kontak ?? '',
+			murid.waliAsuhNama ?? '',
+			murid.waliAsuhNip ?? ''
 		]);
 	}
 

@@ -2,6 +2,7 @@ import db from '$lib/server/db';
 import type { AcademicContext } from '$lib/server/db/academic';
 import { resolveSekolahAcademicContext, invalidateAcademicCache } from '$lib/server/db/academic';
 import { ensurePresensiSettingsSchema } from '$lib/server/db/ensure-presensi-settings';
+import { mergeWaliAsuh, resolveMuridExcelColumns } from '$lib/server/excel-murid-columns';
 import { parseHariSekolahCustom } from '$lib/hari-sekolah';
 import {
 	tableAlamat,
@@ -93,88 +94,44 @@ async function importKelasDanMuridFromExcel(
 		throw fail(400, { fail: 'Header kolom tidak ditemukan pada file.' });
 	}
 
-	const header = rows[headerIndex].map((cell) => normalize(cell));
-	const canonicalize = (value: string) =>
-		normalize(value)
-			.toLowerCase()
-			.replace(/[^a-z0-9]+/g, ' ')
-			.trim();
-	const headerCanonical = header.map((cell) => canonicalize(cell));
+	const {
+		idxNama,
+		idxNipd,
+		idxRombel,
+		idxNisn,
+		idxTempatLahir,
+		idxTanggalLahir,
+		idxJk,
+		idxAgama,
+		idxAlamat,
+		idxKelurahan,
+		idxKecamatan,
+		idxKabupaten,
+		idxKodePos,
+		idxSekolahAsal,
+		idxTelepon,
+		idxHp,
+		idxEmail,
+		idxKontakOrangTua,
+		idxAyahNama,
+		idxAyahJob,
+		idxAyahKontak,
+		idxAyahBase,
+		idxIbuNama,
+		idxIbuJob,
+		idxIbuKontak,
+		idxIbuBase,
+		idxWaliNama,
+		idxWaliJob,
+		idxWaliKontak,
+		idxWaliBase,
+		idxWaliAsuhNama,
+		idxWaliAsuhNip
+	} = resolveMuridExcelColumns(rows[headerIndex]);
 
-	const findColumnIndex = (...labels: string[]) => {
-		for (const label of labels) {
-			const canonicalLabel = canonicalize(label);
-			const idx = headerCanonical.findIndex((cell) => cell === canonicalLabel);
-			if (idx !== -1) return idx;
-		}
-		for (const label of labels) {
-			const canonicalLabel = canonicalize(label);
-			const idx = headerCanonical.findIndex((cell) => cell.includes(canonicalLabel));
-			if (idx !== -1) return idx;
-		}
-		return undefined;
-	};
-
-	const findColumnByPredicate = (
-		predicate: (canonical: string, original: string, index: number) => boolean
-	): number | undefined => {
-		const idx = header.findIndex((cell, index) => predicate(headerCanonical[index], cell, index));
-		return idx >= 0 ? idx : undefined;
-	};
-
-	const idxNama = findColumnIndex('Nama', 'Nama Peserta Didik', 'Nama Siswa');
-	const idxNipd = findColumnIndex('NIPD', 'NIS', 'Nomor Induk', 'No Induk');
-	const idxRombel = findColumnByPredicate((canonical) => canonical.startsWith('rombel'));
 	if (idxNama === undefined || idxNipd === undefined || idxRombel === undefined) {
 		throw fail(400, { fail: 'Kolom Nama, NIPD/NIS, atau Rombel tidak lengkap.' });
 	}
-
-	const idxNisn = findColumnIndex('NISN');
-	const idxTempatLahir = findColumnIndex('Tempat Lahir', 'Tempat Lahir Peserta Didik');
-	const idxTanggalLahir = findColumnIndex('Tanggal Lahir', 'Tanggal Lahir Peserta Didik');
-	const idxJk = findColumnIndex('JK', 'Jenis Kelamin');
-	const idxAgama = findColumnIndex('Agama');
-	const idxAlamat = findColumnIndex('Alamat', 'Alamat Jalan', 'Alamat Peserta Didik');
-	const idxKelurahan = findColumnIndex('Kelurahan', 'Kelurahan/Desa', 'Kelurahan / Desa', 'Desa');
-	const idxKecamatan = findColumnIndex('Kecamatan');
-	const idxKabupaten = findColumnIndex('Kabupaten', 'Kabupaten/Kota', 'Kabupaten / Kota');
-	const idxKodePos = findColumnIndex('Kode Pos');
-	const idxSekolahAsal = findColumnIndex('Sekolah Asal', 'Sekolah Asal Siswa');
-	const idxTelepon = findColumnIndex('Telepon', 'No Telepon', 'No. Telepon', 'Telepon Rumah');
-	const idxHp = findColumnIndex('HP', 'No HP', 'No. HP', 'Nomor HP', 'Nomor Hp', 'HP Siswa');
-	const idxEmail = findColumnIndex('E-Mail', 'Email', 'Surel');
-	const idxKontakOrangTua = findColumnIndex(
-		'Kontak',
-		'Kontak Orang Tua',
-		'Kontak Ortu',
-		'Nomor Kontak Orang Tua',
-		'No HP Orang Tua',
-		'No Hp Orang Tua',
-		'No Hp Ortu',
-		'No Telepon Orang Tua',
-		'No Telpon Orang Tua',
-		'No Telepon Ortu',
-		'Telepon Orang Tua',
-		'HP Orang Tua',
-		'HP Ortu'
-	);
-
-	const idxAyahNama = findColumnIndex('Nama Ayah', 'Nama Ayah Kandung');
-	const idxAyahJob = findColumnIndex('Pekerjaan Ayah', 'Pekerjaan Ayah Kandung');
-	const idxAyahKontak = findColumnIndex('Kontak Ayah', 'No HP Ayah', 'No Hp Ayah', 'Telepon Ayah');
-	const idxAyahBase = findColumnIndex('Data Ayah');
-
-	const idxIbuNama = findColumnIndex('Nama Ibu', 'Nama Ibu Kandung');
-	const idxIbuJob = findColumnIndex('Pekerjaan Ibu', 'Pekerjaan Ibu Kandung');
-	const idxIbuKontak = findColumnIndex('Kontak Ibu', 'No HP Ibu', 'No Hp Ibu', 'Telepon Ibu');
-	const idxIbuBase = findColumnIndex('Data Ibu');
-
-	const idxWaliNama = findColumnIndex('Nama Wali', 'Nama Wali Murid');
-	const idxWaliJob = findColumnIndex('Pekerjaan Wali', 'Pekerjaan Wali Murid');
-	const idxWaliKontak = findColumnIndex('Kontak Wali', 'No HP Wali', 'No Hp Wali', 'Telepon Wali');
-	const idxWaliBase = findColumnIndex('Data Wali');
-	const idxWaliAsuhNama = findColumnIndex('Nama Wali Asuh');
-	const idxWaliAsuhNip = findColumnIndex('NIP Wali Asuh', 'NIP');
 
 	const ayahNameIdx =
 		idxAyahNama ?? (idxAyahBase !== undefined && idxAyahBase >= 0 ? idxAyahBase : undefined);
@@ -456,8 +413,8 @@ async function importKelasDanMuridFromExcel(
 						waliId,
 						kelasId,
 						semesterId: opts.semesterId,
-						waliAsuhNama: student.waliAsuhNama || null,
-						waliAsuhNip: student.waliAsuhNip || null,
+						waliAsuhNama: mergeWaliAsuh(student.waliAsuhNama, existing.waliAsuhNama),
+						waliAsuhNip: mergeWaliAsuh(student.waliAsuhNip, existing.waliAsuhNip),
 						updatedAt: timestamp
 					})
 					.where(eq(tableMurid.id, existing.id));
