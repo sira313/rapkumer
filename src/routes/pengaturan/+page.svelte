@@ -86,7 +86,7 @@
 	</div>
 {/if}
 
-{#if user?.type === 'wali_kelas'}
+{#if user?.type === 'wali_kelas' || user?.type === 'wali_asuh' || user?.type === 'wali_asrama'}
 	<div class="mt-4">
 		<TandaTanganGuruCard />
 	</div>

@@ -33,10 +33,18 @@ export function guruTtdDataUri(userId: number | null | undefined): string | null
 export async function waliKelasTtdUserId(
 	pegawaiId: number | null | undefined
 ): Promise<number | null> {
+	return guruTtdUserId(pegawaiId, 'wali_kelas');
+}
+
+/** Resolve the uploaded signature for any guru account linked to a pegawai. */
+export async function guruTtdUserId(
+	pegawaiId: number | null | undefined,
+	type: 'wali_kelas' | 'wali_asuh' | 'wali_asrama'
+): Promise<number | null> {
 	if (!pegawaiId) return null;
 	const accounts = await db.query.tableAuthUser.findMany({
 		columns: { id: true },
-		where: and(eq(tableAuthUser.pegawaiId, pegawaiId), eq(tableAuthUser.type, 'wali_kelas')),
+		where: and(eq(tableAuthUser.pegawaiId, pegawaiId), eq(tableAuthUser.type, type)),
 		orderBy: asc(tableAuthUser.id)
 	});
 	for (const account of accounts) {

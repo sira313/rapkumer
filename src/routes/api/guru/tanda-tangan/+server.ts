@@ -2,6 +2,12 @@ import fs from 'node:fs/promises';
 import { uploadsDir } from '$lib/server/data-dirs';
 import { guruTtdFilePath } from '$lib/server/tanda-tangan-guru';
 
+const allowedRoles = ['wali_kelas', 'wali_asuh', 'wali_asrama'] as const;
+
+function canManageSignature(user: App.Locals['user']) {
+	return !!user && (allowedRoles as readonly string[]).includes(user.type);
+}
+
 async function ensureUploadsDir() {
 	try {
 		await fs.mkdir(uploadsDir(), { recursive: true });
@@ -12,9 +18,10 @@ async function ensureUploadsDir() {
 
 export async function GET(args: { locals: App.Locals }) {
 	const user = args.locals.user;
-	if (!user || user.type !== 'wali_kelas') {
+	if (!canManageSignature(user)) {
 		return new Response('Not found', { status: 404 });
 	}
+	if (!user) return new Response('Not found', { status: 404 });
 	try {
 		const data = await fs.readFile(guruTtdFilePath(user.id));
 		return new Response(Buffer.from(data), {
@@ -29,8 +36,8 @@ export async function POST(args: { locals: App.Locals; request: Request }) {
 	const { locals, request } = args;
 	const user = locals.user;
 	if (!user) return new Response('Unauthorized', { status: 401 });
-	if (user.type !== 'wali_kelas') {
-		return new Response('Hanya wali kelas yang dapat mengunggah gambar.', { status: 403 });
+	if (!canManageSignature(user)) {
+		return new Response('Akun ini tidak dapat mengunggah tanda tangan.', { status: 403 });
 	}
 
 	const contentType = request.headers.get('content-type') || '';
@@ -53,8 +60,8 @@ export async function POST(args: { locals: App.Locals; request: Request }) {
 export async function DELETE(args: { locals: App.Locals }) {
 	const user = args.locals.user;
 	if (!user) return new Response('Unauthorized', { status: 401 });
-	if (user.type !== 'wali_kelas') {
-		return new Response('Hanya wali kelas yang dapat menghapus gambar.', { status: 403 });
+	if (!canManageSignature(user)) {
+		return new Response('Akun ini tidak dapat menghapus tanda tangan.', { status: 403 });
 	}
 
 	try {

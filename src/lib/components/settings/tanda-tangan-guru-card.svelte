@@ -83,7 +83,7 @@
 
 <section class="card bg-base-100 rounded-lg border border-none p-6 shadow-md">
 	<header class="mb-4 space-y-2">
-		<h2 class="text-xl font-semibold">Tanda Tangan Wali Kelas</h2>
+		<h2 class="text-xl font-semibold">Tanda Tangan</h2>
 		<p class="text-base-content/70 text-sm">
 			Unggah tanda tangan Anda berformat PNG (background transparan disarankan). Gambar ini
 			digunakan pada dokumen cetak yang ditandatangani wali kelas. Bila tidak diunggah, dokumen
