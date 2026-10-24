@@ -5,6 +5,7 @@
 	import { showModal } from '$lib/components/global-modal.svelte';
 	import IsiSekaligusModal from '$lib/components/absen/isi-sekaligus-modal.svelte';
 	import DownloadRekapModal from '$lib/components/absen/download-rekap-modal.svelte';
+	import ImportPresensiModal from '$lib/components/absen/import-presensi-modal.svelte';
 	import HapusPresensiModal from '$lib/components/absen/hapus-presensi-modal.svelte';
 	import TableHarian from '$lib/components/absen/table-harian.svelte';
 	import TableBulanan from '$lib/components/absen/table-bulanan.svelte';
@@ -522,6 +523,18 @@
 		});
 	}
 
+	function openImportPresensi() {
+		let action: () => Promise<void>;
+		showModal({
+			title: 'Import Presensi',
+			body: ImportPresensiModal,
+			bodyProps: { onAction: (value: () => Promise<void>) => (action = value) },
+			onPositive: { label: 'Import', action: () => action() },
+			onNegative: { label: 'Batal' },
+			dismissible: true
+		});
+	}
+
 	function presensiNotReady() {
 		showModal({
 			title: 'Pengaturan Presensi',
@@ -828,14 +841,23 @@
 				</button>
 			</div>
 		</div>
-		<button
-			type="button"
-			class="btn btn-soft shadow-none max-sm:w-full sm:w-auto"
-			onclick={openDownloadRekap}
-		>
-			<Icon name="download" />
-			Download Rekap (.xlsx)
-		</button>
+		<div class="join max-sm:w-full sm:w-auto">
+			<button
+				type="button"
+				class="btn btn-soft join-item shadow-none max-sm:flex-1"
+				onclick={openDownloadRekap}
+			>
+				<Icon name="download" /> Download Rekap (.xlsx)
+			</button>
+			<div class="dropdown dropdown-end">
+				<button type="button" class="btn btn-soft join-item shadow-none" aria-label="Menu rekap"
+					><Icon name="down" /></button
+				>
+				<ul class="dropdown-content menu bg-base-100 rounded-box z-10 mt-1 w-48 p-2 shadow">
+					<li><button type="button" onclick={openImportPresensi}>Import Presensi</button></li>
+				</ul>
+			</div>
+		</div>
 	</div>
 
 	{#if showSimulasi}

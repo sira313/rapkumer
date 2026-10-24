@@ -6,7 +6,14 @@ import { loadBulanan } from '$lib/server/absen/load-bulanan';
 import { loadPersentaseBulanan } from '$lib/server/absen/load-persentase-bulanan';
 import { loadPersentaseSemester } from '$lib/server/absen/load-persentase-semester';
 import { loadRapor } from '$lib/server/absen/load-rapor';
+import ExcelJS from 'exceljs';
+import { fail } from '@sveltejs/kit';
+import db from '$lib/server/db';
+import { tableMurid, tableKetidakhadiranHarian, tableAbsensi } from '$lib/server/db/schema';
+import { and, eq, sql } from 'drizzle-orm';
 import { loadHarian } from '$lib/server/absen/load-harian';
+import { canUserEditAbsen } from '$lib/server/absen/utils';
+import { cookieNames } from '$lib/utils';
 import type { AbsenLoadData } from '$lib/server/absen/types';
 import {
 	handleUpdate,
@@ -19,9 +26,7 @@ import { ensurePresensiSettingsSchema } from '$lib/server/db/ensure-presensi-set
 import { ensureAbsensiSchema } from '$lib/server/db/ensure-absensi';
 import { ensureKetidakhadiranHarianSchema } from '$lib/server/db/ensure-ketidakhadiran-harian';
 import { ensureKetidakhadiranRaporSchema } from '$lib/server/db/ensure-ketidakhadiran-rapor';
-import db from '$lib/server/db';
 import { tableKelas, tableAuthUserMataPelajaran } from '$lib/server/db/schema';
-import { eq } from 'drizzle-orm';
 
 export const load: PageServerLoad = async ({ parent, locals, url, depends }) => {
 	depends('app:absen');
@@ -428,6 +433,126 @@ function defaultEmpty(
 }
 
 export const actions = {
+	importPresensi: async ({ request, locals, url, cookies }: RequestEvent) => {
+		if (!locals.user || !locals.sekolah) return fail(403, { fail: 'Tidak memiliki izin' });
+		if (!(await canUserEditAbsen(locals.user, locals.sekolah.id))) {
+			return fail(403, { fail: 'Anda tidak memiliki izin untuk mengubah data kehadiran' });
+		}
+		const file = (await request.formData()).get('file');
+		if (!(file instanceof File) || !file.name.toLowerCase().endsWith('.xlsx'))
+			return fail(400, { fail: 'File Excel (.xlsx) tidak valid' });
+		const workbook = new ExcelJS.Workbook() as unknown as {
+			xlsx: { load(data: ArrayBuffer): Promise<void> };
+			worksheets: Array<{
+				getRows(start: number, count: number): Array<{ getCell(col: number): { value: unknown } }>;
+			}>;
+		};
+		await workbook.xlsx.load(await file.arrayBuffer());
+		const sheet = workbook.worksheets[0];
+		if (!sheet) return fail(400, { fail: 'Sheet Excel tidak ditemukan' });
+		const rows = sheet.getRows(1, 10000);
+		const header = rows.findIndex((row) =>
+			String(row.getCell(2).value ?? '')
+				.toUpperCase()
+				.includes('NAMA SISWA')
+		);
+		if (header < 0) return fail(400, { fail: 'Gunakan template Download Rekap Presensi' });
+		const kelasId = Number(cookies.get(cookieNames.ACTIVE_KELAS_ID) || '');
+		const murid = await db
+			.select({ id: tableMurid.id, nama: tableMurid.nama })
+			.from(tableMurid)
+			.where(
+				and(
+					eq(tableMurid.sekolahId, locals.sekolah.id),
+					...(kelasId ? [eq(tableMurid.kelasId, kelasId)] : [])
+				)
+			);
+		const byName = new Map(murid.map((m) => [m.nama.trim().toLowerCase(), m.id]));
+		const bulanNames = [
+			'JANUARI',
+			'FEBRUARI',
+			'MARET',
+			'APRIL',
+			'MEI',
+			'JUNI',
+			'JULI',
+			'AGUSTUS',
+			'SEPTEMBER',
+			'OKTOBER',
+			'NOVEMBER',
+			'DESEMBER'
+		];
+		const monthRow = rows.slice(0, header).find((row) =>
+			String(row.getCell(1).value ?? '')
+				.toUpperCase()
+				.startsWith('BULAN ')
+		);
+		const monthMatch = String(monthRow?.getCell(1).value ?? '')
+			.toUpperCase()
+			.match(/^BULAN\s+(.+)\s+(\d{4})$/);
+		const templateParts = monthMatch?.[1]?.split(' ') ?? [];
+		const templateMonth = bulanNames.findIndex((name) => templateParts.includes(name)) + 1;
+		const bulan =
+			templateMonth || Number(url.searchParams.get('bulan')) || new Date().getMonth() + 1;
+		const tahun =
+			Number(monthMatch?.[2]) || Number(url.searchParams.get('tahun')) || new Date().getFullYear();
+		let count = 0;
+		for (const row of rows.slice(header + 2)) {
+			const muridId = byName.get(
+				String(row.getCell(2).value ?? '')
+					.trim()
+					.toLowerCase()
+			);
+			if (!muridId) continue;
+			for (let col = 4; col <= 34; col++) {
+				const status = String(row.getCell(col).value ?? '')
+					.trim()
+					.toUpperCase();
+				if (!['H', 'S', 'I', 'TK'].includes(status)) continue;
+				const day = col - 3;
+				const tanggal = `${tahun}-${String(bulan).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+				const tanggalDate = new Date(tahun, bulan - 1, day);
+				if (
+					tanggalDate.getFullYear() !== tahun ||
+					tanggalDate.getMonth() !== bulan - 1 ||
+					tanggalDate.getDate() !== day
+				)
+					continue;
+				await db
+					.delete(tableKetidakhadiranHarian)
+					.where(
+						and(
+							eq(tableKetidakhadiranHarian.muridId, muridId),
+							eq(tableKetidakhadiranHarian.tanggal, tanggal),
+							sql`${tableKetidakhadiranHarian.mataPelajaranId} IS NULL`
+						)
+					);
+				const start = new Date(`${tanggal}T08:00:00`).toISOString();
+				await db
+					.delete(tableAbsensi)
+					.where(
+						and(
+							eq(tableAbsensi.muridId, muridId),
+							sql`substr(${tableAbsensi.waktu}, 1, 10) = ${tanggal}`,
+							sql`${tableAbsensi.mataPelajaranId} IS NULL`
+						)
+					);
+				if (status === 'H')
+					await db.insert(tableAbsensi).values({ muridId, waktu: start, mataPelajaranId: null });
+				else if (status !== 'TK')
+					await db
+						.insert(tableKetidakhadiranHarian)
+						.values({
+							muridId,
+							tanggal,
+							mataPelajaranId: null,
+							keterangan: status === 'S' ? 'sakit' : status === 'I' ? 'izin' : 'alfa'
+						});
+				count++;
+			}
+		}
+		return { success: `${count} data presensi diproses` };
+	},
 	update: (event: RequestEvent) => handleUpdate(event),
 	isiSekaligus: (event: RequestEvent) => handleIsiSekaligus(event),
 	deletePresensi: (event: RequestEvent) => handleDeletePresensi(event),
