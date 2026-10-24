@@ -106,6 +106,11 @@ export const appMenuItems: MenuItem[] = [
 				tags: ['kirim', 'matev', 'nilai', 'dapodik']
 			},
 			{
+				title: 'Rekap Keasramaan',
+				path: '/rekap-keasramaan',
+				tags: ['keasramaan', 'leger']
+			},
+			{
 				title: 'Keputusan',
 				path: '/keputusan',
 				tags: ['kenaikan', 'kelas', 'lulus', 'naik'],

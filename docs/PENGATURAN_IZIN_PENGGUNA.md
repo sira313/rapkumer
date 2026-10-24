@@ -44,11 +44,12 @@ Izin dibagi menjadi 10 grup, mengikuti struktur drawer menu aplikasi. Setiap izi
 | administrasi   | `administrasi_jurnal_mengajar`      | Menu Jurnal Mengajar        |
 | administrasi   | `administrasi_catatan_wali_kelas`   | Menu Catatan Wali Kelas     |
 | administrasi   | `administrasi_rekap_nilai`          | Menu Rekap Nilai            |
+| administrasi   | `administrasi_rekap_keasramaan`     | Menu Rekap Keasramaan       |
 | administrasi   | `administrasi_keputusan`            | Menu Keputusan              |
 | administrasi   | `administrasi_buku_tamu`            | Menu Buku Tamu              |
 | cetak          | `cetak_dokumen`                     | Menu Cetak Dokumen          |
 
-**Total: 30 izin** dalam 10 kelompok.
+**Total: 31 izin** dalam 10 kelompok.
 
 Izin `kelas_pindah` tetap dipertahankan (grup `kelas`), karena ini izin fungsional yang tidak merepresentasikan menu.
 
@@ -122,7 +123,7 @@ Catatan penting:
 
 ### Wali Asuh (`type: 'wali_asuh'`)
 
-**Default saat akun dibuat** (`defaultPermissionsByType['wali_asuh']`) — 4 izin:
+**Default saat akun dibuat** (`defaultPermissionsByType['wali_asuh']`) — 5 izin:
 
 | Izin                             | Dampak                                                                                                                                                    |
 | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -130,6 +131,7 @@ Catatan penting:
 | `input_nilai_asesmen_keasramaan` | Bisa akses menu Asesmen Keasramaan dan isi nilainya.                                                                                                      |
 | `cetak_dokumen`                  | Bisa cetak dokumen, **terbatas hanya Rapor Keasramaan** (filter di `cetak/+page.svelte:33` dan pembatasan murid asuhan sendiri di `preview-data.ts:250`). |
 | `kelas_pindah`                   | Bisa berpindah-pindah kelas.                                                                                                                              |
+| `administrasi_rekap_keasramaan`  | Bisa akses menu Rekap Keasramaan (hanya murid asuhan sendiri).                                                                                            |
 
 Catatan penting:
 
@@ -243,6 +245,7 @@ Drawer menu (sidebar) menyaring item menu **berdasarkan permission user** (`isAu
 | Jurnal Mengajar       | ✅    | ✅         | ❌        | ✅         |
 | Catatan Wali Kelas    | ✅    | ✅         | ❌        | ❌         |
 | Rekap Nilai           | ✅    | ✅         | ❌        | ✅         |
+| Rekap Keasramaan      | ✅    | ✅         | ✅        | ❌         |
 | Keputusan             | ✅    | ✅         | ❌        | ❌         |
 | Buku Tamu             | ✅    | ❌         | ❌        | ❌         |
 | Cetak Dokumen         | ✅    | ✅         | ✅        | ✅         |
@@ -255,7 +258,7 @@ Filter bekerja rekursif: jika semua submenu dalam satu grup tersembunyi, grup in
 - Guru Mapel: grup **"Informasi Umum"** (Sekolah, Akademik, Kelas, Murid) — semua terkunci, grup tidak muncul.
 - Guru Mapel: grup **"Mata Pelajaran"** — Intrakurikuler terbuka, Kokurikuler/Ekstrakurikuler/Keasramaan terkunci. Grup tetap muncul karena masih ada Intrakurikuler.
 - Wali Asuh: grup **"Input Nilai"** — hanya Asesmen Keasramaan yang terbuka, sisanya terkunci. Grup tetap muncul karena masih ada satu submenu.
-- Wali Asuh: grup **"Administrasi"** — semua terkunci, grup tidak muncul.
+- Wali Asuh: grup **"Administrasi"** — hanya Rekap Keasramaan yang terbuka, grup tetap muncul karena masih ada satu submenu.
 
 ### Catatan
 

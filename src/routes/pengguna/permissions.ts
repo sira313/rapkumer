@@ -62,6 +62,7 @@ export const groupedUserPermissions = {
 			['jurnal_mengajar', 'Jurnal Mengajar'],
 			['catatan_wali_kelas', 'Catatan Wali Kelas'],
 			['rekap_nilai', 'Rekap Nilai'],
+			['rekap_keasramaan', 'Rekap Keasramaan'],
 			['keputusan', 'Keputusan'],
 			['buku_tamu', 'Buku Tamu'],
 			['presensi_guru', 'Presensi Guru'],
@@ -109,6 +110,7 @@ export const defaultPermissionsByType: Partial<Record<AuthUser['type'], UserPerm
 		'input_nilai_asesmen_keasramaan',
 		'cetak_dokumen',
 		'kelas_pindah',
+		'administrasi_rekap_keasramaan',
 		'administrasi_dinas_luar'
 	],
 	// Wali asrama: kelas yang diampunya (kelas.wali_asrama_id). Masuk ke halaman
@@ -119,6 +121,7 @@ export const defaultPermissionsByType: Partial<Record<AuthUser['type'], UserPerm
 		'input_nilai_asesmen_keasramaan',
 		'cetak_dokumen',
 		'kelas_pindah',
+		'administrasi_rekap_keasramaan',
 		'administrasi_dinas_luar'
 	],
 	user: [
@@ -177,6 +180,7 @@ export const menuRoutePermissions: { path: string; permission: UserPermission }[
 	{ path: '/jurnal-mengajar', permission: 'administrasi_jurnal_mengajar' },
 	{ path: '/catatan-wali-kelas', permission: 'administrasi_catatan_wali_kelas' },
 	{ path: '/nilai-akhir', permission: 'administrasi_rekap_nilai' },
+	{ path: '/rekap-keasramaan', permission: 'administrasi_rekap_keasramaan' },
 	{ path: '/keputusan', permission: 'administrasi_keputusan' },
 	{ path: '/buku-tamu', permission: 'administrasi_buku_tamu' },
 	{ path: '/presensi-guru', permission: 'administrasi_presensi_guru' },

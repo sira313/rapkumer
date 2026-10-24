@@ -278,9 +278,9 @@ try {
 		}
 	});
 
-	// ---------- 8. gate menu: keasramaan, asesmen keasramaan, dinas luar, cetak ----------
+	// ---------- 8. gate menu: keasramaan, asesmen keasramaan, rekap keasramaan, dinas luar, cetak ----------
 	checks.push({
-		name: 'permission default wali_asrama hanya membuka 4 menu',
+		name: 'permission default wali_asrama hanya membuka 5 menu',
 		fn: async () => {
 			const allowed = menuRoutePermissions
 				.filter((r) => defaults.includes(r.permission))
@@ -289,7 +289,8 @@ try {
 				'/asesmen-keasramaan',
 				'/cetak',
 				'/dinas-luar',
-				'/keasramaan'
+				'/keasramaan',
+				'/rekap-keasramaan'
 			]);
 
 			for (const closed of ['/kelas', '/murid', '/presensi-murid', '/sekolah', '/akademik']) {
@@ -301,7 +302,13 @@ try {
 					`${closed} (${permission}) tidak boleh terbuka untuk wali asrama`
 				);
 			}
-			for (const open of ['/keasramaan', '/asesmen-keasramaan', '/cetak', '/dinas-luar']) {
+			for (const open of [
+				'/keasramaan',
+				'/asesmen-keasramaan',
+				'/rekap-keasramaan',
+				'/cetak',
+				'/dinas-luar'
+			]) {
 				const permission = resolveRoutePermission(open);
 				assert.ok(permission);
 				assert.equal(defaults.includes(permission), true, `${open} harus terbuka`);

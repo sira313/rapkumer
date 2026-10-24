@@ -12,11 +12,11 @@
 		agamaMapelLabelByName,
 		agamaMapelNames,
 		agamaParentName,
-		jenisMapel,
 		pksMapelLabelByName,
 		pksMapelNames,
 		pksParentName
 	} from '$lib/statics';
+	import { jenisMapelLabel, jenisMapelLabelShort } from '$lib/jenis-mapel';
 	import IntrakurikulerModals from '$lib/components/intrakurikuler/modals.svelte';
 	import { touchDragSource, dropTarget } from '$lib/touch-drag.svelte';
 
@@ -85,7 +85,7 @@
 
 	// Fungsi khusus untuk jenjang SMK: ubah label "Wajib" menjadi "Umum"
 	function getWajibLabel(): string {
-		return jenjangVariant?.toUpperCase() === 'SMK' ? 'Umum' : 'Wajib';
+		return jenisMapelLabelShort('wajib', page.data.sekolah);
 	}
 
 	// Fungsi untuk mengecek apakah section kejuruan harus ditampilkan (hanya untuk SMK)
@@ -545,7 +545,7 @@
 								<p class="text-[11px] font-normal opacity-70">{mapel.keteranganDapodik}</p>
 							{/if}
 						</td>
-						<td class="whitespace-nowrap">{jenisMapel[mapel.jenis ?? 'wajib']}</td>
+						<td class="whitespace-nowrap">{jenisMapelLabel(mapel.jenis, page.data.sekolah)}</td>
 						<td class="font-mono text-sm"
 							>{mapel.kode ?? (mapel.nama === agamaParentName ? 'PAPB' : '—')}</td
 						>

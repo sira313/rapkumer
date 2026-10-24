@@ -11,6 +11,7 @@
 		pksParentName,
 		jenisMapel
 	} from '$lib/statics';
+	import { jenisMapelLabel } from '$lib/jenis-mapel';
 
 	const AGAMA_MAPEL_NAME_SET = new Set<string>(agamaMapelNames);
 	const PKS_MAPEL_NAME_SET = new Set<string>(pksMapelNames);
@@ -88,10 +89,7 @@
 
 	// Fungsi untuk mendapatkan label jenis mapel yang dinamis berdasarkan jenjang
 	function getJenisMapelLabel(jenis: string): string {
-		if (jenis === 'wajib' && jenjangVariant?.toUpperCase() === 'SMK') {
-			return 'Mata Pelajaran Umum';
-		}
-		return jenisMapel[jenis as MataPelajaran['jenis']] ?? jenis;
+		return jenisMapelLabel(jenis as MataPelajaran['jenis'], page.data.sekolah);
 	}
 
 	// Derive displayable jenis mapel options

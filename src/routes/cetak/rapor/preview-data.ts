@@ -13,13 +13,13 @@ import {
 } from '$lib/server/db/schema';
 import { parseRaporPeriode } from '$lib/rapor-params';
 import {
-	jenisMapel,
 	agamaMapelNames,
 	agamaParentName,
 	agamaMapelOptions,
 	pksMapelOptions,
 	type DimensiProfilLulusanKey
 } from '$lib/statics';
+import { jenisMapelLabel } from '$lib/jenis-mapel';
 import { muridAgamaKey } from '$lib/server/mapel-picker';
 import {
 	buildKokurikulerNarrative,
@@ -364,7 +364,9 @@ export async function getRaporPreviewPayload({ locals, url }: RaporContext) {
 				priority,
 				normalizedName,
 				displayName,
-				kelompok: jenisMapel[mapel.jenis] ?? null,
+				kelompok: jenisMapelLabel(mapel.jenis, {
+					jenjangVariant: sekolah.jenjangVariant
+				}),
 				nilaiAkhir: formatNilai(isRTS ? (item.nilaiAkhirRts ?? null) : (item.nilaiAkhir ?? null)),
 				deskripsi: buildCapaianKompetensi(
 					muridNama,

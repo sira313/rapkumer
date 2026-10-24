@@ -2,6 +2,7 @@ import { sharedStyles, formatValue, formatUpper, escHtml, getTutwuriBwDataUri } 
 import { parseTingkat, lastGradeOfFase, isGraduatingFase, isGraduatingGrade } from '$lib/tingkat';
 import { ttdStempelBoxHTML } from '$lib/server/tanda-tangan-sekolah';
 import { guruTtdBoxHTML } from '$lib/server/tanda-tangan-guru';
+import { jenisMapelLabel } from '$lib/jenis-mapel';
 
 export interface RaporPrintData {
 	sekolah: {
@@ -87,15 +88,10 @@ export function renderRaporHTML(data: RaporPrintData): string {
 		kelompokMap[jenis].items.push(n);
 	}
 
-	const isSMK = data.sekolah.jenjangVariant === 'SMK';
-	const jenisLabelText: Record<string, string> = {
-		belum_dipetakan: 'Belum Dipetakan',
-		wajib: isSMK ? 'Mata Pelajaran Umum' : 'Mata Pelajaran Wajib',
-		pilihan: 'Mata Pelajaran Pilihan',
-		kejuruan: 'Mata Pelajaran Kejuruan',
-		mulok: 'Muatan Lokal',
-		pemberdayaan: 'Muatan Pemberdayaan dan Keterampilan'
-	};
+	const jenisLabelText = (jenis: string) =>
+		jenisMapelLabel(jenis as MataPelajaran['jenis'], {
+			jenjangVariant: data.sekolah.jenjangVariant
+		});
 	const jenisOrder = ['wajib', 'pilihan', 'kejuruan', 'pemberdayaan', 'mulok'];
 
 	const kepalaStatus =
@@ -342,7 +338,7 @@ ${jenisOrder
 		const group = kelompokMap[jenis];
 		const letter = String.fromCharCode(65 + idx);
 		return `		<tr class="group-header">
-			<td colspan="4">${letter}. ${jenisLabelText[jenis]}</td>
+			<td colspan="4">${letter}. ${jenisLabelText(jenis)}</td>
 		</tr>
 ${group.items
 	.map(

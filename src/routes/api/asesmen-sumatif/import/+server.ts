@@ -476,7 +476,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 			// Compute final nilaiAkhir using sekolah-level weights (after naLingkup)
 			const sekolah = await tx.query.tableSekolah.findFirst({
-				columns: { sumatifBobotLingkup: true, sumatifBobotSts: true, sumatifBobotSas: true },
+				columns: {
+					sumatifBobotLingkup: true,
+					sumatifBobotSts: true,
+					sumatifBobotSas: true,
+					sumatifBobotRtsLingkup: true,
+					sumatifBobotRtsSts: true
+				},
 				where: eq(tableSekolah.id, sekolahId)
 			});
 			const baseWeights = {
@@ -503,6 +509,25 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			const nilaiAkhir =
 				usedWeightFinal > 0 ? Math.round((weightedSumFinal / usedWeightFinal) * 100) / 100 : null;
 
+			// Compute nilaiAkhirRTS using RTS bobot (lingkup + STS only, no SAS)
+			const rtsBobotLingkup = Number(sekolah?.sumatifBobotRtsLingkup ?? 70);
+			const rtsBobotSts = Number(sekolah?.sumatifBobotRtsSts ?? 30);
+
+			let nilaiAkhirRts: number | null = null;
+			let weightedRts = 0;
+			let totalWeightRts = 0;
+			if (naLingkup != null) {
+				weightedRts += naLingkup * rtsBobotLingkup;
+				totalWeightRts += rtsBobotLingkup;
+			}
+			if (sts != null) {
+				weightedRts += sts * rtsBobotSts;
+				totalWeightRts += rtsBobotSts;
+			}
+			if (totalWeightRts > 0) {
+				nilaiAkhirRts = Math.round((weightedRts / totalWeightRts) * 100) / 100;
+			}
+
 			// Upsert into asesmen_sumatif
 			await tx
 				.insert(tableAsesmenSumatif)
@@ -517,6 +542,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					sasNonTes,
 					sas,
 					nilaiAkhir,
+					nilaiAkhirRts,
 					updatedAt: now
 				})
 				.onConflictDoUpdate({
@@ -530,6 +556,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 						sasNonTes,
 						sas,
 						nilaiAkhir,
+						nilaiAkhirRts,
 						updatedAt: now
 					}
 				});
