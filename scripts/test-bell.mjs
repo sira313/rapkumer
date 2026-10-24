@@ -6,7 +6,6 @@ import path from 'node:path';
 const db = createClient({ url: process.env.DB_URL || 'file:./data/database.sqlite3' });
 
 const HARI_LIST = ['senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu'];
-const HARI_MAP = ['minggu', 'senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu'];
 
 const args = process.argv[2];
 let playEnabled = process.argv.includes('--play');
@@ -378,8 +377,6 @@ console.log(`\n--- Simulasi per jam untuk hari ${today} ---`);
 for (let jamKe = 1; jamKe <= hariMaxJam; jamKe++) {
 	const kode = getKode(today, jamKe);
 	if (!kode) continue;
-	const waktu = computeWaktu(today, jamKe);
-	const waktuStr = kode === 'PLG' ? waktu.start : `${waktu.start}-${waktu.end}`;
 	playSoundSequence(sekolahId, kode, today, jamKe, false);
 }
 

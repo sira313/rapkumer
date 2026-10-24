@@ -1,6 +1,8 @@
 import { redirect } from '@sveltejs/kit';
 import { sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
+import type database from '$lib/server/db';
+import type { SQLiteTable } from 'drizzle-orm/sqlite-core';
 
 const PER_PAGE = 20;
 
@@ -13,8 +15,8 @@ type PaginationResult = {
 };
 
 export async function computePagination(
-	db: any,
-	table: any,
+	db: typeof database,
+	table: SQLiteTable,
 	searchFilter: SQL | undefined,
 	pageNumber: number,
 	url: URL

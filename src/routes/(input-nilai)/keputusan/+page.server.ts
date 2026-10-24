@@ -104,7 +104,7 @@ export async function load({ parent, locals, url, depends }) {
 
 	let queryRecords: (Pick<typeof tableMurid.$inferSelect, 'id' | 'nama'> & {
 		keputusan: Pick<typeof tableKeputusanMurid.$inferSelect, 'naik'> | null;
-	})[] = [];
+	})[];
 	let tableReady = true;
 
 	try {

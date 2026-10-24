@@ -143,8 +143,8 @@ export async function loadBulanan(params: {
 		keterangan: string | null;
 		keteranganPulang: string | null;
 		mataPelajaranId: number | null;
-	}> = [];
-	let allAbsensi: Array<{ muridId: number; waktu: string }> = [];
+	}>;
+	let allAbsensi: Array<{ muridId: number; waktu: string }>;
 	let allNullKetidakhadiran: Array<{
 		muridId: number;
 		tanggal: string;

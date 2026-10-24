@@ -435,7 +435,7 @@ function defaultEmpty(
 export const actions = {
 	importPresensi: async ({ request, locals, url, cookies }: RequestEvent) => {
 		if (!locals.user || !locals.sekolah) return fail(403, { fail: 'Tidak memiliki izin' });
-		if (!(await canUserEditAbsen(locals.user, locals.sekolah.id))) {
+		if (!(await canUserEditAbsen(locals.user))) {
 			return fail(403, { fail: 'Anda tidak memiliki izin untuk mengubah data kehadiran' });
 		}
 		const file = (await request.formData()).get('file');
@@ -540,14 +540,12 @@ export const actions = {
 				if (status === 'H')
 					await db.insert(tableAbsensi).values({ muridId, waktu: start, mataPelajaranId: null });
 				else if (status !== 'TK')
-					await db
-						.insert(tableKetidakhadiranHarian)
-						.values({
-							muridId,
-							tanggal,
-							mataPelajaranId: null,
-							keterangan: status === 'S' ? 'sakit' : status === 'I' ? 'izin' : 'alfa'
-						});
+					await db.insert(tableKetidakhadiranHarian).values({
+						muridId,
+						tanggal,
+						mataPelajaranId: null,
+						keterangan: status === 'S' ? 'sakit' : status === 'I' ? 'izin' : 'alfa'
+					});
 				count++;
 			}
 		}

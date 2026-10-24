@@ -29,7 +29,7 @@ function getErrorCause(err: unknown): string {
 
 export async function load({ depends, url, parent }) {
 	depends('app:keasramaan:tp');
-	const { kelasAktif, user } = await parent();
+	const { kelasAktif } = await parent();
 
 	const indikatorIdParam = url.searchParams.get('indikatorId');
 
@@ -46,8 +46,8 @@ export async function load({ depends, url, parent }) {
 		| (typeof tableKeasramaanIndikator.$inferSelect & {
 				keasramaan: typeof tableKeasramaan.$inferSelect;
 		  })
-		| null = null;
-	let tujuan: (typeof tableKeasramaanTujuan.$inferSelect)[] = [];
+		| null;
+	let tujuan: (typeof tableKeasramaanTujuan.$inferSelect)[];
 	let tujuanTableReady = true;
 
 	try {

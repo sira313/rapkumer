@@ -1,8 +1,6 @@
 <script lang="ts">
 	let {
 		rows,
-		tanggalMulai,
-		tanggalAkhir,
 		totalHariBelajar,
 		jenisPresensi = 'wali_kelas_saja',
 		tipePresensi = '',
@@ -17,8 +15,6 @@
 			izin: number;
 			alfa: number;
 		}>;
-		tanggalMulai: string;
-		tanggalAkhir: string;
 		totalHariBelajar: number;
 		jenisPresensi?: string;
 		tipePresensi?: string;

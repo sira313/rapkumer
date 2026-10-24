@@ -518,11 +518,19 @@
 			<div class="mt-6 flex flex-col justify-end gap-2 sm:flex-row">
 				{#if !data.isInit}
 					<div class="grid grid-cols-2 gap-2 sm:contents">
-						<a class="btn btn-soft shadow-none sm:mr-auto sm:w-auto" href="/sekolah" aria-label="kembali">
+						<a
+							class="btn btn-soft shadow-none sm:mr-auto sm:w-auto"
+							href="/sekolah"
+							aria-label="kembali"
+						>
 							<Icon name="left" />
 							Kembali
 						</a>
-						<button type="button" class="btn btn-soft shadow-none sm:w-auto" onclick={handleImportDb}>
+						<button
+							type="button"
+							class="btn btn-soft shadow-none sm:w-auto"
+							onclick={handleImportDb}
+						>
 							<Icon name="import" />
 							Import DB
 						</button>

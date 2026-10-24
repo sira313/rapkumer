@@ -336,7 +336,8 @@ export async function scheduleInstall(downloadId: string): Promise<{ message: st
 		});
 	} catch (error) {
 		throw new Error(
-			error instanceof Error ? error.message : 'Gagal menjalankan proses pemasangan pembaruan.'
+			error instanceof Error ? error.message : 'Gagal menjalankan proses pemasangan pembaruan.',
+			{ cause: error }
 		);
 	}
 

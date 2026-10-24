@@ -153,7 +153,7 @@ export const DELETE: RequestHandler = async ({ locals, request }) => {
 		return json({ message: 'Kelas tidak valid.' }, { status: 400 });
 	}
 
-	let deleted = 0;
+	let deleted: number;
 
 	try {
 		if (scope === 'all') {

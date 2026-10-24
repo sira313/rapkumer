@@ -64,21 +64,21 @@
 
 	// svelte-ignore state_referenced_locally
 	let entries = $state(data.entries.map(toDraft));
+	// svelte-ignore state_referenced_locally
 	let sasTesText = $state(
-		// svelte-ignore state_referenced_locally
 		data.initialScores.sasTes != null ? data.initialScores.sasTes.toFixed(2) : ''
 	);
+	// svelte-ignore state_referenced_locally
 	let sasNonTesText = $state(
-		// svelte-ignore state_referenced_locally
 		data.initialScores.sasNonTes != null ? data.initialScores.sasNonTes.toFixed(2) : ''
 	);
 	// Sumatif Tengah Semester (STS) - new inputs, initially empty (backend doesn't persist yet)
+	// svelte-ignore state_referenced_locally
 	let stsTesText = $state(
-		// svelte-ignore state_referenced_locally
 		data.initialScores.stsTes != null ? data.initialScores.stsTes.toFixed(2) : ''
 	);
+	// svelte-ignore state_referenced_locally
 	let stsNonTesText = $state(
-		// svelte-ignore state_referenced_locally
 		data.initialScores.stsNonTes != null ? data.initialScores.stsNonTes.toFixed(2) : ''
 	);
 	// svelte-ignore state_referenced_locally

@@ -61,8 +61,7 @@
 			{:else if isCreateMode || isEditMode}
 				Batalkan
 			{:else}
-				<span class="ssm:hidden">Matev</span
-				><span class="hidden ssm:inline">Tambah Matev</span>
+				<span class="ssm:hidden">Matev</span><span class="hidden ssm:inline">Tambah Matev</span>
 			{/if}
 		</button>
 	</div>

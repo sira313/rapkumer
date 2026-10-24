@@ -149,8 +149,8 @@ export async function loadPersentaseBulanan(params: {
 		keterangan: string | null;
 		keteranganPulang: string | null;
 		mataPelajaranId: number | null;
-	}> = [];
-	let allAbsensi: Array<{ muridId: number; waktu: string; mataPelajaranId?: number | null }> = [];
+	}>;
+	let allAbsensi: Array<{ muridId: number; waktu: string; mataPelajaranId?: number | null }>;
 	let allNullKetidakhadiran: Array<{
 		muridId: number;
 		tanggal: string;

@@ -25,25 +25,23 @@
 			onsuccess={onSuccess}
 			submitStateChange={(v) => (submitting = v)}
 		>
-			{#snippet children()}
-				{#each idsToDelete as idValue (idValue)}
-					<input name="ids" value={idValue} hidden />
-				{/each}
+			{#each idsToDelete as idValue (idValue)}
+				<input name="ids" value={idValue} hidden />
+			{/each}
 
-				<h3 class="mb-3 text-xl font-bold">Hapus beberapa lingkup materi?</h3>
-				<p class="mb-2">
-					{totalLingkup} lingkup materi berikut akan dihapus beserta tujuan pembelajarannya:
-				</p>
-				<ul class="mb-4 list-disc space-y-1 pl-5 text-sm">
-					{#each groups as group (group.lingkupMateri)}
-						<li>
-							<span class="font-semibold">{group.lingkupMateri}</span>
-							<span class="opacity-70"> – {group.ids.length} tujuan pembelajaran</span>
-						</li>
-					{/each}
-				</ul>
-				<p class="text-sm opacity-70">Total tujuan pembelajaran: {totalTujuan}</p>
-			{/snippet}
+			<h3 class="mb-3 text-xl font-bold">Hapus beberapa lingkup materi?</h3>
+			<p class="mb-2">
+				{totalLingkup} lingkup materi berikut akan dihapus beserta tujuan pembelajarannya:
+			</p>
+			<ul class="mb-4 list-disc space-y-1 pl-5 text-sm">
+				{#each groups as group (group.lingkupMateri)}
+					<li>
+						<span class="font-semibold">{group.lingkupMateri}</span>
+						<span class="opacity-70"> – {group.ids.length} tujuan pembelajaran</span>
+					</li>
+				{/each}
+			</ul>
+			<p class="text-sm opacity-70">Total tujuan pembelajaran: {totalTujuan}</p>
 		</FormEnhance>
 
 		<div class="modal-action">

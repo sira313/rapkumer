@@ -849,9 +849,8 @@
 		isEditing = false;
 	}
 
-	let nextEventMessage = $state('');
-	$effect(() => {
-		nextEventMessage = computeNextEventMessage({
+	const nextEventMessage = $derived(
+		computeNextEventMessage({
 			now: serverTime.now,
 			bellActive,
 			isHoliday,
@@ -870,8 +869,8 @@
 			daftarKodeMapel: daftarKodeMapel as string[],
 			isFirstSubjectPeriod,
 			kegiatanCustom
-		});
-	});
+		})
+	);
 </script>
 
 <svelte:head>

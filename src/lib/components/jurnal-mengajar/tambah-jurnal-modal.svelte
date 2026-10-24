@@ -31,8 +31,6 @@
 		mapelId?: number | null;
 		mataPelajaranList: MataPelajaranItem[];
 		tujuanPembelajaranList: TujuanPembelajaranItem[];
-		lingkupMateriList: string[];
-		userType: string;
 		onAction?: (actions: { submit: () => void }) => void;
 		onSuccess?: (params: { data?: Record<string, unknown> }) => void | Promise<void>;
 	}
@@ -44,8 +42,6 @@
 		mapelId,
 		mataPelajaranList,
 		tujuanPembelajaranList,
-		lingkupMateriList,
-		userType,
 		onAction,
 		onSuccess
 	}: Props = $props();
@@ -115,83 +111,81 @@
 </script>
 
 <FormEnhance action="?/save" id={formId} onsuccess={handleSuccess} submitStateChange={setLoading}>
-	{#snippet children()}
-		<input type="hidden" name="id" value={editData?.id ?? ''} />
-		<input type="hidden" name="kelasId" value={formKelasId} />
-		<input type="hidden" name="tanggal" value={tanggal ?? ''} />
+	<input type="hidden" name="id" value={editData?.id ?? ''} />
+	<input type="hidden" name="kelasId" value={formKelasId} />
+	<input type="hidden" name="tanggal" value={tanggal ?? ''} />
 
-		{#if mataPelajaranList.length > 0}
-			<fieldset class="fieldset">
-				<legend class="fieldset-legend">Mata Pelajaran</legend>
-				<select
-					class="select w-full dark:border-none dark:bg-base-300 bg-base-200"
-					name="mataPelajaranId"
-					value={formMapelId}
-					onchange={(e) => {
-						formMapelId = Number((e.currentTarget as HTMLSelectElement).value);
-					}}
-				>
-					<option value="" disabled>Pilih Mata Pelajaran</option>
-					{#each mataPelajaranList as mp}
-						<option value={mp.id}>{mp.nama}</option>
-					{/each}
-				</select>
-			</fieldset>
+	{#if mataPelajaranList.length > 0}
+		<fieldset class="fieldset">
+			<legend class="fieldset-legend">Mata Pelajaran</legend>
+			<select
+				class="select w-full dark:border-none dark:bg-base-300 bg-base-200"
+				name="mataPelajaranId"
+				value={formMapelId}
+				onchange={(e) => {
+					formMapelId = Number((e.currentTarget as HTMLSelectElement).value);
+				}}
+			>
+				<option value="" disabled>Pilih Mata Pelajaran</option>
+				{#each mataPelajaranList as mp (mp.id)}
+					<option value={mp.id}>{mp.nama}</option>
+				{/each}
+			</select>
+		</fieldset>
+	{/if}
+
+	<fieldset class="fieldset">
+		<legend class="fieldset-legend">Lingkup Materi</legend>
+		<select
+			class="select w-full dark:border-none dark:bg-base-300 bg-base-200"
+			name="lingkupMateri"
+			value={formLingkupMateri}
+			onchange={(e) => {
+				formLingkupMateri = (e.currentTarget as HTMLSelectElement).value;
+			}}
+			required
+		>
+			<option value="" disabled>Pilih Lingkup Materi</option>
+			{#each filteredLingkupMateri as lm (lm)}
+				<option value={lm}>{lm}</option>
+			{/each}
+		</select>
+	</fieldset>
+
+	<fieldset class="fieldset">
+		<legend class="fieldset-legend">Tujuan Pembelajaran</legend>
+		<select
+			class="select w-full dark:border-none dark:bg-base-300 bg-base-200"
+			name="tujuanPembelajaranId"
+			value={formTujuanPembelajaranId ?? ''}
+			onchange={(e) => {
+				const val = (e.currentTarget as HTMLSelectElement).value;
+				formTujuanPembelajaranId = val ? Number(val) : null;
+			}}
+		>
+			<option value="">Pilih Tujuan Pembelajaran</option>
+			{#each filteredTujuanPembelajaran as tp (tp.id)}
+				<option value={tp.id}>{tp.deskripsi}</option>
+			{/each}
+		</select>
+		{#if !formLingkupMateri}
+			<p class="label">Pilih lingkup materi terlebih dahulu</p>
 		{/if}
+	</fieldset>
 
-		<fieldset class="fieldset">
-			<legend class="fieldset-legend">Lingkup Materi</legend>
-			<select
-				class="select w-full dark:border-none dark:bg-base-300 bg-base-200"
-				name="lingkupMateri"
-				value={formLingkupMateri}
-				onchange={(e) => {
-					formLingkupMateri = (e.currentTarget as HTMLSelectElement).value;
-				}}
-				required
-			>
-				<option value="" disabled>Pilih Lingkup Materi</option>
-				{#each filteredLingkupMateri as lm}
-					<option value={lm}>{lm}</option>
-				{/each}
-			</select>
-		</fieldset>
-
-		<fieldset class="fieldset">
-			<legend class="fieldset-legend">Tujuan Pembelajaran</legend>
-			<select
-				class="select w-full dark:border-none dark:bg-base-300 bg-base-200"
-				name="tujuanPembelajaranId"
-				value={formTujuanPembelajaranId ?? ''}
-				onchange={(e) => {
-					const val = (e.currentTarget as HTMLSelectElement).value;
-					formTujuanPembelajaranId = val ? Number(val) : null;
-				}}
-			>
-				<option value="">Pilih Tujuan Pembelajaran</option>
-				{#each filteredTujuanPembelajaran as tp}
-					<option value={tp.id}>{tp.deskripsi}</option>
-				{/each}
-			</select>
-			{#if !formLingkupMateri}
-				<p class="label">Pilih lingkup materi terlebih dahulu</p>
-			{/if}
-		</fieldset>
-
-		<fieldset class="fieldset">
-			<legend class="fieldset-legend">Catatan</legend>
-			<textarea
-				class="textarea w-full dark:border-none dark:bg-base-300 bg-base-200"
-				name="catatan"
-				rows="3"
-				maxlength="300"
-				value={formCatatan}
-				oninput={(e) => {
-					formCatatan = (e.currentTarget as HTMLTextAreaElement).value;
-				}}
-				placeholder="Tuliskan catatan (maksimal 300 karakter)"
-				spellcheck="false"></textarea>
-			<p class="label">{formCatatan.length}/300 karakter</p>
-		</fieldset>
-	{/snippet}
+	<fieldset class="fieldset">
+		<legend class="fieldset-legend">Catatan</legend>
+		<textarea
+			class="textarea w-full dark:border-none dark:bg-base-300 bg-base-200"
+			name="catatan"
+			rows="3"
+			maxlength="300"
+			value={formCatatan}
+			oninput={(e) => {
+				formCatatan = (e.currentTarget as HTMLTextAreaElement).value;
+			}}
+			placeholder="Tuliskan catatan (maksimal 300 karakter)"
+			spellcheck="false"></textarea>
+		<p class="label">{formCatatan.length}/300 karakter</p>
+	</fieldset>
 </FormEnhance>

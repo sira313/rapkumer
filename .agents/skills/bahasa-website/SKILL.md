@@ -12,28 +12,28 @@ Teks antarmuka berbeda dari artikel: dibaca sepintas, di tengah tugas, sering da
 ## Tiga keputusan sebelum menulis
 
 1. **Persona produk**: bayangkan produk ini manusia. Teman? Asisten? Konsultan? (Metode praktisi Gojek dan tiket.com.) Semua teks keluar dari satu mulut itu.
-2. **Sapaan**: *kamu* (aplikasi konsumen) atau *Anda* (finansial, B2B, dokumen legal). Satu produk satu sapaan, sampai ke pesan galat terdalam.
+2. **Sapaan**: _kamu_ (aplikasi konsumen) atau _Anda_ (finansial, B2B, dokumen legal). Satu produk satu sapaan, sampai ke pesan galat terdalam.
 3. **Glosarium istilah**: sebelum menulis banyak layar, tetapkan istilah untuk konsep yang berulang (lihat tabel di bawah). Kalau produk sudah hidup, ikuti istilah yang ada; jangan memperkenalkan sinonim.
 
 ## Istilah antarmuka baku
 
 Tidak ada standar nasional "Masuk vs Login"; yang mutlak adalah **konsistensi internal**. Default paket ini: padanan Indonesia.
 
-| Konsep | Default | Catatan |
-|---|---|---|
-| Log in / Sign in | **Masuk** | |
-| Sign up / Register | **Daftar** | |
-| Log out | **Keluar** | |
-| Password | **Kata sandi** | |
-| Submit | **Kirim** (atau verba hasilnya: Simpan, Bayar) | jangan "Submit" |
-| Save / Cancel / Delete | **Simpan / Batal / Hapus** | |
-| Next / Back | **Lanjut / Kembali** | |
-| Retry | **Coba lagi** | |
-| Search | **Cari** | |
-| Settings | **Pengaturan** | |
-| Upload / Download | **Unggah / Unduh** | |
-| Edit | **Ubah** | "Edit" diterima; pilih satu |
-| Sign in with Google | **Masuk dengan Google** | |
+| Konsep                 | Default                                        | Catatan                     |
+| ---------------------- | ---------------------------------------------- | --------------------------- |
+| Log in / Sign in       | **Masuk**                                      |                             |
+| Sign up / Register     | **Daftar**                                     |                             |
+| Log out                | **Keluar**                                     |                             |
+| Password               | **Kata sandi**                                 |                             |
+| Submit                 | **Kirim** (atau verba hasilnya: Simpan, Bayar) | jangan "Submit"             |
+| Save / Cancel / Delete | **Simpan / Batal / Hapus**                     |                             |
+| Next / Back            | **Lanjut / Kembali**                           |                             |
+| Retry                  | **Coba lagi**                                  |                             |
+| Search                 | **Cari**                                       |                             |
+| Settings               | **Pengaturan**                                 |                             |
+| Upload / Download      | **Unggah / Unduh**                             |                             |
+| Edit                   | **Ubah**                                       | "Edit" diterima; pilih satu |
+| Sign in with Google    | **Masuk dengan Google**                        |                             |
 
 Kalau produk sudah telanjur memakai "Login", pakai "Login" di semua tempat: campuran "Masuk" di satu layar dan "Login" di layar lain lebih buruk daripada pilihan mana pun.
 
@@ -42,6 +42,7 @@ Kalau produk sudah telanjur memakai "Login", pakai "Login" di semua tempat: camp
 **Tombol**: verba yang menyebut hasil aksi, maksimal ±3 kata: "Simpan perubahan", "Buat akun", "Bayar Rp150.000". Jangan "Klik di sini", "OK", "Ya/Tidak" untuk aksi yang punya akibat. Register tombol sama dengan register teks di atasnya (badan formal + tombol "Gaskeun" adalah cacat konsistensi).
 
 **Pesan galat**: pola wajibnya **apa yang terjadi (bahasa awam) + cara memperbaiki**, tanpa menyalahkan, tanpa jargon, tanpa kode telanjang.
+
 - ❌ "Terjadi kesalahan. Silahkan coba lagi." (kosong, plus salah eja)
 - ❌ "Error 422: Unprocessable Entity"
 - ❌ "Karena Anda salah memasukkan data…" (menyalahkan)
@@ -91,7 +92,7 @@ Setelah pemeriksaan `bahasa-inti`:
 
 ## Referensi
 
-| Berkas | Isi | Baca ketika |
-|---|---|---|
-| [references/ux-writing.md](references/ux-writing.md) | Komponen antarmuka: tombol, galat, form, empty state, onboarding, notifikasi + studi kasus Gojek/Tokopedia | Menulis microcopy aplikasi/antarmuka |
-| [references/halaman-situs.md](references/halaman-situs.md) | Halaman: landing, produk, harga, tentang kami, FAQ, 404 | Menulis copy halaman penuh |
+| Berkas                                                     | Isi                                                                                                        | Baca ketika                          |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| [references/ux-writing.md](references/ux-writing.md)       | Komponen antarmuka: tombol, galat, form, empty state, onboarding, notifikasi + studi kasus Gojek/Tokopedia | Menulis microcopy aplikasi/antarmuka |
+| [references/halaman-situs.md](references/halaman-situs.md) | Halaman: landing, produk, harga, tentang kami, FAQ, 404                                                    | Menulis copy halaman penuh           |

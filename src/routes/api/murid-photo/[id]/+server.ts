@@ -31,7 +31,7 @@ async function generateUniqueFilename(
 ) {
 	let filename = `${base}${ext}`;
 	let counter = 1;
-	let exists = false;
+	let exists: boolean;
 
 	do {
 		try {

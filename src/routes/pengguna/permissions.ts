@@ -90,12 +90,10 @@ export const defaultPermissionsByType: Partial<Record<AuthUser['type'], UserPerm
 		'mata_pelajaran_intrakurikuler',
 		'mata_pelajaran_kokurikuler',
 		'mata_pelajaran_ekstrakurikuler',
-		'mata_pelajaran_keasramaan',
 		'input_nilai_asesmen_formatif',
 		'input_nilai_asesmen_sumatif',
 		'input_nilai_asesmen_kokurikuler',
 		'input_nilai_nilai_ekstrakurikuler',
-		'input_nilai_asesmen_keasramaan',
 		'administrasi_absen',
 		'administrasi_rpm',
 		'administrasi_jurnal_mengajar',
@@ -211,7 +209,20 @@ export function isAuthorizedUser(
 	// wali_kelas and wali_asuh are NOT admins and must check permissions
 	if ('type' in user && (user.type === 'admin' || user.type === 'kepala_sekolah')) return true;
 	const userPermissions = user.permissions || [];
-	return allowedPermissions.some((r) => userPermissions.includes(r));
+	return allowedPermissions.some(
+		(r) =>
+			userPermissions.includes(r) && (!KEASRAMAAN_PERMISSIONS.has(r) || canAccessKeasramaan(user))
+	);
+}
+
+const KEASRAMAAN_PERMISSIONS = new Set<UserPermission>([
+	'mata_pelajaran_keasramaan',
+	'input_nilai_asesmen_keasramaan',
+	'administrasi_rekap_keasramaan'
+]);
+
+export function canAccessKeasramaan(user?: Pick<AuthUser, 'type'> | null): boolean {
+	return !!user && ['admin', 'kepala_sekolah', 'wali_asuh', 'wali_asrama'].includes(user.type);
 }
 
 /**

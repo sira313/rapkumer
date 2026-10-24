@@ -12,7 +12,11 @@ import {
 	normalizeOrigin as normalizeFileOrigin
 } from '$lib/server/csrf-origins';
 import { runStartupEnsures } from '$lib/server/db/ensure-bootstrap';
-import { isAuthorizedUser, resolveRoutePermission } from './routes/pengguna/permissions';
+import {
+	canAccessKeasramaan,
+	isAuthorizedUser,
+	resolveRoutePermission
+} from './routes/pengguna/permissions';
 import { startBellScheduler } from '$lib/server/bell-scheduler';
 
 setTimeout(() => {
@@ -275,6 +279,12 @@ const authGuard: Handle = async ({ event, resolve }) => {
 	// when the user lacks the corresponding access permission. Admins always pass.
 	if (event.locals.user) {
 		const pathname = event.url.pathname;
+		if (
+			(pathname === '/cetak/keasramaan' || pathname.startsWith('/cetak/keasramaan/')) &&
+			!canAccessKeasramaan(event.locals.user)
+		) {
+			throw error(403, 'Akses ditolak.');
+		}
 		const isPermissionExempt = PERMISSION_EXEMPT_PREFIXES.some(
 			(p) => pathname === p || pathname.startsWith(p + '/')
 		);

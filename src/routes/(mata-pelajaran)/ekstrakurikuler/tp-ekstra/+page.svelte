@@ -126,7 +126,11 @@
 
 	<div class="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 		<div class="grid grid-cols-2 gap-2 sm:contents">
-			<button class="btn btn-soft w-full shadow-none sm:w-auto" type="button" onclick={() => history.back()}>
+			<button
+				class="btn btn-soft w-full shadow-none sm:w-auto"
+				type="button"
+				onclick={() => history.back()}
+			>
 				<Icon name="left" />
 				Kembali
 			</button>

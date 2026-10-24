@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { goto, invalidate } from '$app/navigation';
 	import { page } from '$app/state';
 	import Icon from '$lib/components/icon.svelte';
@@ -327,12 +328,7 @@
 	const hasMurid = $derived.by(() => data.muridCount > 0);
 	const hasFilteredMurid = $derived.by(() => data.totalMurid > 0);
 
-	// svelte-ignore state_referenced_locally
-	let selectedTanggal = $state(data.tanggal);
-
-	$effect(() => {
-		selectedTanggal = data.tanggal;
-	});
+	let selectedTanggal = $derived(data.tanggal);
 
 	const isToday = $derived.by(() => {
 		const y = serverTime.now.getFullYear();
@@ -341,33 +337,19 @@
 		return data.tanggal === `${y}-${m}-${day}`;
 	});
 
-	let selectedMode = $state<
-		| 'harian'
-		| 'bulanan'
-		| 'rapor'
-		| 'persentase_harian'
-		| 'persentase_bulanan'
-		| 'persentase_semester'
-		// svelte-ignore state_referenced_locally
-	>(data.mode);
+	let selectedMode = $derived(data.mode);
+	// svelte-ignore state_referenced_locally
 	let selectedBulan = $state(
-		// svelte-ignore state_referenced_locally
 		data.mode === 'bulanan' || data.mode === 'persentase_bulanan'
-			? // svelte-ignore state_referenced_locally
-				data.bulan
+			? data.bulan
 			: serverTime.now.getMonth() + 1
 	);
+	// svelte-ignore state_referenced_locally
 	let selectedTahun = $state(
-		// svelte-ignore state_referenced_locally
 		data.mode === 'bulanan' || data.mode === 'persentase_bulanan'
-			? // svelte-ignore state_referenced_locally
-				data.tahun
+			? data.tahun
 			: serverTime.now.getFullYear()
 	);
-
-	$effect(() => {
-		selectedMode = data.mode;
-	});
 
 	$effect(() => {
 		if (data.mode === 'bulanan' || data.mode === 'persentase_bulanan') {
@@ -544,7 +526,7 @@
 				class: 'btn-primary',
 				action: ({ close }) => {
 					close();
-					goto('/akademik');
+					goto(resolve('/akademik'));
 				}
 			},
 			onNeutral: {
@@ -1036,8 +1018,6 @@
 	{:else if data.mode === 'persentase_semester'}
 		<TablePersentaseSemester
 			rows={data.persentaseSemesterRows}
-			tanggalMulai={data.tanggalMulaiRapor}
-			tanggalAkhir={data.tanggalAkhirRapor}
 			totalHariBelajar={data.totalHariBelajar}
 			jenisPresensi={data.jenisPresensi}
 			tipePresensi={data.tipePresensi}

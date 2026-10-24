@@ -50,7 +50,7 @@
 			];
 			const tableHeader = ['Matev', 'Indikator', 'Nilai', 'Predikat'];
 			const tableRows: (string | number | null)[][] = [];
-			for (const n of daftarNilai as any[]) {
+			for (const n of daftarNilai) {
 				tableRows.push([
 					n.mataPelajaran ?? '',
 					n.indikator ?? '',
@@ -59,7 +59,7 @@
 				]);
 			}
 			const workbook = new ExcelJS.Workbook();
-			const worksheet: any = workbook.addWorksheet('Keasramaan');
+			const worksheet = workbook.addWorksheet('Keasramaan');
 			worksheet.addRows([...headerRows, tableHeader, ...tableRows]);
 			// merge title and center
 			try {
@@ -87,7 +87,7 @@
 					for (let r = headerRowNum + 1; r < worksheet.rowCount; r++) {
 						try {
 							worksheet.getCell(r, c).alignment = { horizontal: 'center', vertical: 'middle' };
-						} catch (e) {
+						} catch {
 							// ignore
 						}
 					}
@@ -105,27 +105,17 @@
 						};
 					}
 				}
-			} catch (e) {
+			} catch {
 				// ignore
 			}
 			// signatures
 			worksheet.addRows([[], [], []]);
-			const sekolahNama = (page.data as any).sekolah?.nama || '';
-			const kepala =
-				(data as any).kepalaSekolah?.nama ||
-				(page.data as any).kepalaSekolah?.nama ||
-				((page.data as any).sekolah as any)?.kepalaSekolah?.nama ||
-				'';
-			const kepalaNip =
-				(data as any).kepalaSekolah?.nip ||
-				(page.data as any).kepalaSekolah?.nip ||
-				((page.data as any).sekolah as any)?.kepalaSekolah?.nip ||
-				'';
-			const lokasiFromMeta = ((page.data as any).sekolah as any)?.lokasiTandaTangan || '';
+			const sekolahNama = page.data.sekolah?.nama || '';
+			const kepala = page.data.sekolah?.kepalaSekolah?.nama || '';
+			const kepalaNip = page.data.sekolah?.kepalaSekolah?.nip || '';
+			const lokasiFromMeta = page.data.sekolah?.lokasiTandaTangan || '';
 			let formattedTanggal = '';
-			const tanggalRaw =
-				((page.data as any).sekolah as any)?.semesterAktif?.tanggalBagiRaport ||
-				((page.data as any).sekolah as any)?.tanggalBagiRaport;
+			const tanggalRaw = page.data.semesterAktif?.tanggalBagiRaport;
 			if (tanggalRaw) {
 				try {
 					const d = new Date(tanggalRaw);
@@ -136,7 +126,7 @@
 							year: 'numeric'
 						}).format(d);
 					}
-				} catch (e) {
+				} catch {
 					// ignore
 				}
 			} else {
@@ -146,25 +136,14 @@
 						month: 'long',
 						year: 'numeric'
 					}).format(new Date());
-				} catch (e) {
+				} catch {
 					// ignore
 				}
 			}
-			const waliAsramaNama2 =
-				(data as any).waliAsrama?.nama || (page.data as any).waliAsrama?.nama || '';
-			const waliAsramaNip2 =
-				(data as any).waliAsrama?.nip || (page.data as any).waliAsrama?.nip || '';
-			const waliAsuhNama2 =
-				(data as any).waliAsuh?.nama ||
-				(page.data as any).waliAsuh?.nama ||
-				(murid as any)?.waliAsuhNama ||
-				(page.data as any)?.waliAsuhNama ||
-				'';
-			const waliAsuhNip2 =
-				(data as any).waliAsuh?.nip ||
-				(page.data as any).waliAsuh?.nip ||
-				(page.data as any).waliAsuh?.nip ||
-				'';
+			const waliAsramaNama2 = data.waliAsrama?.nama || '';
+			const waliAsramaNip2 = data.waliAsrama?.nip || '';
+			const waliAsuhNama2 = data.waliAsuh?.nama || murid?.waliAsuhNama || '';
+			const waliAsuhNip2 = data.waliAsuh?.nip || '';
 			worksheet.addRow([
 				'',
 				'',
@@ -198,7 +177,7 @@
 				]) {
 					worksheet.getCell(`D${r}`).alignment = { horizontal: 'left', vertical: 'middle' };
 				}
-			} catch (e) {
+			} catch {
 				// ignore
 			}
 			// set approximate column widths

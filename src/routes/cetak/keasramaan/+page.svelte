@@ -357,7 +357,6 @@
 			downloadDisabled={previewDisabled}
 			downloadLoading={isPrintLoading}
 			showTable={false}
-			muridCount={daftarMurid.length ?? 0}
 			isRaporSelected={false}
 			isKeasramaanSelected={true}
 			isBiodataSelected={false}

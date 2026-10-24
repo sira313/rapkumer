@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { goto, invalidate } from '$app/navigation';
 	import { page } from '$app/state';
 	import Icon from '$lib/components/icon.svelte';
@@ -19,7 +20,6 @@
 		currentPage: number;
 		totalPages: number;
 		totalItems: number;
-		perPage: number;
 	};
 
 	type PageData = {
@@ -85,7 +85,10 @@
 		const target = buildSearchUrl(rawValue);
 		if (!target) return;
 		searchTimer = undefined;
-		await goto(target, { replaceState: true, keepFocus: true });
+		await goto(resolve(`/keputusan${new URL(target, page.url).search}` as '/keputusan'), {
+			replaceState: true,
+			keepFocus: true
+		});
 	}
 
 	function handleSearchInput(event: Event) {
@@ -129,7 +132,10 @@
 	async function gotoPage(pageNumber: number) {
 		const target = buildPageUrl(pageNumber);
 		if (!target) return;
-		await goto(target, { replaceState: true, keepFocus: true });
+		await goto(resolve(`/keputusan${new URL(target, page.url).search}` as '/keputusan'), {
+			replaceState: true,
+			keepFocus: true
+		});
 	}
 
 	function handlePageClick(pageNumber: number) {

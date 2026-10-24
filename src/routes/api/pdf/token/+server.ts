@@ -1,4 +1,5 @@
-import { json } from '@sveltejs/kit';
+import { error, json } from '@sveltejs/kit';
+import { canAccessKeasramaan } from '../../../pengguna/permissions';
 import { storePdfParams } from '$lib/server/pdf/token-store';
 import { getCoverPreviewPayload } from '../../../cetak/cover/preview-data';
 import { getRaporPreviewPayload } from '../../../cetak/rapor/preview-data';
@@ -59,6 +60,9 @@ async function resolveNama(docType: string, locals: App.Locals, url: URL): Promi
 export const POST = (async ({ locals, request }) => {
 	const body = await request.json();
 	const { docType, muridId, kelasId, tpMode, kriteria, template, bgLogo, raporPeriode } = body;
+	if (docType === 'keasramaan' && !canAccessKeasramaan(locals.user)) {
+		throw error(403, 'Akses ditolak.');
+	}
 
 	const url = new URL('http://localhost');
 	url.searchParams.set('murid_id', String(muridId));

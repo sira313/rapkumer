@@ -4,8 +4,12 @@ import { tableAsesmenKeasramaan, tableKeasramaan, tableMurid } from '$lib/server
 import { type EkstrakurikulerNilaiKategori } from '$lib/ekstrakurikuler';
 import { eq } from 'drizzle-orm';
 import { json } from '@sveltejs/kit';
+import { isAuthorizedUser } from '../../../pengguna/permissions';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
+	if (!isAuthorizedUser(['input_nilai_asesmen_keasramaan'], locals.user)) {
+		return json({ success: false, message: 'Akses ditolak.' }, { status: 403 });
+	}
 	try {
 		const formData = await request.formData();
 		const keasramaanIdRaw = formData.get('keasramaanId')?.toString();
@@ -158,7 +162,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				const kategoriRaw = row.getCell(col).value?.toString().trim().toLowerCase() ?? '';
 				if (!kategoriRaw) continue;
 
-				let kategori = kategoriRaw;
+				let kategori: EkstrakurikulerNilaiKategori;
 
 				// Normalize kategori input - handle both spaced and dashed versions
 				if (

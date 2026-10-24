@@ -92,30 +92,28 @@
 				onsuccess={handleSuccess}
 				submitStateChange={(v) => (submitting = v)}
 			>
-				{#snippet children()}
-					<input type="hidden" name="muridId" value={murid.id} />
-					<input type="hidden" name="kokurikulerId" value={kokurikuler.id} />
+				<input type="hidden" name="muridId" value={murid.id} />
+				<input type="hidden" name="kokurikulerId" value={kokurikuler.id} />
 
-					<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-						{#each kokurikuler.dimensi as dim (dim.key)}
-							<fieldset class="fieldset">
-								<legend class="fieldset-legend text-base-content/80 text-sm font-semibold">
-									{dim.label}
-								</legend>
-								<select
-									class="select bg-base-200 dark:bg-base-300 w-full truncate dark:border-none"
-									name={`nilai.${dim.key}`}
-									aria-label={`Nilai ${dim.label}`}
-								>
-									<option value="">Belum dinilai</option>
-									{#each kategoriOptions as option (option.value)}
-										<option value={option.value}>{option.label}</option>
-									{/each}
-								</select>
-							</fieldset>
-						{/each}
-					</div>
-				{/snippet}
+				<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+					{#each kokurikuler.dimensi as dim (dim.key)}
+						<fieldset class="fieldset">
+							<legend class="fieldset-legend text-base-content/80 text-sm font-semibold">
+								{dim.label}
+							</legend>
+							<select
+								class="select bg-base-200 dark:bg-base-300 w-full truncate dark:border-none"
+								name={`nilai.${dim.key}`}
+								aria-label={`Nilai ${dim.label}`}
+							>
+								<option value="">Belum dinilai</option>
+								{#each kategoriOptions as option (option.value)}
+									<option value={option.value}>{option.label}</option>
+								{/each}
+							</select>
+						</fieldset>
+					{/each}
+				</div>
 			</FormEnhance>
 
 			<div class="modal-action mt-6 flex gap-2">

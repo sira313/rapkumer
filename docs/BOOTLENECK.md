@@ -8,12 +8,12 @@
 
 ## Spesifikasi Hardware & Konteks
 
-| Komponen | Nilai | Catatan |
-|----------|-------|---------|
-| CPU | Intel i3-8130U (4C/4T) @ 3.40 GHz | Prosesor laptop, lemah untuk server |
-| RAM | 3.57 GB total, 47% terpakai (~1.9 GB bebas) | Sangat mepet, risiko OOM saat PDF bulk |
-| Disk | 930 GB btrfs, terpakai 2% | HDD (bukan SSD) — bottleneck I/O utama |
-| OS | Arch Linux, kernel 6.18.44-1-lts | — |
+| Komponen | Nilai                                       | Catatan                                |
+| -------- | ------------------------------------------- | -------------------------------------- |
+| CPU      | Intel i3-8130U (4C/4T) @ 3.40 GHz           | Prosesor laptop, lemah untuk server    |
+| RAM      | 3.57 GB total, 47% terpakai (~1.9 GB bebas) | Sangat mepet, risiko OOM saat PDF bulk |
+| Disk     | 930 GB btrfs, terpakai 2%                   | HDD (bukan SSD) — bottleneck I/O utama |
+| OS       | Arch Linux, kernel 6.18.44-1-lts            | —                                      |
 
 Kesimpulan hardware: **HDD adalah penyebab utama lambatnya I/O**, namun ada beberapa pola di kode yang memperburuk kondisi. Perbaikan kode tetap berdampak signifikan bahkan setelah upgrade SSD.
 
@@ -92,17 +92,17 @@ Kesimpulan hardware: **HDD adalah penyebab utama lambatnya I/O**, namun ada bebe
 
 ## Skala Dampak
 
-| # | Temuan | Dampak | Estimasi Latensi |
-|---|--------|--------|------------------|
-| 1 | SQLite sync=FULL + HDD fsync | Kritis | +10-20ms per write |
-| 2 | PDF bulk Chrome render | Besar | +2-5 detik per murid |
-| 3 | Logo DB + tanpa HTTP cache | Besar | +5-15ms per page load |
-| 4 | Murid photo load semua | Besar | +100-500ms per halaman |
-| 5 | N+1 absen harian | Besar | +30-100ms per page |
-| 6 | Query duplikat asetmen | Sedang | +50-150ms per load |
-| 7 | Session tanpa cache | Sedang | +2-5ms per request |
-| 8 | Ensures per-first-request | Sedang | Delay first paint |
-| 9 | Dashboard agregasi | Sedang | +50-200ms per load |
+| #   | Temuan                       | Dampak | Estimasi Latensi       |
+| --- | ---------------------------- | ------ | ---------------------- |
+| 1   | SQLite sync=FULL + HDD fsync | Kritis | +10-20ms per write     |
+| 2   | PDF bulk Chrome render       | Besar  | +2-5 detik per murid   |
+| 3   | Logo DB + tanpa HTTP cache   | Besar  | +5-15ms per page load  |
+| 4   | Murid photo load semua       | Besar  | +100-500ms per halaman |
+| 5   | N+1 absen harian             | Besar  | +30-100ms per page     |
+| 6   | Query duplikat asetmen       | Sedang | +50-150ms per load     |
+| 7   | Session tanpa cache          | Sedang | +2-5ms per request     |
+| 8   | Ensures per-first-request    | Sedang | Delay first paint      |
+| 9   | Dashboard agregasi           | Sedang | +50-200ms per load     |
 
 ---
 

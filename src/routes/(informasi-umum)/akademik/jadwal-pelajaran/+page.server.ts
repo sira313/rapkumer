@@ -266,7 +266,9 @@ export const actions: Actions = {
 		const soundPath = path.join(soundDir, `${sekolahId}_custom_${kode}.mp3`);
 		try {
 			fs.unlinkSync(soundPath);
-		} catch {}
+		} catch {
+			// Invalid custom school days use the default schedule.
+		}
 
 		await db
 			.delete(tableKegiatanCustom)
@@ -318,7 +320,9 @@ export const actions: Actions = {
 			}
 			try {
 				fs.unlinkSync(path.join(soundDir, `${sekolahId}_custom_${kodeLama}.mp3`));
-			} catch {}
+			} catch {
+				// Invalid saved settings use the default values.
+			}
 			const buffer = Buffer.from(await soundFile.arrayBuffer());
 			fs.mkdirSync(soundDir, { recursive: true });
 			fs.writeFileSync(path.join(soundDir, `${sekolahId}_custom_${kode}.mp3`), buffer);
@@ -327,7 +331,9 @@ export const actions: Actions = {
 		} else if (hapusSound) {
 			try {
 				fs.unlinkSync(path.join(soundDir, `${sekolahId}_custom_${kodeLama}.mp3`));
-			} catch {}
+			} catch {
+				// Invalid saved settings use the default values.
+			}
 			soundFileName = null;
 			soundMimeType = null;
 		}
@@ -338,7 +344,9 @@ export const actions: Actions = {
 					path.join(soundDir, `${sekolahId}_custom_${kodeLama}.mp3`),
 					path.join(soundDir, `${sekolahId}_custom_${kode}.mp3`)
 				);
-			} catch {}
+			} catch {
+				// Invalid saved settings use the default values.
+			}
 		}
 
 		const updateData: Record<string, unknown> = { nama, kode, durasi };

@@ -7,7 +7,9 @@ interface ModalAction {
 	action?: (params: { close: () => void }) => MaybePromise<void>;
 }
 
-type ModalBodyComponent = import('svelte').Component<any, any, string>;
+// Modal bodies accept heterogeneous props; each caller supplies its component's props.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ModalBodyComponent = import('svelte').Component<any, Record<string, unknown>, string>;
 
 interface ModalProps<BodyProps extends Record<string, unknown> = Record<string, unknown>> {
 	title?: string;

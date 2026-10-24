@@ -34,6 +34,7 @@ await $client.execute(sql`PRAGMA synchronous = NORMAL`);
 Setiap load halaman, browser fetch `/sekolah/logo` → DB query full blob `Uint8Array` → tidak ada `Cache-Control` header yang benar. Dashboard load = logo refetch = DB I/O berulang. Pattern sama di `logo-dinas`.
 
 **Fix:**
+
 - Tambah in-memory cache untuk logo blob (misal TTL 60 detik)
 - Tambah header `Cache-Control: public, max-age=86400, immutable` pada response logo
 - Placeholder path sudah punya `Cache-Control: no-store` — ini sudah benar, tapi path logo asli perlu di-fix
@@ -55,6 +56,7 @@ Tidak ada in-memory session cache. Setiap request (termasuk asset, gambar) = 1 q
 **File:** `src/lib/server/absen/load-harian.ts`
 
 Halaman presensi harian menjalankan **8-10 DB queries** per page load:
+
 - 2x count query (pagination + data)
 - 3x findMany (jadwal, absensi, murid)
 - 2x findFirst (mapel, user mapel)
@@ -63,6 +65,7 @@ Halaman presensi harian menjalankan **8-10 DB queries** per page load:
 Beberapa query dijalankan berulang untuk data yang sama.
 
 **Fix:**
+
 - Gabungkan count query menjadi satu
 - Cache hasil `tableAuthUserMataPelajaran` per user dalam satu request
 - Pertimbangkan eager relation untuk mengurangi query terpisah
@@ -76,6 +79,7 @@ Beberapa query dijalankan berulang untuk data yang sama.
 `tableMataPelajaran.findFirst` dipanggil **4 kali identik** untuk user-type accounts. Selain itu, semua murid di-load dulu (`tableMurid.findMany`), lalu di-paginate di JavaScript, bukan di SQL.
 
 **Fix:**
+
 - Simpan hasil query mapel pertama, re-use untuk 3 pemanggilan berikutnya
 - Gunakan `LIMIT` + `OFFSET` di SQL untuk pagination, bukan fetch semua lalu slice di JS
 
@@ -88,6 +92,7 @@ Beberapa query dijalankan berulang untuk data yang sama.
 Bulk rapor memanggil `setContent()` + PagedJS polyfill + `page.pdf()` per murid di loop. Untuk 30 siswa = 30x render Chrome. Logo base64 di-load dari DB tanpa cache (`preview-utils.ts:39-54`). Cache hanya 30 item, 5 menit TTL.
 
 **Fix:**
+
 - Cache logo base64 per sekolah (tidak perlu re-convert tiap murid)
 - Pertimbangkan disk-backed cache untuk PDF yang sudah di-generate (keyed by murid+semester+mapel hash)
 - Log heavy ini bukan prioritas jika penggunaan cetak batch jarang, tapi perlu diketahui
@@ -116,16 +121,16 @@ Service worker tidak melakukan caching apapun. Setiap navigasi refetch semua JS/
 
 ## Prioritas Perbaikan
 
-| # | Perbaikan | Dampak | Kesulitan |
-|---|-----------|--------|-----------|
-| 1 | `PRAGMA synchronous=NORMAL` | Sangat Tinggi | Sangat Mudah (1 baris) |
-| 2 | Logo cache + `Cache-Control` | Tinggi | Mudah |
-| 3 | In-memory session cache | Sedang | Sedang |
-| 4 | Dedupe query di asetmen formatif | Sedang | Mudah |
-| 5 | Fix N+1 di absen harian | Tinggi | Sedang |
-| 6 | PDF bulk cache optimization | Sedang | Besar |
-| 7 | Pindah ensures ke startup | Sedang | Mudah |
-| 8 | Service worker caching | Rendah | Sedang |
+| #   | Perbaikan                        | Dampak        | Kesulitan              |
+| --- | -------------------------------- | ------------- | ---------------------- |
+| 1   | `PRAGMA synchronous=NORMAL`      | Sangat Tinggi | Sangat Mudah (1 baris) |
+| 2   | Logo cache + `Cache-Control`     | Tinggi        | Mudah                  |
+| 3   | In-memory session cache          | Sedang        | Sedang                 |
+| 4   | Dedupe query di asetmen formatif | Sedang        | Mudah                  |
+| 5   | Fix N+1 di absen harian          | Tinggi        | Sedang                 |
+| 6   | PDF bulk cache optimization      | Sedang        | Besar                  |
+| 7   | Pindah ensures ke startup        | Sedang        | Mudah                  |
+| 8   | Service worker caching           | Rendah        | Sedang                 |
 
 ---
 

@@ -38,29 +38,27 @@
 				onsuccess={onSuccess}
 				submitStateChange={(v) => (submitting = v)}
 			>
-				{#snippet children()}
-					<div class="mb-4 flex items-start gap-3">
-						<Icon name="warning" class="text-error mt-1 shrink-0" />
-						<div>
-							<h3 class="text-lg font-bold">{title}</h3>
-							{#if mode === 'single' && item}
-								<p class="mt-2 text-sm">
-									Yakin ingin menghapus mata evaluasi
-									<span class="font-semibold">"{item.nama}"</span>?
-								</p>
-							{:else if mode === 'bulk'}
-								<p class="mt-2 text-sm">
-									Yakin ingin menghapus {ids.length} mata evaluasi terpilih?
-								</p>
-								<p class="mt-2 text-xs opacity-70">Tindakan ini tidak dapat dibatalkan.</p>
-							{/if}
-						</div>
+				<div class="mb-4 flex items-start gap-3">
+					<Icon name="warning" class="text-error mt-1 shrink-0" />
+					<div>
+						<h3 class="text-lg font-bold">{title}</h3>
+						{#if mode === 'single' && item}
+							<p class="mt-2 text-sm">
+								Yakin ingin menghapus mata evaluasi
+								<span class="font-semibold">"{item.nama}"</span>?
+							</p>
+						{:else if mode === 'bulk'}
+							<p class="mt-2 text-sm">
+								Yakin ingin menghapus {ids.length} mata evaluasi terpilih?
+							</p>
+							<p class="mt-2 text-xs opacity-70">Tindakan ini tidak dapat dibatalkan.</p>
+						{/if}
 					</div>
+				</div>
 
-					{#each ids as id, idx (id)}
-						<input name={`ids.${idx}`} value={id} hidden />
-					{/each}
-				{/snippet}
+				{#each ids as id, idx (id)}
+					<input name={`ids.${idx}`} value={id} hidden />
+				{/each}
 			</FormEnhance>
 
 			<div class="modal-action mt-6 flex gap-2">

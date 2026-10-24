@@ -105,7 +105,7 @@ export async function readCombinedOriginsFromEnvAndFile(): Promise<Set<string>> 
 	const repoSet = await readRepoDataFileOrigins();
 
 	// Choose the primary source (repo file > persisted data dir > env)
-	let primary = new Set<string>();
+	let primary: Set<string>;
 	if (repoSet.size > 0) primary = new Set<string>(repoSet);
 	else if (fileSet.size > 0) primary = new Set<string>(fileSet);
 	else primary = new Set<string>(envEntries);

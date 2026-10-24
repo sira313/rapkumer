@@ -25,9 +25,6 @@ const AGAMA_BASE_SUBJECT = 'Pendidikan Agama dan Budi Pekerti';
 const AGAMA_MAPEL_VALUE = 'agama';
 
 const PKS_BASE_SUBJECT = 'Pendalaman Kitab Suci';
-const AGAMA_VARIANT_NAMES = agamaMapelOptions
-	.filter((option) => option.key !== 'umum')
-	.map((option) => normalizeText(option.name));
 const PKS_VARIANT_NAMES = pksMapelOptions
 	.filter((option) => option.key !== 'umum')
 	.map((option) => normalizeText(option.name));
@@ -84,7 +81,7 @@ function buildSummarySentence(parts: ProgressSummaryPart[]): string | null {
 		const lingkup = part.lingkupMateri.toLowerCase();
 		return `${kategoriLabel} dalam materi ${lingkup} (${part.tuntas}/${part.totalTujuan} TP)`;
 	});
-	let sentence = '';
+	let sentence: string;
 	if (formatted.length === 1) {
 		sentence = formatted[0];
 	} else if (formatted.length === 2) {

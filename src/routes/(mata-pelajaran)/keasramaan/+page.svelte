@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import Icon from '$lib/components/icon.svelte';
@@ -37,10 +38,9 @@
 		return u?.type !== 'user';
 	});
 
-	// eslint-disable-next-line svelte/no-navigation-without-resolve
 	const navigateToMatEval = () => {
 		if (!canEdit) return;
-		goto('/keasramaan/mata-evaluasi');
+		goto(resolve('/keasramaan/mata-evaluasi'));
 	};
 
 	const handleExport = async () => {

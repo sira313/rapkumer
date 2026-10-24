@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import FormEnhance from '$lib/components/form-enhance.svelte';
@@ -40,27 +41,14 @@
 
 	const canEdit = $derived(userType !== 'wali_asuh');
 
-	// svelte-ignore state_referenced_locally
-	let selectedTanggal = $state(data.tanggal ?? '');
-
-	$effect(() => {
-		selectedTanggal = data.tanggal ?? '';
-	});
-
-	const isToday = $derived.by(() => {
-		const d = new Date();
-		const y = d.getFullYear();
-		const m = String(d.getMonth() + 1).padStart(2, '0');
-		const day = String(d.getDate()).padStart(2, '0');
-		return data.tanggal === `${y}-${m}-${day}`;
-	});
+	let selectedTanggal = $derived(data.tanggal ?? '');
 
 	function applyNavigation(update: (params: SvelteURLSearchParams) => void) {
 		const params = new SvelteURLSearchParams(page.url.search);
 		update(params);
 		params.delete('page');
 		const nextQuery = params.toString();
-		void goto(`${page.url.pathname}${nextQuery ? `?${nextQuery}` : ''}`, {
+		void goto(resolve(nextQuery ? `/jurnal-mengajar?${nextQuery}` : '/jurnal-mengajar'), {
 			replaceState: true,
 			keepFocus: true
 		});
@@ -100,7 +88,10 @@
 	async function gotoPage(pageNumber: number) {
 		const target = buildPageUrl(pageNumber);
 		if (!target) return;
-		await goto(target, { replaceState: true, keepFocus: true });
+		await goto(
+			resolve(`/jurnal-mengajar${new URL(target, page.url).search}` as '/jurnal-mengajar'),
+			{ replaceState: true, keepFocus: true }
+		);
 	}
 
 	function handlePageClick(pageNumber: number) {
@@ -127,8 +118,6 @@
 				mapelId: data.mapelId,
 				mataPelajaranList: data.mataPelajaranList,
 				tujuanPembelajaranList: data.tujuanPembelajaranList,
-				lingkupMateriList: data.lingkupMateriList,
-				userType: data.userType ?? '',
 				onAction: (a: { submit: () => void }) => {
 					actions = a;
 				},
@@ -279,9 +268,7 @@
 									action="?/delete"
 									onsuccess={handleDeleteSuccess}
 								>
-									{#snippet children()}
-										<input type="hidden" name="id" value={item.id} />
-									{/snippet}
+									<input type="hidden" name="id" value={item.id} />
 								</FormEnhance>
 								<button
 									type="button"

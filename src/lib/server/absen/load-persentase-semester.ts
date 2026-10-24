@@ -1,4 +1,5 @@
 import db from '$lib/server/db';
+import type { AcademicContext } from '$lib/server/db/academic';
 import {
 	tableMurid,
 	tableKetidakhadiranHarian,
@@ -24,7 +25,7 @@ export async function loadPersentaseSemester(params: {
 	simHari: string | null;
 	simJam: string | null;
 	url: URL;
-	academicContext: any;
+	academicContext: AcademicContext | null;
 	tahunAjaranId: number;
 	semesterId: number;
 }): Promise<AbsenLoadData> {
@@ -86,8 +87,8 @@ export async function loadPersentaseSemester(params: {
 		isLibur: false
 	};
 
-	const activeTa = academicContext?.tahunAjaranList.find((ta: any) => ta.id === tahunAjaranId);
-	const activeSem = activeTa?.semester.find((s: any) => s.id === semesterId);
+	const activeTa = academicContext?.tahunAjaranList.find((ta) => ta.id === tahunAjaranId);
+	const activeSem = activeTa?.semester.find((s) => s.id === semesterId);
 	let tanggalMulaiRapor = activeSem?.tanggalMasuk ?? activeSem?.tanggalMulai ?? null;
 	let tanggalAkhirRapor = activeSem?.tanggalBagiRaport ?? activeSem?.tanggalSelesai ?? null;
 

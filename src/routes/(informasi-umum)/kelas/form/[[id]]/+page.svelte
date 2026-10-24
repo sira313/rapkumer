@@ -288,8 +288,8 @@
 					<span> Biarkan kosong jika tidak ada wali asrama atau tidak memiliki NIP. </span>
 				</div>
 			</div>
-		<!-- mobile: 2-col grid -->
-		<div class="mt-6 grid grid-cols-2 gap-2 md:hidden">
+			<!-- mobile: 2-col grid -->
+			<div class="mt-6 grid grid-cols-2 gap-2 md:hidden">
 				<a class="btn btn-soft shadow-none" href="/kelas" aria-label="kembali">
 					<Icon name="left" />
 					Kembali

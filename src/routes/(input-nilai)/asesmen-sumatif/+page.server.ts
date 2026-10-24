@@ -9,12 +9,6 @@ import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 
 const AGAMA_BASE_SUBJECT = 'Pendidikan Agama dan Budi Pekerti';
 const PKS_BASE_SUBJECT = 'Pendalaman Kitab Suci';
-const AGAMA_VARIANT_NAMES = agamaMapelOptions
-	.filter((option) => option.key !== 'umum')
-	.map((option) => normalizeText(option.name));
-const PKS_VARIANT_NAMES = pksMapelOptions
-	.filter((option) => option.key !== 'umum')
-	.map((option) => normalizeText(option.name));
 const AGAMA_MAPEL_VALUE = 'agama';
 const PKS_MAPEL_VALUE = 'pks';
 

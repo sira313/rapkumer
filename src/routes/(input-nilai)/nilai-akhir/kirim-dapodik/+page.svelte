@@ -78,8 +78,8 @@
 		<h3 class="mb-3 text-lg font-bold">Kirim Nilai ke Dapodik</h3>
 		<div class="min-h-0 flex-1 space-y-3 overflow-y-auto px-1">
 			<p class="text-sm opacity-70">
-				Mengirim nilai akhir kelas {data.kelasNama ?? '-'} ke aplikasi Dapodik melalui
-				Web Service (Bearer token).
+				Mengirim nilai akhir kelas {data.kelasNama ?? '-'} ke aplikasi Dapodik melalui Web Service (Bearer
+				token).
 			</p>
 
 			{#if notif}
@@ -104,9 +104,7 @@
 						placeholder="Masukkan token web service dapodik"
 						class="input bg-base-200 dark:bg-base-300 validator w-full dark:border-none"
 					/>
-					<p class="label text-wrap">
-						Token didapat dari menu Web Service pada aplikasi Dapodik.
-					</p>
+					<p class="label text-wrap">Token didapat dari menu Web Service pada aplikasi Dapodik.</p>
 				</div>
 
 				<div class="fieldset">
@@ -168,7 +166,11 @@
 			{/if}
 		</div>
 		<div class="modal-action grid grid-cols-2 gap-2 md:flex md:items-center">
-			<button type="button" class="btn btn-soft shadow-none md:w-auto md:mr-auto" onclick={() => history.back()}>
+			<button
+				type="button"
+				class="btn btn-soft shadow-none md:w-auto md:mr-auto"
+				onclick={() => history.back()}
+			>
 				<Icon name="close" />
 				Tutup
 			</button>

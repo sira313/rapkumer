@@ -529,7 +529,7 @@ export async function loadHarian(params: {
 			? sql`(${tableAbsensi.mataPelajaranId} = ${firstMapelId} OR ${tableAbsensi.mataPelajaranId} IS NULL)`
 			: sql`${tableAbsensi.mataPelajaranId} IS NULL`;
 
-	let queryRecords: QueryRecord[] = [];
+	let queryRecords: QueryRecord[];
 	let tableReady = true;
 
 	try {

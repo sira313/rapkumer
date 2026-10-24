@@ -27,8 +27,8 @@
 	const currentPage = $derived.by(() => data.page?.currentPage ?? 1);
 	const totalPages = $derived.by(() => Math.max(1, data.page?.totalPages ?? 1));
 
+	// svelte-ignore state_referenced_locally
 	let selectedKeasramaanValue = $state(
-		// svelte-ignore state_referenced_locally
 		data.selectedKeasramaanId ? String(data.selectedKeasramaanId) : ''
 	);
 	// svelte-ignore state_referenced_locally

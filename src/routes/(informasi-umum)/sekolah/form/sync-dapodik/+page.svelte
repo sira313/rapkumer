@@ -90,8 +90,8 @@
 		<h3 class="mb-3 text-lg font-bold">Sinkronisasi Dapodik</h3>
 		<div class="min-h-0 flex-1 space-y-3 overflow-y-auto px-1">
 			<p class="text-sm opacity-70">
-				Ambil data dari aplikasi Dapodik melalui Web Service (Bearer token). Data
-				Dapodik akan menimpa data yang sudah ada di sistem.
+				Ambil data dari aplikasi Dapodik melalui Web Service (Bearer token). Data Dapodik akan
+				menimpa data yang sudah ada di sistem.
 			</p>
 
 			{#if notif}
@@ -114,9 +114,7 @@
 						placeholder="Masukkan token web service dapodik"
 						class="input bg-base-200 dark:bg-base-300 validator w-full dark:border-none"
 					/>
-					<p class="label text-wrap">
-						Token didapat dari menu Web Service pada aplikasi Dapodik.
-					</p>
+					<p class="label text-wrap">Token didapat dari menu Web Service pada aplikasi Dapodik.</p>
 				</div>
 
 				<div class="fieldset">
@@ -177,12 +175,21 @@
 				</div>
 			{/if}
 		</div>
-		<div class="modal-action grid grid-cols-2 justify-between gap-2 sm:flex sm:flex-row sm:items-center">
-			<button type="button" class="btn btn-soft w-full shadow-none sm:w-auto sm:flex-none" onclick={() => history.back()}>
+		<div
+			class="modal-action grid grid-cols-2 justify-between gap-2 sm:flex sm:flex-row sm:items-center"
+		>
+			<button
+				type="button"
+				class="btn btn-soft w-full shadow-none sm:w-auto sm:flex-none"
+				onclick={() => history.back()}
+			>
 				<Icon name="close" />
 				Tutup
 			</button>
-			<button class="btn btn-primary w-full shadow-none sm:w-auto sm:flex-none" disabled={submitting}>
+			<button
+				class="btn btn-primary w-full shadow-none sm:w-auto sm:flex-none"
+				disabled={submitting}
+			>
 				{#if submitting}
 					<span class="loading loading-spinner"></span>
 				{:else}

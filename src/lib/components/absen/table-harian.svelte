@@ -13,12 +13,6 @@
 		updatedAt: string | null;
 	};
 
-	type PageState = {
-		search: string | null;
-		currentPage: number;
-		totalPages: number;
-	};
-
 	let {
 		rows,
 		search,

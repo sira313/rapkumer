@@ -111,7 +111,7 @@ export async function load({ parent, url, locals, depends }) {
 			if (wa) waliAsuhInfo = { nama: wa.nama, nip: wa.nip };
 			else waliAsuhInfo = { nama: murid.waliAsuhNama, nip: null };
 		}
-	} catch (e) {
+	} catch {
 		// ignore
 	}
 	try {
@@ -123,7 +123,7 @@ export async function load({ parent, url, locals, depends }) {
 			if (wa) waliAsuhInfo = { nama: wa.nama, nip: wa.nip };
 			else waliAsuhInfo = { nama: murid.waliAsuhNama, nip: null };
 		}
-	} catch (e) {
+	} catch {
 		// ignore
 	}
 

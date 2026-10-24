@@ -36,7 +36,6 @@
 	} = $props();
 
 	let step = $state<'pilih-mode' | 'pilih-murid'>('pilih-mode');
-	let pilihanHadirSemua = $state<string>('');
 	let searchTerm = $state('');
 	let selectedIds = $state<number[]>([]);
 	let keteranganMap = $state<Record<number, string>>({});
@@ -84,8 +83,7 @@
 			}
 		} else {
 			selectedIds = selectedIds.filter((x) => x !== id);
-			const { [id]: _, ...rest } = keteranganMap;
-			keteranganMap = rest;
+			delete keteranganMap[id];
 		}
 	}
 
@@ -116,7 +114,6 @@
 	}
 
 	function pilihTidak() {
-		pilihanHadirSemua = 'tidak';
 		step = 'pilih-murid';
 		updateModal({
 			onPositive: {
@@ -135,7 +132,6 @@
 
 	function goToStep1() {
 		step = 'pilih-mode';
-		pilihanHadirSemua = '';
 		updateModal({
 			onPositive: {
 				label: 'Ya',

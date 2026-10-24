@@ -38,7 +38,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # required for diff-scope resolution
+          fetch-depth: 0 # required for diff-scope resolution
 
       - name: Install Strix
         run: curl -sSL https://strix.ai/install | bash
@@ -66,6 +66,7 @@ jobs:
 Then tell the user to add two repository secrets: `STRIX_LLM` (model id, for example `openai/gpt-5.4`) and `LLM_API_KEY` (the provider key). Do not create these values yourself.
 
 Notes:
+
 - In CI/headless runs Strix automatically scopes to the PR's changed files (`--scope-mode auto`). If diff resolution fails, keep `fetch-depth: 0` or set `--diff-base` to the PR's actual base branch — use `origin/${{ github.base_ref }}` in GitHub Actions rather than a hard-coded `origin/main`, since repos use different default branches.
 - Exit codes: `0` pass, `2` vulnerabilities found (fails the job), `1` setup error.
 - The runner needs Docker (default GitHub-hosted Ubuntu runners have it).
@@ -76,11 +77,11 @@ Notes:
 Strix writes SARIF 2.1.0 to `strix_runs/<run>/findings.sarif`:
 
 ```yaml
-      - name: Upload SARIF
-        if: always()
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: strix_runs
+- name: Upload SARIF
+  if: always()
+  uses: github/codeql-action/upload-sarif@v3
+  with:
+    sarif_file: strix_runs
 ```
 
 ## Other CI systems

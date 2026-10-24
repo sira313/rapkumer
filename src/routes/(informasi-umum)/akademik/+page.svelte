@@ -529,7 +529,11 @@
 								Salin Semester Ganjil
 							</button>
 							<div class="indicator max-sm:w-full">
-								<span class="indicator-item indicator-start badge badge-xs {hasPresensiSettings ? 'badge-success' : 'badge-error'}"></span>
+								<span
+									class="indicator-item indicator-start badge badge-xs {hasPresensiSettings
+										? 'badge-success'
+										: 'badge-error'}"
+								></span>
 								<button
 									type="button"
 									class="btn btn-soft shadow-none max-sm:w-full"

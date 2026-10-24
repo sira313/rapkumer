@@ -102,7 +102,7 @@ function buildCombinedTercapaiLine(muridNama: string, descriptors: CapaianDescri
 		const cleanDesc = d.deskripsi.replace(/[.!?]+$/gu, '').trim();
 		const narrative = d.predikat.narrative;
 
-		let sentence = '';
+		let sentence: string;
 		if (d.predikat.key === 'cukup') {
 			sentence = `cukup mampu ${cleanDesc}`;
 		} else {

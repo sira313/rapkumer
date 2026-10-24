@@ -75,7 +75,7 @@
 				const baseName =
 					type === 'keasramaan'
 						? (meta.waliAsuh?.nama || 'Tanpa Wali Asuh')
-								.replace(/[\\/?*\[\]:']/g, ' ')
+								.replace(/[\\/?*[\]:']/g, ' ')
 								.trim()
 								.slice(0, 31) || 'Wali Asuh'
 						: 'Leger';

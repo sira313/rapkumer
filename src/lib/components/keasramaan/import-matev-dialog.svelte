@@ -121,31 +121,29 @@
 					open = false;
 				}}
 			>
-				{#snippet children()}
-					<fieldset class="fieldset">
-						<legend class="fieldset-legend font-semibold">Pilih File Excel (.xlsx)</legend>
-						<input
-							id={fileInputId}
-							bind:this={fileInput}
-							onchange={handleFileChange}
-							required
-							name="file"
-							type="file"
-							accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-							class="file-input file-input-ghost"
-						/>
-						<label class="label" for={fileInputId}>
-							<span class="label-text-alt text-base-content/60 text-xs text-wrap"
-								>Maksimal 2MB. Pastikan kolom Matev, Indikator, dan Tujuan Pembelajaran tersedia.</span
+				<fieldset class="fieldset">
+					<legend class="fieldset-legend font-semibold">Pilih File Excel (.xlsx)</legend>
+					<input
+						id={fileInputId}
+						bind:this={fileInput}
+						onchange={handleFileChange}
+						required
+						name="file"
+						type="file"
+						accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+						class="file-input file-input-ghost"
+					/>
+					<label class="label" for={fileInputId}>
+						<span class="label-text-alt text-base-content/60 text-xs text-wrap"
+							>Maksimal 2MB. Pastikan kolom Matev, Indikator, dan Tujuan Pembelajaran tersedia.</span
+						>
+						{#if fileName}
+							<span class="label-text-alt text-base-content/60 text-xs"
+								>File dipilih: <strong>{fileName}</strong></span
 							>
-							{#if fileName}
-								<span class="label-text-alt text-base-content/60 text-xs"
-									>File dipilih: <strong>{fileName}</strong></span
-								>
-							{/if}
-						</label>
-					</fieldset>
-				{/snippet}
+						{/if}
+					</label>
+				</fieldset>
 			</FormEnhance>
 		</div>
 

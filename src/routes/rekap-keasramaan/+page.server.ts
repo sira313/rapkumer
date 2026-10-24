@@ -225,7 +225,7 @@ export const load: PageServerLoad = async ({ parent, locals, url, depends }) => 
 	};
 
 	let waliAsramaInfo: { nama?: string | null; nip?: string | null } | null = null;
-	let waliAsuhList: Array<{ nama: string; nip?: string | null }> = [];
+	const waliAsuhList: Array<{ nama: string; nip?: string | null }> = [];
 	try {
 		const kelasData = await db.query.tableKelas.findFirst({
 			columns: { id: true },
@@ -235,7 +235,7 @@ export const load: PageServerLoad = async ({ parent, locals, url, depends }) => 
 		waliAsramaInfo = kelasData?.waliAsrama
 			? { nama: kelasData.waliAsrama.nama, nip: kelasData.waliAsrama.nip }
 			: null;
-	} catch (e) {
+	} catch {
 		// ignore
 	}
 	try {
@@ -251,7 +251,7 @@ export const load: PageServerLoad = async ({ parent, locals, url, depends }) => 
 			});
 			waliAsuhList.push({ nama: nm, nip: p?.nip || null });
 		}
-	} catch (e) {
+	} catch {
 		// ignore
 	}
 

@@ -97,7 +97,7 @@
 			}
 
 			let desc: string;
-			let extraTipe: string | null = null;
+			let extraTipe: string | null;
 			if (kode === 'UPB') {
 				extraTipe = 'upacara';
 				desc = 'Bell → Upacara';
@@ -298,7 +298,7 @@
 		</div>
 
 		<div class="flex flex-col gap-0.5">
-			{#each visibleEvents as event, i (event.timeLabel + event.kode + event.description)}
+			{#each visibleEvents as event (event.timeLabel + event.kode + event.description)}
 				{@const globalIdx = events.indexOf(event)}
 				{@const isDone = globalIdx < currentEventIndex}
 				{@const isCurrent = globalIdx === currentEventIndex}

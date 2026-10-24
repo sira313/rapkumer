@@ -51,11 +51,9 @@
 				}}
 				submitStateChange={(v) => (submitting = v)}
 			>
-				{#snippet children()}
-					{#each ids as id (id)}
-						<input name="ids" value={id} hidden />
-					{/each}
-				{/snippet}
+				{#each ids as id (id)}
+					<input name="ids" value={id} hidden />
+				{/each}
 			</FormEnhance>
 
 			<div class="modal-action mt-6 flex gap-2">

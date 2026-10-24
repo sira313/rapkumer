@@ -400,15 +400,16 @@ export const load: LayoutServerLoad = async ({ url, locals, cookies, depends }) 
 	// Start pegawai + hasMataPelajaran queries as promises (run in parallel via await below).
 	let userForClient = user;
 	let hasMataPelajaran = false;
-	const pegawaiPromise =
-		user?.pegawaiId
-			? db.query.tablePegawai.findFirst({
-					columns: { id: true, nama: true },
-					where: eq(tablePegawai.id, Number(user.pegawaiId))
-				})
-			: null;
+	const pegawaiPromise = user?.pegawaiId
+		? db.query.tablePegawai.findFirst({
+				columns: { id: true, nama: true },
+				where: eq(tablePegawai.id, Number(user.pegawaiId))
+			})
+		: null;
 	const hasMapelPromise =
-		user?.type === 'user' && !(user as { mataPelajaranId?: number | null }).mataPelajaranId && user.id
+		user?.type === 'user' &&
+		!(user as { mataPelajaranId?: number | null }).mataPelajaranId &&
+		user.id
 			? db.query.tableAuthUserMataPelajaran.findMany({
 					columns: { id: true },
 					where: eq(tableAuthUserMataPelajaran.authUserId, user.id),
@@ -448,7 +449,8 @@ export const load: LayoutServerLoad = async ({ url, locals, cookies, depends }) 
 
 	if (user?.type === 'user') {
 		const u = user as { id?: number; mataPelajaranId?: number | null };
-		hasMataPelajaran = !!u.mataPelajaranId || (hasMapelRecords ? hasMapelRecords.length > 0 : false);
+		hasMataPelajaran =
+			!!u.mataPelajaranId || (hasMapelRecords ? hasMapelRecords.length > 0 : false);
 	}
 
 	// Set cookies AFTER all async operations are complete

@@ -175,7 +175,7 @@
 	<section class="card bg-base-100 rounded-box shadow-md">
 		<div class="card-body gap-4">
 			<h2 class="card-title">Penafian</h2>
-<div role="alert" class="alert alert-warning alert-soft alert-sm">
+			<div role="alert" class="alert alert-warning alert-soft alert-sm">
 				<Icon name="alert" class="h-4 w-4 shrink-0" />
 				<span class="text-sm">
 					Perangkat lunak ini disediakan <strong>"sebagaimana adanya"</strong> (AS IS), tanpa jaminan

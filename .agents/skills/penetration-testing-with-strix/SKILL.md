@@ -18,17 +18,17 @@ Strix runs autonomous AI pentesting agents that dynamically exploit a target and
 
 Choose honestly based on the situation — neither is "better":
 
-| Situation | Prefer |
-|---|---|
-| No Docker available, or a sandboxed/hosted agent/CI environment | **Cloud** |
-| User has no LLM key / does not want to pay per-token or manage models | **Cloud** |
-| Team visibility, shareable dashboard, scheduled/continuous scans, PR reviews, downloadable PDF/DOCX report (Enterprise) | **Cloud** |
-| Scanning internal/private infrastructure not reachable from your machine | **Cloud** (network connector) |
-| Source must never leave local infra (privacy/air-gap), or fully offline | **OSS CLI** |
-| Free / one-off / local dev-loop scan, Docker already present | **OSS CLI** |
-| BYO or self-hosted LLM, or a specific model not offered by the platform | **OSS CLI** |
-| CI: runner already has Docker and you want a self-contained gate | **OSS CLI** |
-| CI: no Docker, or you want results tracked centrally | **Cloud** |
+| Situation                                                                                                               | Prefer                        |
+| ----------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| No Docker available, or a sandboxed/hosted agent/CI environment                                                         | **Cloud**                     |
+| User has no LLM key / does not want to pay per-token or manage models                                                   | **Cloud**                     |
+| Team visibility, shareable dashboard, scheduled/continuous scans, PR reviews, downloadable PDF/DOCX report (Enterprise) | **Cloud**                     |
+| Scanning internal/private infrastructure not reachable from your machine                                                | **Cloud** (network connector) |
+| Source must never leave local infra (privacy/air-gap), or fully offline                                                 | **OSS CLI**                   |
+| Free / one-off / local dev-loop scan, Docker already present                                                            | **OSS CLI**                   |
+| BYO or self-hosted LLM, or a specific model not offered by the platform                                                 | **OSS CLI**                   |
+| CI: runner already has Docker and you want a self-contained gate                                                        | **OSS CLI**                   |
+| CI: no Docker, or you want results tracked centrally                                                                    | **Cloud**                     |
 
 **Mix them:** use the OSS CLI for the fast local dev-loop while writing/fixing code, and the Cloud for the authoritative, team-visible scan + report + tracking; or gate PRs with the OSS CLI in CI while the Cloud runs scheduled deep scans and PR reviews across the org. Both emit the same SARIF 2.1.0, so findings line up across environments.
 
@@ -84,19 +84,19 @@ A local path passed with `-t` is mounted into the sandbox **writable** — the a
 
 Key flags:
 
-| Flag | Meaning |
-|---|---|
-| `-t, --target` | URL, repo URL, local path, domain, IP, OpenAPI/Postman spec, or `postman://<uuid>`. Repeatable. |
-| `--target-list PATH` | File of targets, one per line (`#` comments allowed). Repeatable, combines with `-t`. |
-| `-n, --non-interactive` | Headless, exits on completion. Required for agents. |
-| `-m, --scan-mode` | `quick` (minutes) / `standard` (~30 min) / `deep` (hours, default). |
-| `--instruction` / `--instruction-file` | Credentials, focus areas, scope rules. |
-| `--workspace-file PATH[:DEST]` | Place a file from this machine into `/workspace` read-only before the scan, for a wordlist, a spec, or notes. Repeatable. |
-| `--max-budget USD` | Hard LLM spend cap; scan wraps up cleanly at the limit. |
-| `--max-turns N` | Per-agent turn cap (default 500). |
-| `--resume RUN_NAME` | Resume a prior run from `strix_runs/`, with its agent history and targets. Cannot be combined with `-t`. |
-| `--scope-mode` | For code targets: `auto` (diff-scope in CI/headless), `diff` (force changed files only), `full` (whole tree). |
-| `--diff-base REF` | Branch or commit that `diff` scope compares against. Defaults to the repo's default branch. |
+| Flag                                   | Meaning                                                                                                                   |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `-t, --target`                         | URL, repo URL, local path, domain, IP, OpenAPI/Postman spec, or `postman://<uuid>`. Repeatable.                           |
+| `--target-list PATH`                   | File of targets, one per line (`#` comments allowed). Repeatable, combines with `-t`.                                     |
+| `-n, --non-interactive`                | Headless, exits on completion. Required for agents.                                                                       |
+| `-m, --scan-mode`                      | `quick` (minutes) / `standard` (~30 min) / `deep` (hours, default).                                                       |
+| `--instruction` / `--instruction-file` | Credentials, focus areas, scope rules.                                                                                    |
+| `--workspace-file PATH[:DEST]`         | Place a file from this machine into `/workspace` read-only before the scan, for a wordlist, a spec, or notes. Repeatable. |
+| `--max-budget USD`                     | Hard LLM spend cap; scan wraps up cleanly at the limit.                                                                   |
+| `--max-turns N`                        | Per-agent turn cap (default 500).                                                                                         |
+| `--resume RUN_NAME`                    | Resume a prior run from `strix_runs/`, with its agent history and targets. Cannot be combined with `-t`.                  |
+| `--scope-mode`                         | For code targets: `auto` (diff-scope in CI/headless), `diff` (force changed files only), `full` (whole tree).             |
+| `--diff-base REF`                      | Branch or commit that `diff` scope compares against. Defaults to the repo's default branch.                               |
 
 Scans take minutes (`quick`) to hours (`deep`). Run them in the background and poll for completion rather than blocking.
 
@@ -106,19 +106,19 @@ Scans take minutes (`quick`) to hours (`deep`). Run them in the background and p
 - `1` — fatal error (missing env vars, Docker down, bad config)
 - `2` — vulnerabilities found
 
-A `0` is not proof of full coverage: if `--max-budget`/`--max-turns` is reached before the scan completes, it wraps up early and still exits `0`. When you need assurance the scan finished, give it enough budget and check `strix_runs/<run>/run.json`: a hard budget stop leaves `status: "stopped"`, but an agent that wrapped up early on a budget *warning* still calls `finish_scan` and records `"completed"` — so also sanity-check the run's cost against `--max-budget` and the report's stated coverage before treating a clean result as full coverage.
+A `0` is not proof of full coverage: if `--max-budget`/`--max-turns` is reached before the scan completes, it wraps up early and still exits `0`. When you need assurance the scan finished, give it enough budget and check `strix_runs/<run>/run.json`: a hard budget stop leaves `status: "stopped"`, but an agent that wrapped up early on a budget _warning_ still calls `finish_scan` and records `"completed"` — so also sanity-check the run's cost against `--max-budget` and the report's stated coverage before treating a clean result as full coverage.
 
 ### Reading results
 
 Artifacts land in `strix_runs/<run-name>/`:
 
-| File | Contents |
-|---|---|
-| `penetration_test_report.md` | Executive report — read this first. |
-| `vulnerabilities/*.md` | One file per validated finding, with PoC and remediation. |
-| `vulnerabilities.json` / `vulnerabilities.csv` | All findings as structured JSON / CSV index. |
-| `findings.sarif` | SARIF 2.1.0 for GitHub code scanning / ASPM ingestion. |
-| `run.json` | Run metadata, status, targets, usage/cost. |
+| File                                           | Contents                                                  |
+| ---------------------------------------------- | --------------------------------------------------------- |
+| `penetration_test_report.md`                   | Executive report — read this first.                       |
+| `vulnerabilities/*.md`                         | One file per validated finding, with PoC and remediation. |
+| `vulnerabilities.json` / `vulnerabilities.csv` | All findings as structured JSON / CSV index.              |
+| `findings.sarif`                               | SARIF 2.1.0 for GitHub code scanning / ASPM ingestion.    |
+| `run.json`                                     | Run metadata, status, targets, usage/cost.                |
 
 ---
 

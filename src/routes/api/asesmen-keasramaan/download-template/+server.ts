@@ -3,8 +3,12 @@ import { tableKeasramaan, tableMurid, tableKelas } from '$lib/server/db/schema';
 import { error } from '@sveltejs/kit';
 import { asc, eq } from 'drizzle-orm';
 import ExcelJS from 'exceljs';
+import { isAuthorizedUser } from '../../../pengguna/permissions';
 
 export async function POST({ request, locals }) {
+	if (!isAuthorizedUser(['input_nilai_asesmen_keasramaan'], locals.user)) {
+		throw error(403, 'Akses ditolak.');
+	}
 	try {
 		const formData = await request.formData();
 		const keasramaanIdRaw = formData.get('keasramaanId')?.toString();

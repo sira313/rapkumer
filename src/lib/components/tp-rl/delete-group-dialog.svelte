@@ -22,15 +22,13 @@
 			onsuccess={onSuccess}
 			submitStateChange={(v) => (submitting = v)}
 		>
-			{#snippet children()}
-				{#each ids as idValue (idValue)}
-					<input name="ids" value={idValue} hidden />
-				{/each}
+			{#each ids as idValue (idValue)}
+				<input name="ids" value={idValue} hidden />
+			{/each}
 
-				<h3 class="mb-4 text-xl font-bold">Hapus lingkup materi?</h3>
-				<p class="mb-2">"{lingkupMateri}" beserta seluruh tujuan pembelajaran akan dihapus.</p>
-				<p class="text-sm opacity-70">Jumlah tujuan pembelajaran: {ids.length}</p>
-			{/snippet}
+			<h3 class="mb-4 text-xl font-bold">Hapus lingkup materi?</h3>
+			<p class="mb-2">"{lingkupMateri}" beserta seluruh tujuan pembelajaran akan dihapus.</p>
+			<p class="text-sm opacity-70">Jumlah tujuan pembelajaran: {ids.length}</p>
 		</FormEnhance>
 
 		<div class="modal-action">

@@ -73,22 +73,20 @@
 		onsuccess={handleSuccess}
 		submitStateChange={setLoading}
 	>
-		{#snippet children()}
-			<input type="hidden" name="muridIds" value={muridIdsPayload} />
-			<label class="flex flex-col gap-2">
-				<span class="text-sm font-semibold">Catatan</span>
-				<textarea
-					class="textarea textarea-bordered bg-base-200 dark:bg-base-300 w-full dark:border-none"
-					name="catatan"
-					rows="5"
-					value={catatanValue}
-					oninput={handleInput}
-					placeholder="Tuliskan catatan yang ingin diterapkan ke semua murid"
-					spellcheck="false"></textarea>
-				<small class="text-base-content/70 text-xs">
-					Biarkan kosong untuk menghapus catatan seluruh murid pada halaman ini.
-				</small>
-			</label>
-		{/snippet}
+		<input type="hidden" name="muridIds" value={muridIdsPayload} />
+		<label class="flex flex-col gap-2">
+			<span class="text-sm font-semibold">Catatan</span>
+			<textarea
+				class="textarea textarea-bordered bg-base-200 dark:bg-base-300 w-full dark:border-none"
+				name="catatan"
+				rows="5"
+				value={catatanValue}
+				oninput={handleInput}
+				placeholder="Tuliskan catatan yang ingin diterapkan ke semua murid"
+				spellcheck="false"></textarea>
+			<small class="text-base-content/70 text-xs">
+				Biarkan kosong untuk menghapus catatan seluruh murid pada halaman ini.
+			</small>
+		</label>
 	</FormEnhance>
 </div>

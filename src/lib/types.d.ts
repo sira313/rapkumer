@@ -314,6 +314,18 @@ declare module 'exceljs' {
 	}
 
 	export interface Worksheet {
+		rowCount: number;
+		addRow(row: unknown[]): void;
+		mergeCells(range: string): void;
+		getCell(
+			address: string | number,
+			column?: number
+		): {
+			value: unknown;
+			alignment: { horizontal?: string; vertical?: string };
+			font: { bold?: boolean; size?: number };
+			border: Record<string, { style: string; color?: { argb: string } }>;
+		};
 		addRows(rows: Array<unknown>): void;
 		getColumn(index: number): { width?: number };
 		views?: unknown;

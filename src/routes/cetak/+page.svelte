@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { canAccessKeasramaan } from '../pengguna/permissions';
 	import PreviewHeader from '$lib/components/cetak/PreviewHeader.svelte';
 	import DocumentMuridSelector from '$lib/components/cetak/DocumentMuridSelector.svelte';
 	import PdfPreviewModal from '$lib/components/cetak/PdfPreviewModal.svelte';
@@ -45,7 +46,9 @@
 			{ value: 'laporan-tpp', label: 'Laporan TPP' }
 		];
 		const visible = all.filter(
-			(o) => !((o.value === 'presensi-guru' || o.value === 'laporan-tpp') && !presensiGuruEnabled)
+			(o) =>
+				!((o.value === 'presensi-guru' || o.value === 'laporan-tpp') && !presensiGuruEnabled) &&
+				(o.value !== 'keasramaan' || canAccessKeasramaan(data.user))
 		);
 		if (userType === 'wali_asuh' || userType === 'wali_asrama') {
 			return visible.filter((o) => o.value === 'keasramaan');
@@ -513,7 +516,6 @@
 		bind:laporanTahun
 		bind:statusKepegawaian
 		onDownloadLaporanTpp={handleDownloadLaporanTpp}
-		muridCount={daftarMurid.length}
 		isRaporSelected={selectedDocument === 'rapor'}
 		isBiodataSelected={selectedDocument === 'biodata'}
 		isKeasramaanSelected={selectedDocument === 'keasramaan'}

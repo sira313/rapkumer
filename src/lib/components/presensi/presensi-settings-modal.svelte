@@ -50,13 +50,12 @@
 	let jamPulangValue = $state(jamPulang);
 	// svelte-ignore state_referenced_locally
 	const parsedCustom = parseHariSekolahCustom(hariSekolahCustom);
+	// svelte-ignore state_referenced_locally
 	let hariSekolahValue = $state(
 		parsedCustom && parsedCustom.length > 0
 			? 'custom'
-			: // svelte-ignore state_referenced_locally
-				hariSekolah === 5 || hariSekolah === 6
-				? // svelte-ignore state_referenced_locally
-					String(hariSekolah)
+			: hariSekolah === 5 || hariSekolah === 6
+				? String(hariSekolah)
 				: '6'
 	);
 	let customDays = $state<HariSekolahKey[]>(parsedCustom ?? []);
@@ -83,14 +82,16 @@
 	// svelte-ignore state_referenced_locally
 	let presensiGuruEnabledValue = $state(presensiGuruEnabled);
 
-	let liburDates = $state<string[]>([]);
-	try {
-		// svelte-ignore state_referenced_locally
-		const parsed = JSON.parse(liburNasional);
-		if (Array.isArray(parsed)) liburDates = parsed;
-	} catch {
-		// invalid JSON, use empty array
+	function parseArray<T>(value: string): T[] {
+		try {
+			const parsed = JSON.parse(value);
+			return Array.isArray(parsed) ? parsed : [];
+		} catch {
+			return [];
+		}
 	}
+	// svelte-ignore state_referenced_locally
+	let liburDates = $state<string[]>(parseArray(liburNasional));
 
 	let newLiburDate = $state('');
 
@@ -105,14 +106,8 @@
 		liburDates = liburDates.filter((_, i) => i !== index);
 	}
 
-	let semesterRanges = $state<SemesterRange[]>([]);
-	try {
-		// svelte-ignore state_referenced_locally
-		const parsed = JSON.parse(liburSemester);
-		if (Array.isArray(parsed)) semesterRanges = parsed;
-	} catch {
-		// invalid JSON, use empty array
-	}
+	// svelte-ignore state_referenced_locally
+	let semesterRanges = $state<SemesterRange[]>(parseArray(liburSemester));
 
 	function addSemesterRange() {
 		semesterRanges = [...semesterRanges, { start: '', end: '' }];
@@ -269,7 +264,6 @@
 
 	// Auto-set tipePresensi when jenisPresensi changes
 	$effect(() => {
-		jenisPresensiValue;
 		if (jenisPresensiValue === 'tiap_mapel') {
 			if (!['awal_mapel', 'awal_akhir_mapel'].includes(tipePresensiValue)) {
 				tipePresensiValue = 'awal_mapel';

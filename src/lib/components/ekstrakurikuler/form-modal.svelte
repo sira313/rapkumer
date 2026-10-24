@@ -56,25 +56,23 @@
 				onsuccess={onSuccess}
 				submitStateChange={(v) => (submitting = v)}
 			>
-				{#snippet children()}
-					<input name="kelasId" value={kelasId ?? ''} hidden />
-					{#if isEditMode && modalItem}
-						<input name="id" value={modalItem.id} hidden />
-					{/if}
+				<input name="kelasId" value={kelasId ?? ''} hidden />
+				{#if isEditMode && modalItem}
+					<input name="id" value={modalItem.id} hidden />
+				{/if}
 
-					<label class="mt-4 flex flex-col gap-2">
-						<span class="font-semibold">Nama Ekstrakurikuler</span>
-						<input
-							class="input bg-base-200 dark:bg-base-300 w-full dark:border-none"
-							placeholder="Masukkan nama ekstrakurikuler"
-							name="nama"
-							value={namaInput}
-							oninput={(event) => onNamaChange((event.currentTarget as HTMLInputElement).value)}
-							required
-							disabled={!canManage}
-						/>
-					</label>
-				{/snippet}
+				<label class="mt-4 flex flex-col gap-2">
+					<span class="font-semibold">Nama Ekstrakurikuler</span>
+					<input
+						class="input bg-base-200 dark:bg-base-300 w-full dark:border-none"
+						placeholder="Masukkan nama ekstrakurikuler"
+						name="nama"
+						value={namaInput}
+						oninput={(event) => onNamaChange((event.currentTarget as HTMLInputElement).value)}
+						required
+						disabled={!canManage}
+					/>
+				</label>
 			</FormEnhance>
 
 			<div class="modal-action mt-6 flex gap-2">

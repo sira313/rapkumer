@@ -9,11 +9,7 @@
 		adaDataDapodik?: boolean;
 	}
 
-	let {
-		open = $bindable(false),
-		onSuccess,
-		adaDataDapodik = false
-	}: Props = $props();
+	let { open = $bindable(false), onSuccess, adaDataDapodik = false }: Props = $props();
 
 	const fileInputId = 'import-mapel-file';
 	let fileInput: HTMLInputElement | null = null;
@@ -131,32 +127,30 @@
 					open = false;
 				}}
 			>
-				{#snippet children()}
-					<fieldset class="fieldset">
-						<legend class="fieldset-legend font-semibold">Pilih File Excel (.xlsx)</legend>
-						<input
-							id={fileInputId}
-							bind:this={fileInput}
-							onchange={handleFileChange}
-							required
-							name="file"
-							type="file"
-							accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-							class="file-input file-input-ghost"
-						/>
-						<label class="label" for={fileInputId}>
-							<span class="label-text-alt text-base-content/60 text-xs text-wrap"
-								>Maksimal 2MB. Pastikan kolom Nama, Kode (opsional), Jenis
-								(wajib/pilihan/mulok/kejuruan), dan KKM tersedia.</span
+				<fieldset class="fieldset">
+					<legend class="fieldset-legend font-semibold">Pilih File Excel (.xlsx)</legend>
+					<input
+						id={fileInputId}
+						bind:this={fileInput}
+						onchange={handleFileChange}
+						required
+						name="file"
+						type="file"
+						accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+						class="file-input file-input-ghost"
+					/>
+					<label class="label" for={fileInputId}>
+						<span class="label-text-alt text-base-content/60 text-xs text-wrap"
+							>Maksimal 2MB. Pastikan kolom Nama, Kode (opsional), Jenis
+							(wajib/pilihan/mulok/kejuruan), dan KKM tersedia.</span
+						>
+						{#if fileName}
+							<span class="label-text-alt text-base-content/60 text-xs"
+								>File dipilih: <strong>{fileName}</strong></span
 							>
-							{#if fileName}
-								<span class="label-text-alt text-base-content/60 text-xs"
-									>File dipilih: <strong>{fileName}</strong></span
-								>
-							{/if}
-						</label>
-					</fieldset>
-				{/snippet}
+						{/if}
+					</label>
+				</fieldset>
 			</FormEnhance>
 		</div>
 

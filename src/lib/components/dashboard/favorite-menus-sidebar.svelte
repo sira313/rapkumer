@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 	import Icon from '$lib/components/icon.svelte';
 	import { favoritesStore } from '$lib/stores/favorites.svelte';
@@ -78,7 +79,9 @@
 							{#each favoritesStore.items as fav (fav.id)}
 								<li class="flex items-center gap-2 px-4 py-2">
 									<Icon name="star" class="text-success shrink-0" />
-									<a href={fav.path} class="hover:text-primary flex-1 text-sm">{fav.title}</a>
+									<a href={resolve(fav.path as '/')} class="hover:text-primary flex-1 text-sm"
+										>{fav.title}</a
+									>
 									{#if editing}
 										<button
 											class="btn btn-ghost btn-square btn-xs text-error shadow-none"

@@ -638,19 +638,18 @@
 		if (typeof v === 'string' && v.trim()) {
 			// Format bracket "[Sintaks N — Nama]" ... jika tak ada, format baris
 			// "Sintaks model pembelajaran N — Nama".
-			const brackets = [
-				...(v.matchAll(/\[(?:Sintaks|SINTAKS)\s*\d+\s*[—–-]\s*([^\]]+)\]/g) ?? [])
-			];
+			const brackets = [...(v.matchAll(/\[(?:Sintaks|SINTAKS)\s*\d+\s*[—–-]\s*([^\]]+)\]/g) ?? [])];
 			const lines = [
-				...(v.matchAll(/^(?:Sintaks|SINTAKS)\s+model\s+pembelajaran\s+\d+\s*[—–-]\s*(.+)$/gim) ?? [])
+				...(v.matchAll(/^(?:Sintaks|SINTAKS)\s+model\s+pembelajaran\s+\d+\s*[—–-]\s*(.+)$/gim) ??
+					[])
 			];
-			const heads = brackets.map((m, i) => ({
+			const heads = brackets.map((m) => ({
 				name: m[1].trim(),
 				start: m.index,
 				end: m.index + m[0].length
 			}));
 			if (heads.length === 0 && lines.length) {
-				const lh = lines.map((m, i) => ({
+				const lh = lines.map((m) => ({
 					name: m[1].trim(),
 					start: m.index,
 					end: (m as RegExpExecArray).index + (m as RegExpExecArray)[0].length

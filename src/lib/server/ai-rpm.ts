@@ -463,7 +463,7 @@ export function parseInti(text: string): SintaksBlock[] {
 
 	const blocks: SintaksBlock[] = [];
 	const sectionRegex =
-		/\[(?:Sintaks|SINTAKS)\s*(?:model\s+pembelajaran\s+)?\d+\s*[—–\-]\s*(.+?)\]/gi;
+		/\[(?:Sintaks|SINTAKS)\s*(?:model\s+pembelajaran\s+)?\d+\s*[—–-]\s*(.+?)\]/gi;
 	const matches = [...v.matchAll(sectionRegex)];
 
 	if (matches.length > 1) {
@@ -478,7 +478,7 @@ export function parseInti(text: string): SintaksBlock[] {
 		return blocks;
 	}
 
-	const lineRegex = /^(?:Sintaks|SINTAKS)\s+(?:model\s+pembelajaran\s+)?\d+\s*[—–\-]\s*(.+)/gim;
+	const lineRegex = /^(?:Sintaks|SINTAKS)\s+(?:model\s+pembelajaran\s+)?\d+\s*[—–-]\s*(.+)/gim;
 	const lineMatches = [...v.matchAll(lineRegex)];
 	if (lineMatches.length > 1) {
 		const positions = lineMatches.map((m) => m.index!);
@@ -488,7 +488,7 @@ export function parseInti(text: string): SintaksBlock[] {
 			const section = v.slice(start, end).trim();
 			const firstLine = section.split('\n')[0] ?? '';
 			const headerM = firstLine.match(
-				/^(?:Sintaks|SINTAKS)\s+(?:model\s+pembelajaran\s+)?\d+\s*[—–\-]\s*(.+)/i
+				/^(?:Sintaks|SINTAKS)\s+(?:model\s+pembelajaran\s+)?\d+\s*[—–-]\s*(.+)/i
 			);
 			const tahap = headerM?.[1]?.trim() ?? '';
 			const langkah = section.replace(/^[^\n]*\n?/, '').trim();

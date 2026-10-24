@@ -202,26 +202,24 @@
 		onToggleCreateForm={toggleCreateForm}
 		onOpenBulkDelete={openBulkDelete}
 	>
-		{#snippet children()}
-			{#if isCreateMode}
-				<button
-					class="btn btn-primary shadow-none"
-					type="submit"
-					form="tp-keasramaan-create"
-					disabled={isSubmitting || filledCreateCount === 0}
-					aria-disabled={isSubmitting || filledCreateCount === 0}
-					aria-busy={isSubmitting}
-					title="Simpan tujuan pembelajaran"
-				>
-					{#if isSubmitting}
-						<div class="loading loading-spinner loading-xs"></div>
-					{:else}
-						<Icon name="save" />
-					{/if}
-					Simpan
-				</button>
-			{/if}
-		{/snippet}
+		{#if isCreateMode}
+			<button
+				class="btn btn-primary shadow-none"
+				type="submit"
+				form="tp-keasramaan-create"
+				disabled={isSubmitting || filledCreateCount === 0}
+				aria-disabled={isSubmitting || filledCreateCount === 0}
+				aria-busy={isSubmitting}
+				title="Simpan tujuan pembelajaran"
+			>
+				{#if isSubmitting}
+					<div class="loading loading-spinner loading-xs"></div>
+				{:else}
+					<Icon name="save" />
+				{/if}
+				Simpan
+			</button>
+		{/if}
 	</TujuanPembelajaranToolbar>
 
 	{#if !data.tujuanTableReady}
@@ -242,9 +240,7 @@
 			onsuccess={handleCreateSuccess}
 			submitStateChange={(value) => (isSubmitting = value)}
 		>
-			{#snippet children()}
-				<input name="indikatorId" value={data.indikator.id} hidden />
-			{/snippet}
+			<input name="indikatorId" value={data.indikator.id} hidden />
 		</FormEnhance>
 	{/if}
 

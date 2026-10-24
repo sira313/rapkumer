@@ -57,11 +57,10 @@
 	// svelte-ignore state_referenced_locally
 	const initialCuti = parseCutiRange(initialKeterangan);
 
+	// svelte-ignore state_referenced_locally
 	let selectedStatus = $state<Status>(
-		// svelte-ignore state_referenced_locally
 		initialStatus && (VALID_STATUS as string[]).includes(initialStatus)
-			? // svelte-ignore state_referenced_locally
-				(initialStatus as Status)
+			? (initialStatus as Status)
 			: 'hadir'
 	);
 	// svelte-ignore state_referenced_locally

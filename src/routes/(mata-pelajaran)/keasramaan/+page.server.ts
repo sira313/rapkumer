@@ -5,7 +5,7 @@ import {
 	tableKeasramaanTujuan
 } from '$lib/server/db/schema';
 import { redirect, fail } from '@sveltejs/kit';
-import { and, asc, eq } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 import { readBufferToAoA } from '$lib/utils/excel.js';
 import { cookieNames } from '$lib/utils';
 
@@ -41,13 +41,13 @@ const MAX_IMPORT_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 
 export async function load({ depends, parent }) {
 	depends('app:keasramaan');
-	const { kelasAktif, user } = await parent();
+	const { kelasAktif } = await parent();
 
 	if (!kelasAktif?.id) {
 		throw redirect(303, `/forbidden?required=kelas_id`);
 	}
 
-	let keasramaanRaw: KeasramaanWithIndikator[] = [];
+	let keasramaanRaw: KeasramaanWithIndikator[];
 	let tableReady = true;
 
 	try {
@@ -282,7 +282,7 @@ export const actions = {
 					// Process indikator
 					for (const indikatorData of matevData.indikator ?? []) {
 						const indikatorLower = indikatorData.deskripsi.toLowerCase();
-						let indikatorId: number | null = null;
+						let indikatorId: number | null;
 
 						// Find existing indikator
 						const existingInd = existingMatev

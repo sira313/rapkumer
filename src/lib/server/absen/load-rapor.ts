@@ -1,4 +1,5 @@
 import db from '$lib/server/db';
+import type { AcademicContext } from '$lib/server/db/academic';
 import {
 	tableMurid,
 	tableKetidakhadiranHarian,
@@ -21,7 +22,7 @@ export async function loadRapor(params: {
 	kelasId: number;
 	search: string | null;
 	pageNumber: number;
-	academicContext: any;
+	academicContext: AcademicContext | null;
 	presensiSettings: NonNullable<PresensiCheckResult['presensiSettings']>;
 	simHari: string | null;
 	simJam: string | null;
@@ -85,8 +86,8 @@ export async function loadRapor(params: {
 		isLibur: false
 	};
 
-	const activeTa = academicContext?.tahunAjaranList.find((ta: any) => ta.id === tahunAjaranId);
-	const activeSem = activeTa?.semester.find((s: any) => s.id === kelasSemesterId);
+	const activeTa = academicContext?.tahunAjaranList.find((ta) => ta.id === tahunAjaranId);
+	const activeSem = activeTa?.semester.find((s) => s.id === kelasSemesterId);
 	let tanggalMulaiRapor = activeSem?.tanggalMasuk ?? activeSem?.tanggalMulai ?? null;
 	let tanggalAkhirRapor = activeSem?.tanggalBagiRaport ?? activeSem?.tanggalSelesai ?? null;
 	const semesterId = kelasSemesterId;

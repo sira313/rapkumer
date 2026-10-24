@@ -43,7 +43,7 @@ export async function handleUpdate({
 		return fail(401, { fail: 'Sekolah tidak ditemukan' });
 	}
 
-	if (!locals.user || !(await canUserEditAbsen(locals.user, sekolahId))) {
+	if (!locals.user || !(await canUserEditAbsen(locals.user))) {
 		return fail(403, { fail: 'Anda tidak memiliki izin untuk mengubah data kehadiran' });
 	}
 
@@ -164,7 +164,7 @@ export async function handleIsiSekaligus({
 	if (!locals.user) {
 		return fail(403, { fail: 'Anda tidak memiliki izin untuk mengubah data kehadiran' });
 	}
-	const hasEditPermission = await canUserEditAbsen(locals.user, sekolahId);
+	const hasEditPermission = await canUserEditAbsen(locals.user);
 	if (!hasEditPermission && locals.user.type !== 'user') {
 		return fail(403, { fail: 'Anda tidak memiliki izin untuk mengubah data kehadiran' });
 	}
@@ -597,7 +597,7 @@ export async function handleIsiSekaligus({
 
 			const selectedIds = Array.from(entryMap.keys());
 			if (selectedIds.length > 0) {
-				const deleteAbsensiConditions: any[] = [
+				const deleteAbsensiConditions = [
 					inArray(tableAbsensi.muridId, selectedIds),
 					sql`${tableAbsensi.waktu} >= ${todayStart.toISOString()}`,
 					sql`${tableAbsensi.waktu} <= ${todayEnd.toISOString()}`
@@ -775,7 +775,7 @@ export async function handleDeletePresensi({
 		return fail(401, { fail: 'Sekolah tidak ditemukan' });
 	}
 
-	if (!locals.user || !(await canUserEditAbsen(locals.user, sekolahId))) {
+	if (!locals.user || !(await canUserEditAbsen(locals.user))) {
 		return fail(403, { fail: 'Anda tidak memiliki izin untuk menghapus data presensi' });
 	}
 

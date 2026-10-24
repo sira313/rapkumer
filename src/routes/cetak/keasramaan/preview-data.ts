@@ -1,4 +1,5 @@
 import { error } from '@sveltejs/kit';
+import { canAccessKeasramaan } from '../../pengguna/permissions';
 import { asc, and, eq } from 'drizzle-orm';
 import db from '$lib/server/db';
 import {
@@ -213,6 +214,9 @@ export type KeasramaanPrintData = {
 };
 
 export async function getKeasramaanPreviewPayload({ locals, url }: KeasramaanContext) {
+	if (!canAccessKeasramaan(locals.user)) {
+		throw error(403, 'Akses ditolak.');
+	}
 	const sekolah = locals.sekolah;
 	if (!sekolah?.id) {
 		throw error(404, 'Sekolah tidak ditemukan.');

@@ -54,11 +54,9 @@
 				}}
 				submitStateChange={(value) => (submitting = value)}
 			>
-				{#snippet children()}
-					{#each deleteModalIds as id (id)}
-						<input name="ids" value={id} hidden />
-					{/each}
-				{/snippet}
+				{#each deleteModalIds as id (id)}
+					<input name="ids" value={id} hidden />
+				{/each}
 			</FormEnhance>
 
 			<div class="modal-action mt-6 flex gap-2">

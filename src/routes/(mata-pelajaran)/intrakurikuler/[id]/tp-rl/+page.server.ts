@@ -58,7 +58,7 @@ export async function load({ depends, params, parent }) {
 	await ensureAgamaMapelForClasses([mapel.kelasId]);
 	await ensurePksMapelForClasses([mapel.kelasId]);
 
-	let tujuanPembelajaran = [];
+	let tujuanPembelajaran;
 
 	let agamaOptions: Array<{
 		id: number;

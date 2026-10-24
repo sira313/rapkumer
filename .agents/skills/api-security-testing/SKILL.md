@@ -17,14 +17,14 @@ Install, LLM setup, full CLI flags, and the managed-cloud path are in the **pene
 
 APIs are near-impossible to test blind, so collect first:
 
-| Input | Why it matters |
-|---|---|
+| Input                                                                                                       | Why it matters                                                                                                                                                                                                                       |
+| ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Schema** — OpenAPI/Swagger file, Postman collection, GraphQL endpoint (introspection), or a gRPC `.proto` | Turns guesswork into full endpoint enumeration. Biggest single win in coverage. An OpenAPI/Swagger or Postman spec (`.json`/`.yaml`/`.yml`) is a target Strix takes directly; a `.proto` is not, so pass it with `--workspace-file`. |
-| **Two sets of credentials/tokens**, ideally in different tenants | BOLA/IDOR — API1:2023, still the #1 API risk — can only be *proven* by accessing tenant A's objects with tenant B's token. |
-| **A low-privilege and a high-privilege token** | Required to prove broken function-level authorization (API5:2023 — a `user` calling admin-only routes). |
-| **Example object IDs** | Lets agents test ID tampering immediately instead of hunting for valid identifiers. |
-| **Out-of-scope routes** | Payments, mass notification, destructive admin endpoints. |
-| **Rate limits / WAF** in front of the API | Avoids agents burning budget on throttled requests; mention them so testing adapts. |
+| **Two sets of credentials/tokens**, ideally in different tenants                                            | BOLA/IDOR — API1:2023, still the #1 API risk — can only be _proven_ by accessing tenant A's objects with tenant B's token.                                                                                                           |
+| **A low-privilege and a high-privilege token**                                                              | Required to prove broken function-level authorization (API5:2023 — a `user` calling admin-only routes).                                                                                                                              |
+| **Example object IDs**                                                                                      | Lets agents test ID tampering immediately instead of hunting for valid identifiers.                                                                                                                                                  |
+| **Out-of-scope routes**                                                                                     | Payments, mass notification, destructive admin endpoints.                                                                                                                                                                            |
+| **Rate limits / WAF** in front of the API                                                                   | Avoids agents burning budget on throttled requests; mention them so testing adapts.                                                                                                                                                  |
 
 Ask the user for anything missing — do not fabricate tokens or scan an API they do not own.
 

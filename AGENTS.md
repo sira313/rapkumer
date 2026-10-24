@@ -136,7 +136,9 @@ The 4 logic blocks below are **mutually exclusive** — gated by `isWaliKelasMas
 ## Security (Strix)
 
 AI pentest for this repo: `docs/SKILLS.md`. Quick command:
+
 ```sh
 strix -n -t ./ --scan-mode quick --max-budget 15
 ```
+
 Output goes to `strix_runs/` (gitignored). Skills live in `.agents/skills/`; restart opencode session after adding new skills.

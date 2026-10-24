@@ -87,32 +87,30 @@
 			}}
 			submitStateChange={(v) => (submitting = v)}
 		>
-			{#snippet children()}
-				<fieldset class="fieldset">
-					<legend class="fieldset-legend font-semibold">Pilih File Excel (.xlsx)</legend>
-					<input
-						type="file"
-						name="file"
-						accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-						class="file-input file-input-ghost"
-						id={fileInputId}
-						required
-						onchange={handleFileChange}
-						bind:this={fileInput}
-					/>
-					<label class="label" for={fileInputId}>
-						<span class="label-text-alt text-base-content/60 text-xs text-wrap">
-							Maksimal 2MB. Pastikan kolom <strong>Lingkup Materi</strong> dan
-							<strong>Tujuan Pembelajaran</strong> tersedia.
+			<fieldset class="fieldset">
+				<legend class="fieldset-legend font-semibold">Pilih File Excel (.xlsx)</legend>
+				<input
+					type="file"
+					name="file"
+					accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+					class="file-input file-input-ghost"
+					id={fileInputId}
+					required
+					onchange={handleFileChange}
+					bind:this={fileInput}
+				/>
+				<label class="label" for={fileInputId}>
+					<span class="label-text-alt text-base-content/60 text-xs text-wrap">
+						Maksimal 2MB. Pastikan kolom <strong>Lingkup Materi</strong> dan
+						<strong>Tujuan Pembelajaran</strong> tersedia.
+					</span>
+					{#if fileName}
+						<span class="label-text-alt text-base-content/60 text-xs">
+							File dipilih: <span class="text-base-content font-semibold">{fileName}</span>
 						</span>
-						{#if fileName}
-							<span class="label-text-alt text-base-content/60 text-xs">
-								File dipilih: <span class="text-base-content font-semibold">{fileName}</span>
-							</span>
-						{/if}
-					</label>
-				</fieldset>
-			{/snippet}
+					{/if}
+				</label>
+			</fieldset>
 		</FormEnhance>
 
 		<div class="modal-action">

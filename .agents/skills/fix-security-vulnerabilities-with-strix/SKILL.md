@@ -38,6 +38,7 @@ Common finding classes and expected fixes: injection → parameterization/escapi
 After fixing, re-scan scoped to the fixed area and confirm the finding is gone. Verify in whichever environment you scanned (or both):
 
 **OSS CLI:**
+
 ```bash
 # Re-test just the changed files (fast). Resolve the repo's real default
 # branch instead of assuming origin/main (many repos use master/develop).
@@ -60,13 +61,16 @@ strix -n -t ./ --scan-mode quick --scope-mode diff --diff-base "$DIFF_BASE" --ma
 # Or re-test with the original finding as focus (no diff base needed)
 strix -n -t ./ --instruction "Verify the SQL injection in app/api/search.py is fixed. Original PoC: <poc>" --max-budget 5
 ```
+
 Exit codes: `2` = findings remain (read the new `strix_runs/<run>/vulnerabilities/` and iterate); `0` = clean **for what was analyzed**. Before trusting a `0`, confirm the run wasn't cut short — check `run.json` for a completed status and compare its `llm_usage.cost` with `--max-budget`: a hard budget stop leaves `status: "stopped"`, but a run that wrapped up on a budget warning records `"completed"` with partial coverage. Give verification enough budget to finish, and prefer re-running the specific PoC as the ground-truth signal.
 
 **Cloud:** rerun with the same config and re-poll, then confirm the finding no longer appears:
+
 ```bash
 new_id=$(curl -sS "$BASE/scans/$scan_id/rerun" "${auth[@]}" -X POST | jq -r .scan_id)
 # poll GET /scans/$new_id until completed, then check its vulnerabilities[]
 ```
+
 Or, if the cloud scan came from a repo/PR, trigger a fresh PR review on the fix branch (`POST /pr-reviews/start`). The platform also retests a single finding directly: `POST /api/v1/vulnerabilities/{vulnerabilityId}/retest`.
 
 - Also re-run the PoC manually when it is a simple request/script — fastest signal.

@@ -73,7 +73,7 @@ export const actions = {
 				});
 				const usedByOther = !!(existing && (!currentId || existing.id !== currentId));
 				// check filesystem
-				let existsOnDisk = false;
+				let existsOnDisk: boolean;
 				try {
 					await fs.stat(path.join(dir, candidate));
 					existsOnDisk = true;

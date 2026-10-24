@@ -39,7 +39,7 @@
 				<th class="bg-base-200 dark:bg-base-300 sticky left-[40px] z-10" style="min-width: 140px;"
 					>Nama</th
 				>
-				{#each Array(daysInMonth) as _, i}
+				{#each Array.from({ length: daysInMonth }, (_, i) => i) as i (i)}
 					{@const isRed = redDays.includes(i + 1)}
 					<th class="text-center {isRed ? 'text-error' : ''}" style="width: 30px; min-width: 26px;"
 						>{i + 1}</th
@@ -58,7 +58,7 @@
 					<td class="bg-base-100 dark:bg-base-200 sticky left-[40px] z-10"
 						>{@html searchQueryMarker(search, row.nama)}</td
 					>
-					{#each row.statusPerDay as status, i}
+					{#each row.statusPerDay as status, i (i)}
 						{@const isRed = redDays.includes(i + 1)}
 						<td class="text-center font-mono {isRed ? 'bg-error/5' : ''}">
 							{#if status === 'H'}

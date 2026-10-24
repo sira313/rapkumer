@@ -19,6 +19,7 @@ export LLM_API_BASE="your-api-base-url"   # hanya untuk model lokal (Ollama, dll
 ```
 
 Rekomendasi model untuk hasil terbaik (menurut docs Strix):
+
 - `zai/glm-5.3` — default, bagus untuk security reasoning
 - `anthropic/claude-sonnet-4-6`
 - `openai/gpt-5.4`

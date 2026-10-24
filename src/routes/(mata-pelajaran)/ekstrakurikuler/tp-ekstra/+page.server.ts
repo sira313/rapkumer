@@ -43,8 +43,8 @@ export async function load({ depends, url, parent }) {
 		throw error(400, 'ID ekstrakurikuler tidak valid');
 	}
 
-	let ekstrakurikuler: Ekstrakurikuler | null = null;
-	let tujuan: EkstrakurikulerTujuan[] = [];
+	let ekstrakurikuler: Ekstrakurikuler | null;
+	let tujuan: EkstrakurikulerTujuan[];
 	let tujuanTableReady = true;
 
 	try {

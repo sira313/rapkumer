@@ -922,7 +922,7 @@ export const actions: Actions = {
 		}
 
 		let sourceSemester:
-			(typeof tableSemester.$inferSelect & { tahunAjaran: TahunAjaranRow }) | null = null;
+			(typeof tableSemester.$inferSelect & { tahunAjaran: TahunAjaranRow }) | null;
 
 		if (Number.isFinite(sourceSemesterId) && (sourceSemesterId ?? 0) > 0) {
 			const candidate = await db.query.tableSemester.findFirst({

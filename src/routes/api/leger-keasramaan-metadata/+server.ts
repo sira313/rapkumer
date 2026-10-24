@@ -210,8 +210,8 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 	const lokasiTandaTangan = sekolahTyped?.lokasiTandaTangan ?? null;
 	const tanggalBagiRaport = sekolahTyped?.semesterAktif?.tanggalBagiRaport ?? null;
 
-	let waliAsramaInfo: any = null;
-	let waliAsuhInfo: any = null;
+	let waliAsramaInfo: { nama: string; nip: string | null } | null = null;
+	let waliAsuhInfo: { nama: string; nip: string | null } | null = null;
 	try {
 		if (kelasIdParam) {
 			const id = Number(kelasIdParam);
@@ -228,7 +228,9 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 					: null;
 			}
 		}
-	} catch (e) {}
+	} catch (err) {
+		console.warn('[api/leger-keasramaan-metadata] failed to load wali', err);
+	}
 
 	return new Response(
 		JSON.stringify({

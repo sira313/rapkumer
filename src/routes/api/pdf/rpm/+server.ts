@@ -70,7 +70,7 @@ export const POST = async ({ request, locals }) => {
 			.map((item) => {
 				if (item && typeof item === 'object') {
 					const o = item as Record<string, unknown>;
-return {
+					return {
 						tahap: typeof o.tahap === 'string' ? o.tahap.trim() : '',
 						langkah: toText(o.langkah)
 					};

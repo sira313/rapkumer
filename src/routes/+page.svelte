@@ -213,9 +213,8 @@
 		return () => clearInterval(id);
 	});
 
-	let nextEventMessage = $state('');
-	$effect(() => {
-		nextEventMessage = computeNextEventMessage({
+	const nextEventMessage = $derived(
+		computeNextEventMessage({
 			now: _now,
 			bellActive,
 			isHoliday,
@@ -239,8 +238,8 @@
 			daftarKodeMapel,
 			isFirstSubjectPeriod,
 			kegiatanCustom
-		});
-	});
+		})
+	);
 
 	const hariIni = $derived.by(() => {
 		const status = isHoliday(_now) ? 'Libur' : 'Hari Belajar';

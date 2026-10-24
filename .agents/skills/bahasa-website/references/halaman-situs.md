@@ -1,12 +1,12 @@
 # Halaman Situs: Landing, Produk, Tentang Kami, FAQ, 404
 
-Aturan `bahasa-inti` + `bahasa-website` berlaku penuh. Berkas ini merinci anatomi per halaman. Semua contoh bisa diganti sapaannya (*kamu* atau *Anda*) mengikuti glosarium produk.
+Aturan `bahasa-inti` + `bahasa-website` berlaku penuh. Berkas ini merinci anatomi per halaman. Semua contoh bisa diganti sapaannya (_kamu_ atau _Anda_) mengikuti glosarium produk.
 
 ## Halaman landing / beranda
 
 Anatomi dari atas:
 
-1. **Headline (H1)**: manfaat spesifik ±10 kata yang lolos "uji kompetitor" (kalau logo diganti kompetitor dan kalimat tetap cocok, belum spesifik). Rumus yang bekerja: *[hasil] + [pembatas: waktu/harga/untuk siapa]*. Contoh: "Kirim invoice dan tagih otomatis, gratis sampai 20 klien."
+1. **Headline (H1)**: manfaat spesifik ±10 kata yang lolos "uji kompetitor" (kalau logo diganti kompetitor dan kalimat tetap cocok, belum spesifik). Rumus yang bekerja: _[hasil] + [pembatas: waktu/harga/untuk siapa]_. Contoh: "Kirim invoice dan tagih otomatis, gratis sampai 20 klien."
 2. **Subheadline**: mekanisme atau untuk siapa: "Untuk freelancer dan agensi kecil; terhubung ke rekening BCA, Mandiri, dan e-wallet."
 3. **CTA primer**: satu, label hasil ("Coba gratis 14 hari"), diulang di tengah dan bawah dengan label sama. CTA sekunder maksimal satu ("Lihat demo 2 menit").
 4. **Bukti sosial dekat klaim**: logo klien, angka nyata ("12.400 invoice terkirim bulan lalu"), testimoni bernama dengan foto/jabatan. "Dipercaya ribuan pelanggan" tanpa angka itu slop.
