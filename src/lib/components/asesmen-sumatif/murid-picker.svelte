@@ -10,6 +10,8 @@
 		kelasId,
 		muridId,
 		mapelId,
+		assessmentParam = 'mapel_id',
+		muridOptionsInitial = [],
 		getDirty = () => false,
 		confirmMessage
 	}: {
@@ -17,6 +19,8 @@
 		kelasId: number;
 		muridId: number;
 		mapelId: number;
+		assessmentParam?: string;
+		muridOptionsInitial?: Option[];
 		getDirty?: () => boolean;
 		confirmMessage: string;
 	} = $props();
@@ -26,7 +30,8 @@
 	let muridQuery = $state('');
 	let daftarTerbuka = $state(false);
 	let indeksSorot = $state(-1);
-	let muridOptions = $state<Option[]>([]);
+	// svelte-ignore state_referenced_locally
+	let muridOptions = $state<Option[]>(muridOptionsInitial);
 	let muridLoading = $state(false);
 
 	// Komponen tidak remount antar navigasi route sama — buang cache daftar
@@ -34,10 +39,11 @@
 	$effect(() => {
 		void kelasId;
 		void mapelId;
-		muridOptions = [];
+		muridOptions = muridOptionsInitial;
 	});
 
 	async function loadMuridOptions() {
+		if (muridOptionsInitial.length) return;
 		if (muridOptions.length || muridLoading) return;
 		muridLoading = true;
 		try {
@@ -87,7 +93,9 @@
 		muridQuery = '';
 		if (murid.id === muridId) return;
 		if (!getDirty() || confirm(confirmMessage)) {
-			await goto(`${basePath}?murid_id=${murid.id}&mapel_id=${mapelId}`, { keepFocus: true });
+			await goto(`${basePath}?murid_id=${murid.id}&${assessmentParam}=${mapelId}`, {
+				keepFocus: true
+			});
 		}
 	}
 </script>

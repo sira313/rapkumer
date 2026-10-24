@@ -14,7 +14,7 @@ import {
 } from '$lib/ekstrakurikuler';
 import { unflattenFormData } from '$lib/utils';
 import { fail, redirect, error } from '@sveltejs/kit';
-import { and, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 
 type NilaiMap = Record<number, EkstrakurikulerNilaiKategori>;
 
@@ -66,6 +66,17 @@ export async function load({ parent, url, depends, locals }) {
 		columns: { id: true, nama: true, kelasId: true },
 		where: eq(tableKeasramaan.id, keasramaanId)
 	});
+
+	const keasramaanList = await db.query.tableKeasramaan.findMany({
+		columns: { id: true, nama: true },
+		where: eq(tableKeasramaan.kelasId, murid.kelasId),
+		orderBy: asc(tableKeasramaan.nama)
+	});
+	let muridList = await db.query.tableMurid.findMany({
+		columns: { id: true, nama: true, waliAsuhNama: true },
+		where: eq(tableMurid.kelasId, murid.kelasId),
+		orderBy: asc(tableMurid.nama)
+	});
 	if (!keasramaan) {
 		throw error(404, 'Data Matev tidak ditemukan');
 	}
@@ -90,6 +101,10 @@ export async function load({ parent, url, depends, locals }) {
 		if (!pegNama || (muridWali?.trim().toLowerCase() ?? '') !== pegNama) {
 			throw error(403, 'Anda hanya dapat menilai murid asuhan sendiri');
 		}
+		muridList = muridList.filter(
+			(item) =>
+				(item as { waliAsuhNama?: string | null }).waliAsuhNama?.trim().toLowerCase() === pegNama
+		);
 	}
 
 	// Get tujuan from all indikators in this keasramaan
@@ -146,7 +161,10 @@ export async function load({ parent, url, depends, locals }) {
 	return {
 		meta,
 		murid: { id: murid.id, nama: murid.nama },
+		kelasId: murid.kelasId,
+		muridList: muridList.map(({ id, nama }) => ({ id, nama })),
 		keasramaan: { id: keasramaan.id, nama: keasramaan.nama },
+		keasramaanList,
 		tujuan,
 		indikators,
 		nilaiByTujuan,

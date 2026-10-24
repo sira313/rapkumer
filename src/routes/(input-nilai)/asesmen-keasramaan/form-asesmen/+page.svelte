@@ -1,6 +1,7 @@
 <script lang="ts">
 	/* eslint-disable svelte/no-navigation-without-resolve -- form links use static hrefs intentionally */
 	import FormEnhance from '$lib/components/form-enhance.svelte';
+	import MuridPicker from '$lib/components/asesmen-sumatif/murid-picker.svelte';
 	import Icon from '$lib/components/icon.svelte';
 	import NilaiIndikatorCard from '$lib/components/asesmen-keasramaan/nilai-indikator-card.svelte';
 	import type { EkstrakurikulerNilaiKategori } from '$lib/ekstrakurikuler';
@@ -21,7 +22,10 @@
 
 	type PageData = {
 		murid: { id: number; nama: string };
+		kelasId: number;
+		muridList: Array<{ id: number; nama: string }>;
 		keasramaan: { id: number; nama: string };
+		keasramaanList: Array<{ id: number; nama: string }>;
 		tujuan: TujuanWithIndikator[];
 		nilaiByTujuan: Record<number, EkstrakurikulerNilaiKategori>;
 		kategoriOptions: Array<{ value: EkstrakurikulerNilaiKategori; label: string }>;
@@ -30,12 +34,25 @@
 	};
 
 	let { data }: { data: PageData } = $props();
+	async function pilihKeasramaan(event: Event) {
+		const id = Number((event.currentTarget as HTMLSelectElement).value);
+		if (Number.isInteger(id) && id !== data.keasramaan.id) {
+			window.location.href = `/asesmen-keasramaan/form-asesmen?murid_id=${data.murid.id}&keasramaan_id=${id}`;
+		}
+	}
 
 	// State untuk tracking nilai per TP
+	// svelte-ignore state_referenced_locally
 	let nilaiByTujuanState = $state<Record<number, EkstrakurikulerNilaiKategori>>(
-		// svelte-ignore state_referenced_locally
 		structuredClone(data.nilaiByTujuan)
 	);
+	const isDirty = $derived.by(() => {
+		const ids = new Set([...Object.keys(data.nilaiByTujuan), ...Object.keys(nilaiByTujuanState)]);
+		return Array.from(ids).some((id) => {
+			const tujuanId = Number(id);
+			return (nilaiByTujuanState[tujuanId] ?? null) !== (data.nilaiByTujuan[tujuanId] ?? null);
+		});
+	});
 
 	const hasTujuan = $derived.by(() => data.tujuan.length > 0);
 	const initValue = $derived.by(() => ({
@@ -144,9 +161,31 @@
 				Isi nilai untuk tiap tujuan pembelajaran keasramaan di bawah ini untuk Ananda
 				<span class="text-primary">{capitalizeSentence(data.murid.nama)}</span>.
 			</h3>
-			<p class="text-base-content/70 text-sm">
-				Matev: <strong>{capitalizeSentence(data.keasramaan.nama)}</strong>
-			</p>
+			<div class="text-base-content/70 text-sm">
+				<div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+					<select
+						class="select bg-base-200 w-full truncate dark:border-none"
+						title="Pilih Matev"
+						aria-label="Pilih Matev"
+						value={data.keasramaan.id}
+						onchange={pilihKeasramaan}
+					>
+						{#each data.keasramaanList as matev (matev.id)}
+							<option value={matev.id}>{capitalizeSentence(matev.nama)}</option>
+						{/each}
+					</select>
+					<MuridPicker
+						basePath="/asesmen-keasramaan/form-asesmen"
+						kelasId={data.kelasId}
+						muridId={data.murid.id}
+						mapelId={data.keasramaan.id}
+						assessmentParam="keasramaan_id"
+						muridOptionsInitial={data.muridList}
+						getDirty={() => isDirty}
+						confirmMessage="Pindah murid akan membuang perubahan. Lanjutkan?"
+					/>
+				</div>
+			</div>
 
 			{#if !hasTujuan}
 				<div class="alert alert-soft alert-warning mt-6">
