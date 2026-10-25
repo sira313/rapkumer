@@ -7,12 +7,14 @@
 	import Icon from '$lib/components/icon.svelte';
 	import Menu from '$lib/components/menu.svelte';
 	import Navbar from '$lib/components/navbar.svelte';
+	import MobileDock from '$lib/components/mobile-dock.svelte';
 	import Task from '$lib/components/tasks.svelte';
 	import FavoriteMenusSidebar from '$lib/components/dashboard/favorite-menus-sidebar.svelte';
 	import KodeKegiatan from '$lib/components/jadwal-bell/kode-kegiatan.svelte';
 	import TambahKegiatanModal from '$lib/components/jadwal-bell/tambah-kegiatan-modal.svelte';
 	import Toast, { toast } from '$lib/components/toast.svelte';
 	import { jadwalIsEditing } from '$lib/stores/jadwal-edit';
+	import { StorageState } from '$lib/state.svelte';
 	import { get } from 'svelte/store';
 
 	import NavIndicator from '$lib/components/nav-indicator.svelte';
@@ -24,6 +26,9 @@
 	let { data, children } = $props();
 
 	const appName = 'Rapkumer';
+	// Shared between the desktop drawer menu and the mobile dock sheet so their
+	// expand/collapse toggle always agree.
+	const menuExpanded = new StorageState<boolean>('menu-expanded');
 	let stoppingServer = $state(false);
 	let loggingOut = $state(false);
 
@@ -311,7 +316,7 @@
 					data-scroll-container
 					class="max-h-[calc(100dvh-4.2rem)] min-h-[calc(100dvh-4.2rem)] max-w-none overflow-y-auto overscroll-contain md:max-h-[calc(100dvh-4.6rem)] md:min-h-[calc(100dvh-4.6rem)]"
 				>
-					<div class="m-4 flex flex-row xl:gap-4">
+					<div class="m-4 flex flex-row pb-20 md:pb-0 xl:gap-4">
 						<div class="w-full max-w-7xl min-w-0 flex-1">
 							<ScrollToTop />
 							<FavoriteMenusFab />
@@ -380,7 +385,7 @@
 					<a href="/"><h2 class="mb-2 text-xl font-bold">Dashboard</h2></a>
 				</div>
 
-				<Menu />
+				<Menu expanded={menuExpanded} />
 
 				<div class="mt-4 flex flex-col gap-3">
 					<a href="/pengaturan" class="flex items-center gap-2">
@@ -395,6 +400,8 @@
 			</ul>
 		</div>
 	</main>
+
+	<MobileDock {menuExpanded} />
 {/if}
 
 <Toast />

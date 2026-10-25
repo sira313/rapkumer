@@ -26,7 +26,7 @@
 </script>
 
 {#if isVisible}
-	<div class="fab end-6 md:end-12 bottom-24 xl:bottom-6">
+	<div class="fab end-6 bottom-40 md:end-12 md:bottom-24 xl:bottom-6">
 		<button
 			type="button"
 			class="btn btn-lg btn-circle btn-primary"

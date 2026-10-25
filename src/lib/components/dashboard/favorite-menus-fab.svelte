@@ -20,7 +20,7 @@
 	}
 </script>
 
-<div class="fab end-6 md:end-12 bottom-6 xl:hidden">
+<div class="fab end-6 bottom-24 md:end-12 md:bottom-6 xl:hidden">
 	<button
 		type="button"
 		class="btn btn-lg btn-circle btn-secondary shadow-lg"
