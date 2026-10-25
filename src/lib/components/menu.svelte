@@ -5,15 +5,21 @@
 	import { searchQueryMarker } from '$lib/utils';
 	import Icon from './icon.svelte';
 	import { appMenuItems } from './menu';
-	import {
-		isAuthorizedUser,
-		resolveRoutePermission,
-		WALI_KELAS_ONLY_PERMISSIONS
-	} from '../../routes/pengguna/permissions';
+	import { isPathHiddenForUser } from './menu-access';
 
-	const expanded = new StorageState<boolean>('menu-expanded');
+	const defaultExpanded = new StorageState<boolean>('menu-expanded');
 
-	let search = $state('');
+	let {
+		search = $bindable(''),
+		showToolbar = true,
+		expanded = defaultExpanded
+	}: {
+		search?: string;
+		showToolbar?: boolean;
+		/** Shared expand/collapse state so every <Menu /> instance stays in sync. */
+		expanded?: StorageState<boolean>;
+	} = $props();
+
 	const activeSemesterTipe = $derived(
 		(page.data as { activeSemesterTipe?: string | null } | null)?.activeSemesterTipe ?? null
 	);
@@ -39,36 +45,15 @@
 		(page.data as { kelasAktif?: { id: number } | null } | null)?.kelasAktif ?? null
 	);
 
+	const access = $derived({
+		user,
+		kelasAktifId: kelasAktif?.id ?? null,
+		presensiGuruEnabled
+	});
+
 	function isHiddenForUser(path?: string): boolean {
 		// Menu items without a path (parent groups) are filtered recursively via subMenu
-		if (!path) return false;
-		if (path === '/presensi-guru' && !presensiGuruEnabled) return true;
-		// /dinas-luar is the permohonan feature for non-admin roles; admin & kepala
-		// sekolah manage perjalanan dinas via the full /sppd page instead.
-		if (
-			path === '/dinas-luar' &&
-			user &&
-			(user.type === 'admin' || user.type === 'kepala_sekolah')
-		) {
-			return true;
-		}
-		// Wali kelas on non-own class: downgrade to guru-level permissions
-		if (user?.type === 'wali_kelas' && kelasAktif?.id != null) {
-			const ownIds = user.ownKelasIds?.length
-				? user.ownKelasIds
-				: user.kelasId != null
-					? [user.kelasId]
-					: [];
-			if (ownIds.length > 0 && !ownIds.includes(kelasAktif.id)) {
-				const required = resolveRoutePermission(path);
-				if (required && WALI_KELAS_ONLY_PERMISSIONS.has(required)) {
-					return true;
-				}
-			}
-		}
-		const required = resolveRoutePermission(path);
-		if (!required) return false;
-		return !isAuthorizedUser([required], user ?? undefined);
+		return isPathHiddenForUser(path, access);
 	}
 
 	function filterMenuByUserType(items: MenuItem[]): MenuItem[] {
@@ -207,20 +192,22 @@
 {/snippet}
 
 <div class="flex-1">
-	<div class="mb-3 flex gap-1">
-		<label class="input bg-base-200 dark:bg-base-300 rounded-box dark:border-none">
-			<Icon name="search" />
-			<input type="search" class="grow" bind:value={search} placeholder="Cari menu" />
-		</label>
-		<label
-			class="btn swap btn-square rounded-box shadow-none"
-			title={expanded.value ? 'Sempitkan menu' : 'Luaskan menu'}
-		>
-			<input type="checkbox" bind:checked={expanded.value} />
-			<span class="swap-on"><Icon name="expand-all" /></span>
-			<span class="swap-off"><Icon name="collapse-all" /></span>
-		</label>
-	</div>
+	{#if showToolbar}
+		<div class="mb-3 flex gap-1">
+			<label class="input bg-base-200 dark:bg-base-300 rounded-box dark:border-none">
+				<Icon name="search" />
+				<input type="search" class="grow" bind:value={search} placeholder="Cari menu" />
+			</label>
+			<label
+				class="btn swap btn-square rounded-box shadow-none"
+				title={expanded.value ? 'Sempitkan menu' : 'Luaskan menu'}
+			>
+				<input type="checkbox" bind:checked={expanded.value} />
+				<span class="swap-on"><Icon name="expand-all" /></span>
+				<span class="swap-off"><Icon name="collapse-all" /></span>
+			</label>
+		</div>
+	{/if}
 	<div
 		class="lg:bg-base-200 lg:rounded-box lg:max-h-[calc(100vh-13.5rem)] lg:overflow-y-auto lg:shadow-inner"
 	>

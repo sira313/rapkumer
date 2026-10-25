@@ -144,3 +144,95 @@ export const appMenuItems: MenuItem[] = [
 		path: '/cetak'
 	}
 ];
+
+/**
+ * Dock only has room for a few slots, so labels are shortened to one word.
+ * Keyed by route (`/` is the dashboard) and used for both pinned favorites and
+ * the per-role fallback below.
+ */
+export const dockMetaByPath: Record<string, { label: string; icon: IconName }> = {
+	'/': { label: 'Beranda', icon: 'grid' },
+	'/sekolah': { label: 'Sekolah', icon: 'school' },
+	'/akademik': { label: 'Akademik', icon: 'calendar' },
+	'/kelas': { label: 'Kelas', icon: 'layers' },
+	'/murid': { label: 'Murid', icon: 'users' },
+	'/intrakurikuler': { label: 'Mapel', icon: 'book' },
+	'/kokurikuler': { label: 'Koku.', icon: 'book-open' },
+	'/ekstrakurikuler': { label: 'Ekstra', icon: 'sparkles' },
+	'/keasramaan': { label: 'Asrama', icon: 'coffee' },
+	'/asesmen-formatif': { label: 'Formatif', icon: 'pen' },
+	'/asesmen-sumatif': { label: 'Sumatif', icon: 'pen' },
+	'/asesmen-kokurikuler': { label: 'Koku.', icon: 'pen' },
+	'/nilai-ekstrakurikuler': { label: 'Ekstra', icon: 'pen' },
+	'/asesmen-keasramaan': { label: 'Asesmen', icon: 'pen' },
+	'/presensi-murid': { label: 'Presensi', icon: 'check-square' },
+	'/rpm': { label: 'RPM', icon: 'book-open' },
+	'/jurnal-mengajar': { label: 'Jurnal', icon: 'activity' },
+	'/catatan-wali-kelas': { label: 'Catatan', icon: 'edit' },
+	'/nilai-akhir': { label: 'Nilai', icon: 'table' },
+	'/rekap-keasramaan': { label: 'Asrama', icon: 'table' },
+	'/keputusan': { label: 'Keputusan', icon: 'percent' },
+	'/buku-tamu': { label: 'Tamu', icon: 'coffee' },
+	'/presensi-guru': { label: 'Presensi', icon: 'check-square' },
+	'/sppd': { label: 'SPPD', icon: 'briefcase' },
+	'/dinas-luar': { label: 'Dinas', icon: 'briefcase' },
+	'/cetak': { label: 'Cetak', icon: 'print' }
+};
+
+export type DockMenuItem = {
+	/** Full label; also used as tooltip / accessible name. */
+	title: string;
+	/** Short label rendered under the dock icon. */
+	label: string;
+	path: string;
+	icon: IconName;
+};
+
+/** Build a dock slot from a route, falling back to the given title. */
+export function createDockItem(path: string, title: string): DockMenuItem {
+	const meta = dockMetaByPath[path];
+	const fallbackLabel = title.length > 10 ? `${title.slice(0, 9)}…` : title;
+	return {
+		path,
+		title,
+		label: meta?.label ?? fallbackLabel,
+		icon: meta?.icon ?? 'star'
+	};
+}
+
+/**
+ * Dock slots used while the user has no favorites yet (or cannot load them).
+ * Favorites always win — see mobile-dock.svelte.
+ */
+export const dockDefaultsByType: Record<AuthUser['type'], DockMenuItem[]> = {
+	admin: [
+		createDockItem('/murid', 'Murid'),
+		createDockItem('/akademik', 'Akademik'),
+		createDockItem('/cetak', 'Cetak Dokumen')
+	],
+	kepala_sekolah: [
+		createDockItem('/murid', 'Murid'),
+		createDockItem('/akademik', 'Akademik'),
+		createDockItem('/cetak', 'Cetak Dokumen')
+	],
+	wali_kelas: [
+		createDockItem('/presensi-murid', 'Presensi Murid'),
+		createDockItem('/asesmen-formatif', 'Formatif'),
+		createDockItem('/cetak', 'Cetak Dokumen')
+	],
+	user: [
+		createDockItem('/presensi-murid', 'Presensi Murid'),
+		createDockItem('/asesmen-formatif', 'Formatif'),
+		createDockItem('/jurnal-mengajar', 'Jurnal Mengajar')
+	],
+	wali_asuh: [
+		createDockItem('/keasramaan', 'Keasramaan'),
+		createDockItem('/asesmen-keasramaan', 'Asesmen Keasramaan'),
+		createDockItem('/cetak', 'Cetak Dokumen')
+	],
+	wali_asrama: [
+		createDockItem('/keasramaan', 'Keasramaan'),
+		createDockItem('/asesmen-keasramaan', 'Asesmen Keasramaan'),
+		createDockItem('/cetak', 'Cetak Dokumen')
+	]
+};
