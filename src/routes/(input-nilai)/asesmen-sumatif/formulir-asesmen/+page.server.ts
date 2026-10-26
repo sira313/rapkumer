@@ -315,6 +315,10 @@ export async function load({ url, locals, depends, parent }) {
 
 export const actions = {
 	save: async ({ request, locals }) => {
+		// The first save can arrive before the page-load ensure has run (notably
+		// after importing an older database). Ensure all assessment tables and
+		// columns exist before any validation or transaction touches them.
+		await ensureAsesmenSumatifSchema();
 		const formPayload = unflattenFormData<{
 			muridId?: string;
 			mapelId?: string;
@@ -384,8 +388,6 @@ export const actions = {
 				authority('input_nilai_asesmen_sumatif');
 			}
 		}
-
-		await ensureAsesmenSumatifSchema();
 
 		const tujuanList = await db.query.tableTujuanPembelajaran.findMany({
 			columns: { id: true, lingkupMateri: true, bobot: true },

@@ -2,6 +2,7 @@ import { exec, execFile } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import db from '$lib/server/db';
+import { withDatabaseBackground } from '$lib/server/db/maintenance';
 import { soundsDir } from '$lib/server/data-dirs';
 import {
 	tableBellSettings,
@@ -157,6 +158,10 @@ async function getSekolahKelasMap(sekolahId: number): Promise<Array<{ id: number
 }
 
 async function tick() {
+	return withDatabaseBackground(tickDatabase);
+}
+
+async function tickDatabase() {
 	const now = new Date();
 	const dayIdx = now.getDay();
 	const today = dayNameMap[dayIdx];

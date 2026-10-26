@@ -1,4 +1,7 @@
-import type { RequestHandler } from '@sveltejs/kit';
+import { json, type RequestHandler } from '@sveltejs/kit';
+import { canAccessKelas } from '$lib/server/kelas-akses';
+import { getAksesMapelUser, needsMapelFilter } from '$lib/server/mapel-access';
+import { isAuthorizedUser } from '../../../pengguna/permissions';
 import db from '$lib/server/db';
 import {
 	tableAsesmenSumatif,
@@ -37,6 +40,13 @@ function parseNumericCell(value: unknown): number | null {
 	const num = Number(normalized);
 	if (!Number.isFinite(num)) return null;
 	return Math.round(num * 100) / 100;
+}
+
+function isValidScoreCell(value: unknown): boolean {
+	if (value == null || (typeof value === 'string' && value.trim() === '')) return true;
+	const text = typeof value === 'string' ? value.trim() : String(value).trim();
+	const num = Number(text.replace(',', '.'));
+	return Number.isFinite(num) && num >= 0 && num <= 100;
 }
 
 function sanitizeBobot(value: number | null | undefined) {
@@ -102,6 +112,10 @@ function deriveLingkupBobot(
 }
 
 export const POST: RequestHandler = async ({ request, locals }) => {
+	if (!locals.user) return json({ error: 'Silakan login terlebih dahulu.' }, { status: 401 });
+	if (!isAuthorizedUser(['input_nilai_asesmen_sumatif'], locals.user)) {
+		return json({ error: 'Anda tidak memiliki izin mengimpor nilai sumatif.' }, { status: 403 });
+	}
 	const contentType = request.headers.get('content-type') || '';
 	if (!contentType.toLowerCase().includes('multipart/form-data')) {
 		return new Response(JSON.stringify({ error: 'Content-Type harus multipart/form-data' }), {
@@ -132,6 +146,32 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	}
 
 	// Read file buffer
+	if (!(await canAccessKelas(locals.user, sekolahId, kelasId))) {
+		return json({ error: 'Anda tidak memiliki akses ke kelas ini.' }, { status: 403 });
+	}
+	const kelasMapels = await db.query.tableMataPelajaran.findMany({
+		columns: { id: true, nama: true },
+		where: eq(tableMataPelajaran.kelasId, kelasId),
+		orderBy: [asc(tableMataPelajaran.nama)]
+	});
+	const akses = needsMapelFilter(locals.user, kelasId)
+		? await getAksesMapelUser(locals.user, kelasId)
+		: null;
+	const canImportMapel = (mapel: { id: number; nama: string }) =>
+		!akses || akses.ids.has(mapel.id) || akses.names.has(normalizeText(mapel.nama));
+	const selectedMapel = kelasMapels.find((mapel) => mapel.id === Number(mapelIdRaw));
+	if (!selectedMapel && mapelIdRaw !== 'agama' && mapelIdRaw !== 'pks') {
+		return json(
+			{ error: 'Mata pelajaran tidak sesuai dengan kelas yang dipilih.' },
+			{ status: 400 }
+		);
+	}
+	const selectedName =
+		selectedMapel?.nama ?? (mapelIdRaw === 'agama' ? AGAMA_BASE_SUBJECT : PKS_BASE_SUBJECT);
+	if (!canImportMapel({ id: selectedMapel?.id ?? 0, nama: selectedName })) {
+		return json({ error: 'Anda tidak memiliki akses ke mata pelajaran ini.' }, { status: 403 });
+	}
+
 	const arrayBuffer = await file.arrayBuffer();
 	const ExcelJS = (await import('exceljs')).default ?? (await import('exceljs'));
 	type WorkbookLike = {
@@ -223,7 +263,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		if (!name) continue;
 		const vals: (number | null)[] = [];
 		for (let c = 2; c <= lastCol; c++) {
-			const v = parseNumericCell((row.getCell(c) as { value: unknown }).value);
+			const rawValue = (row.getCell(c) as { value: unknown }).value;
+			if (!isValidScoreCell(rawValue)) {
+				return new Response(
+					JSON.stringify({
+						error: `Nilai pada baris ${r}, kolom ${c} harus berupa angka 0 sampai 100.`
+					}),
+					{ status: 400 }
+				);
+			}
+			const v = parseNumericCell(rawValue);
 			vals.push(v);
 		}
 		students.push({ rowIndex: r, name, values: vals });
@@ -236,11 +285,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	}
 
 	// Load kelas mapel list (needed for agama resolution)
-	const kelasMapels = await db.query.tableMataPelajaran.findMany({
-		columns: { id: true, nama: true },
-		where: and(eq(tableMataPelajaran.kelasId, kelasId)),
-		orderBy: [asc(tableMataPelajaran.nama)]
-	});
 
 	// Find agama base and variants in kelas
 	const agamaBase =
@@ -267,14 +311,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			// find murid by kelasId and name case-insensitive
 			const mur = await tx.query.tableMurid.findFirst({
 				columns: { id: true, nama: true, agama: true },
-				where: and(eq(tableMurid.kelasId, kelasId), eq(tableMurid.nama, s.name))
+				where: and(
+					eq(tableMurid.sekolahId, sekolahId),
+					eq(tableMurid.kelasId, kelasId),
+					eq(tableMurid.nama, s.name)
+				)
 			});
 			let muridRecord = mur;
 			if (!muridRecord) {
 				// Try case-insensitive search
 				const allInKelas = await tx.query.tableMurid.findMany({
 					columns: { id: true, nama: true, agama: true },
-					where: eq(tableMurid.kelasId, kelasId)
+					where: and(eq(tableMurid.sekolahId, sekolahId), eq(tableMurid.kelasId, kelasId))
 				});
 				const found = allInKelas.find((m) => normalizeText(m.nama) === normalizeText(s.name));
 				if (found) muridRecord = found;
@@ -314,8 +362,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					if (variantRecord) targetMapelId = variantRecord.id;
 				}
 				if (!targetMapelId && isPksMode && pksBase) targetMapelId = pksBase.id;
-
-				if (!targetMapelId) targetMapelId = kelasMapels[0]?.id ?? null;
 			}
 
 			if (!targetMapelId) {
@@ -325,6 +371,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			}
 
 			// (naLingkup will be computed later using tujuan metadata and bobot)
+			const targetMapel = kelasMapels.find((mapel) => mapel.id === targetMapelId);
+			if (!targetMapel || !canImportMapel(targetMapel)) {
+				results.skipped += 1;
+				results.errors.push(
+					`Baris ${s.rowIndex}: tidak memiliki akses ke mata pelajaran murid ini.`
+				);
+				continue;
+			}
 
 			// STS group
 			let stsTes: number | null = null;

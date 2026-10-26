@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import { createClient, type Client } from '@libsql/client';
 import { drizzle } from 'drizzle-orm/libsql/node';
 import * as schema from './schema';
+import { assertDatabaseAvailable } from './maintenance';
 
 const defaultDbUrl = 'file:./data/database.sqlite3';
 
@@ -114,6 +115,7 @@ export async function reloadDbClient() {
 		console.info('[db] reloaded libsql client and drizzle instance');
 	} catch (e) {
 		console.error('[db] failed to reload client', e);
+		throw e;
 	}
 }
 
@@ -123,6 +125,7 @@ const dbProxy = new Proxy(
 	{},
 	{
 		get(_t, prop) {
+			assertDatabaseAvailable();
 			const target = currentDb as unknown as Record<string, unknown>;
 			const v = (target as Record<string, unknown>)[String(prop)];
 			if (typeof v === 'function')

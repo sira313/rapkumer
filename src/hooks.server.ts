@@ -1,4 +1,5 @@
 import '$lib/server/load-env';
+import { withDatabaseRequest, withDatabaseBackground } from '$lib/server/db/maintenance';
 import { applySessionCookie, resolveSession } from '$lib/server/auth';
 import db from '$lib/server/db';
 import { tableSekolah } from '$lib/server/db/schema';
@@ -20,10 +21,10 @@ import {
 import { startBellScheduler } from '$lib/server/bell-scheduler';
 
 setTimeout(() => {
-	startBellScheduler().catch((e) => {
+	withDatabaseBackground(() => startBellScheduler()).catch((e) => {
 		console.error('[hooks] bell scheduler failed to start:', e);
 	});
-	runStartupEnsures().catch((e) => {
+	withDatabaseBackground(() => runStartupEnsures()).catch((e) => {
 		console.error('[hooks] startup ensures failed:', e);
 	});
 }, 1000);
@@ -394,7 +395,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 	// @ts-ignore -- allow adding a custom property to locals
 	event.locals.bodySizeLimit = bodySizeLimit;
-	return _composed({ event, resolve });
+	return withDatabaseRequest(async () => _composed({ event, resolve }));
 };
 
 const sqliteErrors = {
