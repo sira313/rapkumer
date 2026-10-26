@@ -339,6 +339,7 @@ try {
 	console.error('[check-wali-asrama] Error:', err);
 	process.exitCode = 1;
 } finally {
+	await (await server.ssrLoadModule('/src/lib/server/db/index.ts')).closeDbClient();
 	try {
 		await server.close();
 	} catch {

@@ -5,7 +5,8 @@ import { tableAlamat, tableKelas, tableMurid, tableWaliMurid } from '$lib/server
 import { uploadsDir } from '$lib/server/data-dirs';
 import { unflattenFormData } from '$lib/utils.js';
 import { error, redirect } from '@sveltejs/kit';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
+import { canAccessKelas } from '$lib/server/kelas-akses';
 import { isAuthorizedUser } from '../../../../pengguna/permissions';
 
 export async function load({ params, locals }) {
@@ -19,12 +20,16 @@ export async function load({ params, locals }) {
 
 	const meta: PageMeta = { title: 'Form Murid' };
 	if (!params.id) return { meta };
+	if (!locals.sekolah) error(403, 'Sekolah aktif tidak ditemukan');
 
 	const murid = await db.query.tableMurid.findFirst({
-		where: eq(tableMurid.id, +params.id),
+		where: and(eq(tableMurid.id, +params.id), eq(tableMurid.sekolahId, locals.sekolah.id)),
 		with: { alamat: true, ibu: true, ayah: true, wali: true }
 	});
 	if (!murid) error(404, `Data murid tidak ditemukan`);
+	if (!(await canAccessKelas(locals.user, locals.sekolah.id, murid.kelasId))) {
+		error(403, 'Anda tidak memiliki akses ke kelas murid ini');
+	}
 	return { murid, meta };
 }
 
@@ -40,7 +45,10 @@ export const actions = {
 
 		const formData = await request.formData();
 		const uploadedFile = formData.get('foto') as File | null;
-		const formMurid = unflattenFormData<Murid>(formData);
+		const formMurid = unflattenFormData<Omit<Murid, 'id'> & { id?: number }>(formData);
+		if (!locals.sekolah) error(403, 'Sekolah aktif tidak ditemukan');
+		// Identity comes from the route, never from submitted form fields.
+		delete formMurid.id;
 
 		function slugifyName(name: string) {
 			if (!name) return 'murid';
@@ -101,6 +109,9 @@ export const actions = {
 		}
 
 		formMurid.semesterId = kelas.semesterId;
+		if (!(await canAccessKelas(locals.user, locals.sekolah.id, kelas.id))) {
+			error(403, 'Anda tidak memiliki akses ke kelas tujuan');
+		}
 
 		// Validate uploaded foto UPFRONT (before any DB write / file I/O) so the
 		// transaction never holds the DB lock while doing filesystem work.
@@ -122,9 +133,12 @@ export const actions = {
 			if (params.id) {
 				// update
 				const murid = await db.query.tableMurid.findFirst({
-					where: eq(tableMurid.id, +params.id)
+					where: and(eq(tableMurid.id, +params.id), eq(tableMurid.sekolahId, formMurid.sekolahId))
 				});
 				if (!murid) error(404, `Data murid tidak ditemukan`);
+				if (!(await canAccessKelas(locals.user, formMurid.sekolahId, murid.kelasId))) {
+					error(403, 'Anda tidak memiliki akses ke kelas murid ini');
+				}
 				if (uploadedFile && uploadedFile.size && murid.foto) oldFoto = murid.foto;
 
 				await db
@@ -161,7 +175,10 @@ export const actions = {
 					}
 				}
 
-				await db.update(tableMurid).set(formMurid).where(eq(tableMurid.id, +params.id));
+				await db
+					.update(tableMurid)
+					.set(formMurid)
+					.where(and(eq(tableMurid.id, +params.id), eq(tableMurid.sekolahId, formMurid.sekolahId)));
 			} else {
 				// insert
 				if (formMurid.alamat?.jalan) {
