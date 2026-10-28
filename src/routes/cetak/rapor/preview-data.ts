@@ -568,7 +568,11 @@ export async function getRaporPreviewPayload({ locals, url }: RaporContext) {
 		waliKelas: {
 			nama: waliKelasPegawai?.nama ?? '',
 			nip: waliKelasPegawai?.nip ?? null,
-			ttdUserId: waliKelasTtdUserId
+			ttdUserId: waliKelasTtdUserId,
+			ttdFallbackSekolahId:
+				waliKelasPegawai?.id && waliKelasPegawai.id === sekolah.kepalaSekolah?.id
+					? sekolah.id
+					: null
 		},
 		kepalaSekolah: {
 			nama: sekolah.kepalaSekolah?.nama ?? '',

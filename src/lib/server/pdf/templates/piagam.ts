@@ -43,7 +43,12 @@ export interface PiagamPrintData {
 		tempat: string;
 		tanggal: string;
 		kepalaSekolah: { nama: string; nip?: string | null; statusKepalaSekolah?: string | null };
-		waliKelas: { nama: string; nip?: string | null; ttdUserId?: number | null };
+		waliKelas: {
+			nama: string;
+			nip?: string | null;
+			ttdUserId?: number | null;
+			ttdFallbackSekolahId?: number | null;
+		};
 	};
 }
 
@@ -407,7 +412,13 @@ export function renderPiagamHTML(data: PiagamPrintData, template: '1' | '2'): st
 	);
 
 	function footerHTML(): string {
-		const waliTtdBox = guruTtdBoxHTML(ttd.waliKelas.ttdUserId, '15mm', '0mm', '6mm');
+		const waliTtdBox = guruTtdBoxHTML(
+			ttd.waliKelas.ttdUserId,
+			'15mm',
+			'0mm',
+			'6mm',
+			ttd.waliKelas.ttdFallbackSekolahId
+		);
 		return `
 	<div class="footer">
 		<div class="footer-left">

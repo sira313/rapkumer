@@ -184,7 +184,11 @@ export async function getPiagamPreviewPayload({ locals, url }: { locals: App.Loc
 			waliKelas: {
 				nama: murid.kelas?.waliKelas?.nama ?? '',
 				nip: murid.kelas?.waliKelas?.nip ?? '',
-				ttdUserId: waliKelasTtd
+				ttdUserId: waliKelasTtd,
+				ttdFallbackSekolahId:
+					murid.kelas?.waliKelas?.id && murid.kelas.waliKelas.id === sekolah.kepalaSekolah?.id
+						? sekolah.id
+						: null
 			}
 		}
 	};

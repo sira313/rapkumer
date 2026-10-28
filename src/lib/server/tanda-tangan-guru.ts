@@ -4,6 +4,7 @@ import { eq, and, asc } from 'drizzle-orm';
 import db from '$lib/server/db';
 import { tableAuthUser } from '$lib/server/db/schema';
 import { uploadsDir } from '$lib/server/data-dirs';
+import { tandaTanganDataUri } from '$lib/server/tanda-tangan-sekolah';
 
 // Mirrors TTD_HEIGHT in tanda-tangan-sekolah.ts so wali kelas signatures render
 // at exactly the same size as the kepala sekolah signature block.
@@ -63,9 +64,11 @@ export function guruTtdBoxHTML(
 	userId: number | null | undefined,
 	height: string,
 	leftShift: string = '0mm',
-	downShift: string = '0mm'
+	downShift: string = '0mm',
+	fallbackSekolahId?: number | null
 ): string | null {
-	const ttd = guruTtdDataUri(userId);
+	// The caller supplies a fallback only after matching the two pegawai IDs.
+	const ttd = guruTtdDataUri(userId) ?? tandaTanganDataUri(fallbackSekolahId, 'ttd');
 	if (!ttd) return null;
 	const box = `position:relative;width:100%;height:${height}`;
 	const sig = `<img src="${ttd}" alt="" style="position:absolute;left:50%;bottom:calc(-1 * ${downShift});transform:translateX(calc(-50% - ${leftShift}));height:${TTD_HEIGHT};width:auto;max-width:100%;object-fit:contain;z-index:-1;">`;

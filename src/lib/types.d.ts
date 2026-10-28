@@ -123,6 +123,7 @@ interface RaporPrintData {
 		nama: string;
 		nip?: string | null;
 		ttdUserId?: number | null;
+		ttdFallbackSekolahId?: number | null;
 	};
 	kepalaSekolah: {
 		nama: string;
@@ -210,6 +211,7 @@ interface PiagamPrintData {
 			nama: string;
 			nip?: string | null;
 			ttdUserId?: number | null;
+			ttdFallbackSekolahId?: number | null;
 		};
 	};
 }

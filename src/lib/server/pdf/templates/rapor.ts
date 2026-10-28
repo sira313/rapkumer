@@ -30,6 +30,7 @@ export interface RaporPrintData {
 		nama: string;
 		nip?: string | null;
 		ttdUserId?: number | null;
+		ttdFallbackSekolahId?: number | null;
 	};
 	kepalaSekolah: {
 		nama: string;
@@ -520,7 +521,7 @@ ${
 			</tr>
 			<tr>
 				<td class="spacer-5"></td>
-				<td class="spacer-5">${guruTtdBoxHTML(data.waliKelas.ttdUserId, '5rem', '0mm', '3mm') ?? ''}</td>
+				<td class="spacer-5">${guruTtdBoxHTML(data.waliKelas.ttdUserId, '5rem', '0mm', '3mm', data.waliKelas.ttdFallbackSekolahId) ?? ''}</td>
 			</tr>
 			<tr>
 				<td class="text-center">____________________</td>
