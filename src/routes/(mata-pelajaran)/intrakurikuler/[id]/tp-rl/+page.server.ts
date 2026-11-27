@@ -237,7 +237,14 @@ export async function load({ depends, params, parent }) {
 	// view a different agama variant — redirect to their assigned local mapel.
 	// For multi-mapel users with multiple agama variants, allow access to all pages
 	// (client-side logic will handle locking when appropriate).
-	if (assignedLocalMapelId && user && user.type === 'user' && !userHasMultiAgama) {
+	const isReligionOrPksMapel = targetNames.includes(mapel.nama);
+	if (
+		assignedLocalMapelId &&
+		user &&
+		user.type === 'user' &&
+		!userHasMultiAgama &&
+		isReligionOrPksMapel
+	) {
 		const requestedId = Number(params.id);
 		if (Number.isFinite(requestedId) && requestedId !== assignedLocalMapelId) {
 			// redirect to the assigned local mapel's TP page
